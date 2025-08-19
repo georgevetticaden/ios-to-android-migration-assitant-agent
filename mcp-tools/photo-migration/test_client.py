@@ -10,19 +10,22 @@ import os
 import sys
 import logging
 from datetime import datetime
+from pathlib import Path
 from dotenv import load_dotenv
 from src.photo_migration.icloud_client import ICloudClientWithSession
 
-# Set up logging
-log_dir = "/Users/aju/Dropbox/Development/Git/08-14-2025-ios-to-android-migration-agent-take-2/ios-to-android-migration-assitant-agent/mcp-tools/logs"
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, f"photo_migration_session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+# Set up logging - use root logs directory
+# Project root is 2 levels up from this file
+root_dir = Path(__file__).parent.parent.parent
+log_dir = root_dir / "logs"
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / f"photo_migration_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(log_file),
+        logging.FileHandler(str(log_file)),
         logging.StreamHandler()
     ]
 )
@@ -30,8 +33,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info(f"Logging to: {log_file}")
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from project root
+env_file = root_dir / '.env'
+load_dotenv(env_file)
 
 async def test():
     # Get credentials from environment variables

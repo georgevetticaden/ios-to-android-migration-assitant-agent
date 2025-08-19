@@ -1,3 +1,81 @@
-mcp-tools/.DS_Store
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs
+logs/
+*.log
 mcp-tools/logs/
+
+# Database
+*.db
+*.db-journal
+*.duckdb
+*.duckdb.wal
+
+# Session Data
+.icloud_session/
+
+# Screenshots
+screenshots/
+*.png
+*.jpg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
 .DS_Store
+mcp-tools/.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# MCP specific
+mcp-tools/photo-migration/.venv/
+mcp-tools/photo-migration/.env
+mcp-tools/*/.env
+
+# Credentials
+credentials/
+*.json
+google_photos_creds.json
+gmail_creds.json
+*_token.json
