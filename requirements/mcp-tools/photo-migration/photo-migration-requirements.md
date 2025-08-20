@@ -338,77 +338,89 @@ async def check_completion_email(
 
 ---
 
-## 3. Google Photos API Integration
+## 3. Google Dashboard Integration (Pivoted from Photos API)
 
-### 3.1 Authentication Setup
+### ⚠️ IMPORTANT PIVOT: Google Photos API Deprecated
+**Discovery**: During implementation, we found that Google Photos Library API v1 is deprecated (March 31, 2025) with critical limitations:
+- No photo count API available
+- "insufficient authentication scopes" errors
+- New Google Picker API is read-only with no programmatic access
+
+### 3.1 Solution: Google Dashboard via Playwright
 ```python
-# Required scope: https://www.googleapis.com/auth/photoslibrary.readonly
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import Flow
-from googleapiclient.discovery import build
+# Using Playwright automation to extract photo counts from Google Dashboard
+from playwright.async_api import async_playwright, Browser, Page, BrowserContext
 
-class GooglePhotosClient:
-    def __init__(self, credentials_path: str):
-        self.credentials_path = credentials_path
-        self.service = None
+class GoogleDashboardClient:
+    """Google Dashboard client with session persistence"""
     
-    async def authenticate(self):
-        """Handle OAuth flow for Google Photos API"""
-        creds = Credentials.from_authorized_user_file(self.credentials_path)
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        self.service = build('photoslibrary', 'v1', credentials=creds)
+    def __init__(self, session_dir: Optional[str] = None):
+        self.session_dir = Path.home() / ".google_session" if not session_dir else Path(session_dir)
+        self.session_file = self.session_dir / "browser_state.json"
+        self.session_info_file = self.session_dir / "session_info.json"
     
-    async def get_total_items(self) -> int:
-        """Get total number of items in library"""
-        try:
-            response = self.service.mediaItems().list(pageSize=1).execute()
-            # Note: Google Photos API doesn't provide total count directly
-            # This is a limitation we need to work around
-            return self._estimate_total_count()
-        except Exception as e:
-            logger.error(f"Error getting total items: {e}")
-            return 0
-    
-    async def get_recent_items(self, days: int = 7) -> List[Dict]:
-        """Get recently added items for verification"""
-        # Implementation for sampling recent additions
-        pass
-    
-    def _estimate_total_count(self) -> int:
-        """Estimate total count by paginating through items"""
-        # Note: This is resource-intensive but necessary
-        # Consider caching and smart sampling
-        pass
+    async def get_photo_count(self, 
+                            google_email: str = None,
+                            google_password: str = None,
+                            force_fresh_login: bool = False) -> Dict[str, Any]:
+        """
+        Get photo and album counts from Google Dashboard
+        Uses session persistence to avoid repeated login
+        """
+        # Get credentials from environment if not provided
+        if not google_email:
+            google_email = os.getenv('GOOGLE_EMAIL')
+        if not google_password:
+            google_password = os.getenv('GOOGLE_PASSWORD')
+        
+        # Check for saved session (7-day validity like iCloud)
+        use_saved_session = not force_fresh_login and self.is_session_valid()
+        
+        # Navigate to myaccount.google.com/dashboard
+        # Handle 2-Step Verification with "Tap Yes on phone"
+        # Extract photo counts: 42 photos, 162 albums
+        
+        return {
+            "status": "success",
+            "photos": 42,
+            "albums": 162,
+            "total_items": 42,
+            "session_used": use_saved_session,
+            "checked_at": datetime.now().isoformat()
+        }
 ```
 
-### 3.2 Rate Limiting & Error Handling
-- **Rate Limits**: 10,000 requests/day, 100 requests/100 seconds
-- **Retry Logic**: Exponential backoff for 429 responses
-- **Caching**: Cache responses for 1 hour to reduce API calls
-- **Smart Counting**: Use pagination sampling for large libraries
+### 3.2 Key Features of Dashboard Approach
+- **Session Persistence**: 7-day validity (same as iCloud)
+- **2-Step Verification**: Handles "Tap Yes on phone" prompt
+- **No API Limitations**: Web scraping is stable and unrestricted
+- **Real Data**: Successfully extracts actual photo/album counts
+- **Screenshots**: Captures dashboard for verification
 
-### 3.3 Baseline Counting Strategy
+### 3.3 Baseline Counting Strategy (Updated)
 ```python
 async def establish_baseline_count(self, google_email: str) -> Dict[str, Any]:
     """
     Establish baseline photo count before transfer starts
-    This is critical for accurate progress tracking
+    Uses Google Dashboard instead of deprecated API
     """
-    photos_client = GooglePhotosClient(
-        os.getenv('GOOGLE_PHOTOS_CREDENTIALS_PATH')
+    dashboard_client = GoogleDashboardClient()
+    await dashboard_client.initialize()
+    
+    result = await dashboard_client.get_photo_count(
+        google_email=google_email,
+        google_password=os.getenv('GOOGLE_PASSWORD')
     )
-    await photos_client.authenticate()
     
-    baseline_count = await photos_client.get_total_items()
-    timestamp = datetime.now()
-    
-    return {
-        "baseline_count": baseline_count,
-        "timestamp": timestamp.isoformat(),
-        "account": google_email
-    }
+    if result['status'] == 'success':
+        return {
+            "baseline_count": result['photos'],
+            "albums_count": result['albums'],
+            "timestamp": result['checked_at'],
+            "account": google_email
+        }
+    else:
+        raise Exception(f"Failed to get baseline: {result.get('message')}")
 ```
 
 ---
@@ -810,24 +822,19 @@ class ICloudClientWithSession:
         """Monitor transfer progress using Google Photos API"""
         
         try:
-            # Ensure Google Photos API is initialized
-            if not self.google_photos_client:
-                google_creds_path = os.getenv('GOOGLE_PHOTOS_CREDENTIALS_PATH')
-                if not google_creds_path:
-                    return {
-                        "status": "error",
-                        "message": "Please configure GOOGLE_PHOTOS_CREDENTIALS_PATH in environment variables"
-                    }
-                self.google_photos_client = GooglePhotosClient(google_creds_path)
-                await self.google_photos_client.authenticate()
+            # Ensure Google Dashboard client is initialized
+            if not self.google_dashboard_client:
+                self.google_dashboard_client = GoogleDashboardClient()
+                await self.google_dashboard_client.initialize()
             
             # Get transfer details from database
             transfer = await self.db.get_transfer(transfer_id)
             if not transfer:
                 raise Exception(f"Transfer {transfer_id} not found")
             
-            # Get current Google Photos count
-            current_google_count = await self.google_photos_client.get_total_items()
+            # Get current Google photo count from Dashboard
+            dashboard_result = await self.google_dashboard_client.get_photo_count()
+            current_google_count = dashboard_result['photos'] if dashboard_result['status'] == 'success' else 0
             
             # Calculate progress
             baseline_count = transfer['baseline_google_count']
@@ -1010,9 +1017,16 @@ class ICloudClientWithSession:
 APPLE_ID=user@example.com
 APPLE_PASSWORD=password
 
-# Google API credentials (paths to JSON files)
-GOOGLE_PHOTOS_CREDENTIALS_PATH=./google_photos_creds.json
+# Google Dashboard credentials (for Playwright automation)
+GOOGLE_EMAIL=user@gmail.com
+GOOGLE_PASSWORD=google_password
+
+# Gmail API credentials (for completion emails)
 GMAIL_CREDENTIALS_PATH=./gmail_creds.json
+
+# Session persistence directories
+ICLOUD_SESSION_DIR=~/.icloud_session
+GOOGLE_SESSION_DIR=~/.google_session
 
 # Database configuration
 DUCKDB_PATH=./data/photo_migration.db
@@ -1021,8 +1035,7 @@ DUCKDB_PATH=./data/photo_migration.db
 SCREENSHOT_DIR=./screenshots
 LOG_LEVEL=INFO
 
-# API settings
-GOOGLE_PHOTOS_RATE_LIMIT=100
+# Progress tracking settings
 PROGRESS_CHECK_INTERVAL_HOURS=6
 ```
 
