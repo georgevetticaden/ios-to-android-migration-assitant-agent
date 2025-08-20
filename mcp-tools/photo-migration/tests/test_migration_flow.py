@@ -19,11 +19,9 @@ sys.path.insert(0, str(Path(__file__).parent / 'src'))
 from photo_migration.icloud_client import ICloudClientWithSession
 
 # Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.photo_migration.logging_config import setup_logging
+logger = setup_logging(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -82,21 +80,34 @@ async def test_phase3_flow():
         print("✅ APIs initialized (Gmail, Database, Google Dashboard)")
         
         # ============================================================
-        # STEP 3: CHECK FOR EXISTING TRANSFERS
+        # STEP 3: CHECK FOR EXISTING TRANSFERS (Optional)
         # ============================================================
         print("\n" + "="*60)
-        print("STEP 3: CHECK EXISTING TRANSFERS")
+        print("STEP 3: CHECK EXISTING TRANSFERS (from database)")
         print("="*60)
         
-        progress_result = await client.check_transfer_progress()
-        
-        if progress_result.get('status') == 'success':
-            transfers = progress_result.get('transfers', [])
-            print(f"Found {len(transfers)} existing transfers:")
-            for transfer in transfers[:3]:
-                print(f"   - {transfer.get('status')}: {transfer.get('date')}")
+        # Check if there are any existing transfers in the database
+        if client.db:
+            try:
+                with client.db.get_connection() as conn:
+                    result = conn.execute("""
+                        SELECT transfer_id, status, started_at 
+                        FROM photo_migration.transfers 
+                        ORDER BY started_at DESC 
+                        LIMIT 5
+                    """).fetchall()
+                    
+                    if result:
+                        print(f"Found {len(result)} existing transfers:")
+                        for row in result:
+                            print(f"   - {row[0]}: {row[1]} (created {row[2]})")
+                    else:
+                        print("No existing transfers found in database")
+            except Exception as e:
+                print(f"Could not check existing transfers: {e}")
+                print("No existing transfers found")
         else:
-            print("No existing transfers found")
+            print("Database not available - skipping existing transfer check")
         
         # ============================================================
         # STEP 4: START NEW TRANSFER (Interactive)

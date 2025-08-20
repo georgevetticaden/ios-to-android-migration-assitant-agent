@@ -14,27 +14,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 from src.photo_migration.icloud_client import ICloudClientWithSession
 
-# Set up logging - use root logs directory
-# Project root is 2 levels up from this file
-root_dir = Path(__file__).parent.parent.parent
-log_dir = root_dir / "logs"
-log_dir.mkdir(exist_ok=True)
-log_file = log_dir / f"photo_migration_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.photo_migration.logging_config import setup_logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(str(log_file)),
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger(__name__)
-logger.info(f"Logging to: {log_file}")
+# Set up centralized logging
+logger = setup_logging(__name__)
+logger.info("Starting test_basic_auth")
 
 # Load environment variables from project root
-env_file = root_dir / '.env'
+env_file = Path(__file__).parent.parent / '.env'
 load_dotenv(env_file)
 
 async def test():

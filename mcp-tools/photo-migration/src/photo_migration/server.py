@@ -16,6 +16,7 @@ import mcp.server.stdio
 import mcp.types as types
 
 from .icloud_client import ICloudClientWithSession
+from .logging_config import setup_logging
 
 # Load environment variables from project root
 # Project root is 4 levels up from this file: src/photo_migration/server.py
@@ -23,8 +24,8 @@ root_dir = Path(__file__).parent.parent.parent.parent
 env_file = root_dir / '.env'
 load_dotenv(env_file)
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Use centralized logging
+logger = setup_logging(__name__)
 
 server = Server("photo-migration")
 icloud_client = None

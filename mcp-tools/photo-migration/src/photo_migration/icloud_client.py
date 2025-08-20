@@ -7,6 +7,7 @@ Extended with transfer management capabilities
 
 import asyncio
 import logging
+from .logging_config import setup_logging, get_screenshot_dir
 import re
 import os
 import sys
@@ -29,7 +30,7 @@ except ImportError:
     logger.warning("Shared database not available - using local storage")
     MigrationDatabase = None
 
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 class ICloudClientWithSession:
     """iCloud client with persistent session management for photo migration.
@@ -513,8 +514,8 @@ class ICloudClientWithSession:
                     
                     if not photos_clicked:
                         logger.warning("Could not automatically click photos option")
-                        screenshot_path = f"/Users/aju/Dropbox/Development/Git/08-14-2025-ios-to-android-migration-agent-take-2/ios-to-android-migration-assitant-agent/mcp-tools/logs/export_selection_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-                        await self.page.screenshot(path=screenshot_path)
+                        screenshot_path = get_screenshot_dir() / f"export_selection_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                        await self.page.screenshot(path=str(screenshot_path))
                         logger.info(f"Screenshot saved: {screenshot_path}")
                         
                         # Still try to click Next if available
@@ -544,8 +545,8 @@ class ICloudClientWithSession:
                     
                     if not photos_option:
                         logger.warning("Could not find photos option, taking screenshot...")
-                        screenshot_path = f"/Users/aju/Dropbox/Development/Git/08-14-2025-ios-to-android-migration-agent-take-2/ios-to-android-migration-assitant-agent/mcp-tools/logs/no_photos_option_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-                        await self.page.screenshot(path=screenshot_path)
+                        screenshot_path = get_screenshot_dir() / f"no_photos_option_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                        await self.page.screenshot(path=str(screenshot_path))
                         logger.info(f"Screenshot saved: {screenshot_path}")
                 
                 # Step 3: Click Continue/Next (if not already clicked above)
@@ -597,8 +598,8 @@ class ICloudClientWithSession:
                 
                 if photo_count == 0:
                     logger.warning("Could not find photo counts, taking screenshot...")
-                    screenshot_path = f"/Users/aju/Dropbox/Development/Git/08-14-2025-ios-to-android-migration-agent-take-2/ios-to-android-migration-assitant-agent/mcp-tools/logs/no_counts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-                    await self.page.screenshot(path=screenshot_path)
+                    screenshot_path = get_screenshot_dir() / f"no_counts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                    await self.page.screenshot(path=str(screenshot_path))
                     logger.info(f"Screenshot saved: {screenshot_path}")
                 
                 # Look for storage
@@ -1078,6 +1079,73 @@ class ICloudClientWithSession:
                 "error": str(e)
             }
     
+    async def confirm_transfer_final_step(self) -> Dict[str, Any]:
+        """Click the final 'Confirm Transfer' button to actually start the transfer.
+        
+        **IMPORTANT**: This method should ONLY be called after:
+        1. start_transfer() has completed successfully
+        2. The agent/user has reviewed the confirmation page
+        3. The user has explicitly agreed to proceed
+        
+        This is a separate step to ensure deliberate confirmation before
+        starting a multi-day transfer process.
+        
+        Returns:
+            Dict containing:
+                - status: "confirmed" or "error"
+                - message: Confirmation or error message
+                - transfer_started_at: Timestamp when transfer was confirmed
+        """
+        try:
+            if not self.page:
+                return {
+                    "status": "error",
+                    "message": "No active browser session. Run start_transfer first."
+                }
+            
+            # Check if we're on the confirmation page
+            current_url = self.page.url
+            if "privacy.apple.com" not in current_url:
+                return {
+                    "status": "error",
+                    "message": "Not on Apple confirmation page. Run start_transfer first."
+                }
+            
+            # Look for the Confirm Transfer button
+            confirm_button = await self.page.query_selector('button:has-text("Confirm Transfer")')
+            if not confirm_button:
+                return {
+                    "status": "error",
+                    "message": "Confirm Transfer button not found. Ensure you're on the confirmation page."
+                }
+            
+            # Click the Confirm Transfer button
+            logger.info("Clicking 'Confirm Transfer' button to start the actual transfer...")
+            await confirm_button.click()
+            
+            # Wait for confirmation message or redirect
+            await self.page.wait_for_timeout(3000)
+            
+            logger.info("✅ Transfer confirmed and started!")
+            
+            return {
+                "status": "confirmed",
+                "message": "Transfer has been confirmed and started. Apple will process the transfer over 3-7 days.",
+                "transfer_started_at": datetime.now().isoformat(),
+                "next_steps": [
+                    "Apple will email you when the transfer is complete",
+                    "Use check_transfer_progress() to monitor progress",
+                    "Transfer typically takes 3-7 days"
+                ]
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to confirm transfer: {e}")
+            return {
+                "status": "error",
+                "message": f"Failed to confirm transfer: {str(e)}"
+            }
+    
     async def check_completion_email(self, transfer_id: str) -> Dict[str, Any]:
         """Check Gmail for Apple transfer completion notification.
         
@@ -1228,8 +1296,8 @@ class ICloudClientWithSession:
                     logger.info(f"✅ Baseline established: {result['photos']} photos, {result['albums']} albums")
                     return {
                         "status": "success",
-                        "google_photos_count": result['photos'],
-                        "google_albums_count": result['albums'],
+                        "baseline_count": result['photos'],
+                        "albums_count": result['albums'],
                         "google_storage_gb": result.get('storage_gb', 0),
                         "timestamp": datetime.now().isoformat()
                     }
@@ -1571,9 +1639,7 @@ class ICloudClientWithSession:
             await self.page.wait_for_timeout(3000)
             
             # Capture confirmation screenshot
-            screenshot_dir = Path("screenshots")
-            screenshot_dir.mkdir(exist_ok=True)
-            screenshot_path = screenshot_dir / f"transfer_initiated_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            screenshot_path = get_screenshot_dir() / f"transfer_initiated_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
             await self.page.screenshot(path=str(screenshot_path))
             logger.info(f"Screenshot saved: {screenshot_path}")
             
@@ -1608,8 +1674,41 @@ class ICloudClientWithSession:
     async def _save_transfer(self, transfer_data: Dict[str, Any]):
         """Save transfer data to database or local storage"""
         if self.db:
-            # Save to database
-            await self.db.create_photo_transfer(transfer_data)
+            # Save to database using raw SQL
+            try:
+                with self.db.get_connection() as conn:
+                    # First, create a migration record if it doesn't exist
+                    migration_id = f"MIG-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+                    
+                    conn.execute("""
+                        INSERT INTO photo_migration.transfers (
+                            transfer_id, migration_id, source_photos, source_videos, 
+                            source_size_gb, google_email, apple_id,
+                            baseline_google_count, status, started_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        transfer_data['transfer_id'],
+                        migration_id,  # Required by schema
+                        transfer_data['source_photos'],
+                        transfer_data['source_videos'],
+                        transfer_data['source_size_gb'],
+                        transfer_data.get('google_email', os.getenv('GOOGLE_EMAIL', '')),
+                        transfer_data.get('apple_id', os.getenv('APPLE_ID', '')),
+                        transfer_data['baseline_count'],
+                        transfer_data['status'],
+                        transfer_data['started_at']
+                    ))
+                    logger.info(f"Transfer {transfer_data['transfer_id']} saved to database")
+            except Exception as e:
+                logger.error(f"Failed to save transfer to database: {e}")
+                # Fall back to local storage
+                transfers = {}
+                if self.local_transfers_file.exists():
+                    with open(self.local_transfers_file, 'r') as f:
+                        transfers = json.load(f)
+                transfers[transfer_data['transfer_id']] = transfer_data
+                with open(self.local_transfers_file, 'w') as f:
+                    json.dump(transfers, f, indent=2)
         else:
             # Save to local JSON file
             transfers = {}
@@ -1625,7 +1724,32 @@ class ICloudClientWithSession:
     async def _get_transfer(self, transfer_id: str) -> Optional[Dict[str, Any]]:
         """Get transfer data from database or local storage"""
         if self.db:
-            return await self.db.get_photo_transfer(transfer_id)
+            try:
+                with self.db.get_connection() as conn:
+                    result = conn.execute("""
+                        SELECT transfer_id, source_photos, source_videos, 
+                               source_size_gb, destination_service, destination_account,
+                               baseline_google_count, status, started_at, completed_at
+                        FROM photo_migration.transfers 
+                        WHERE transfer_id = ?
+                    """, (transfer_id,)).fetchone()
+                    
+                    if result:
+                        return {
+                            'transfer_id': result[0],
+                            'source_photos': result[1],
+                            'source_videos': result[2],
+                            'source_size_gb': result[3],
+                            'destination_service': result[4],
+                            'destination_account': result[5],
+                            'baseline_count': result[6],
+                            'status': result[7],
+                            'started_at': result[8],
+                            'completed_at': result[9]
+                        }
+            except Exception as e:
+                logger.error(f"Failed to get transfer from database: {e}")
+            return None
         else:
             if self.local_transfers_file.exists():
                 with open(self.local_transfers_file, 'r') as f:
@@ -1636,7 +1760,24 @@ class ICloudClientWithSession:
     async def _update_progress(self, transfer_id: str, progress_data: Dict[str, Any]):
         """Update progress for a transfer"""
         if self.db:
-            await self.db.update_photo_progress(transfer_id, progress_data)
+            try:
+                with self.db.get_connection() as conn:
+                    # Insert progress history record
+                    conn.execute("""
+                        INSERT INTO photo_migration.progress_history (
+                            transfer_id, checked_at, google_photos_total,
+                            transferred_items, percent_complete
+                        ) VALUES (?, ?, ?, ?, ?)
+                    """, (
+                        transfer_id,
+                        datetime.now().isoformat(),
+                        progress_data.get('current_google_count', 0),
+                        progress_data.get('transferred_items', 0),
+                        progress_data.get('percent_complete', 0)
+                    ))
+                    logger.info(f"Progress updated for transfer {transfer_id}")
+            except Exception as e:
+                logger.error(f"Failed to update progress in database: {e}")
         else:
             # Local storage fallback
             transfer = await self._get_transfer(transfer_id)
@@ -1649,7 +1790,17 @@ class ICloudClientWithSession:
     async def _mark_transfer_complete(self, transfer_id: str):
         """Mark a transfer as complete"""
         if self.db:
-            await self.db.mark_photo_transfer_complete(transfer_id)
+            try:
+                with self.db.get_connection() as conn:
+                    conn.execute("""
+                        UPDATE photo_migration.transfers 
+                        SET status = 'complete', 
+                            completed_at = ?
+                        WHERE transfer_id = ?
+                    """, (datetime.now().isoformat(), transfer_id))
+                    logger.info(f"Transfer {transfer_id} marked as complete")
+            except Exception as e:
+                logger.error(f"Failed to mark transfer complete in database: {e}")
         else:
             # Local storage fallback
             transfer = await self._get_transfer(transfer_id)

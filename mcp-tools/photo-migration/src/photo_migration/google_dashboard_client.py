@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 from pathlib import Path
 from playwright.async_api import async_playwright, Browser, Page, BrowserContext
+from .logging_config import setup_logging, get_screenshot_dir
 
 # Try to import playwright-stealth for better success rate
 try:
@@ -21,7 +22,7 @@ try:
 except ImportError:
     STEALTH_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 class GoogleDashboardClient:
     """Google Dashboard client for monitoring Google Photos during migration.
@@ -333,8 +334,9 @@ class GoogleDashboardClient:
             await self.page.wait_for_timeout(1000)
             
             # Take screenshot of initial page
-            await self.page.screenshot(path="screenshots/login_1_initial.png")
-            logger.info("Initial login page screenshot saved")
+            screenshot_path = get_screenshot_dir() / "login_1_initial.png"
+            await self.page.screenshot(path=str(screenshot_path))
+            logger.info(f"Initial login page screenshot saved: {screenshot_path}")
             
             # Look for email input - Google uses identifierId specifically
             logger.info("Looking for email input field...")
@@ -371,7 +373,8 @@ class GoogleDashboardClient:
                 await email_input.type(char, delay=50)
             
             logger.info(f"Entered email: {email}")
-            await self.page.screenshot(path="screenshots/login_2_email_entered.png")
+            screenshot_path = get_screenshot_dir() / "login_2_email_entered.png"
+            await self.page.screenshot(path=str(screenshot_path))
             
             # Find Next button - try multiple selectors
             next_button = None
@@ -400,7 +403,8 @@ class GoogleDashboardClient:
             
             # Wait for page transition
             await self.page.wait_for_timeout(2000)
-            await self.page.screenshot(path="screenshots/login_3_after_email_next.png")
+            screenshot_path = get_screenshot_dir() / "login_3_after_email_next.png"
+            await self.page.screenshot(path=str(screenshot_path))
             
             # Wait for navigation after email submission
             await self.page.wait_for_load_state('networkidle')
@@ -451,7 +455,8 @@ class GoogleDashboardClient:
                     await password_input.type(char, delay=50)
                 
                 logger.info("Entered password")
-                await self.page.screenshot(path="screenshots/login_4_password_entered.png")
+                screenshot_path = get_screenshot_dir() / "login_4_password_entered.png"
+                await self.page.screenshot(path=str(screenshot_path))
                 
                 # Find password Next button
                 password_next = None
@@ -481,7 +486,8 @@ class GoogleDashboardClient:
             # Check current URL after login attempt (or after email if no password)
             current_url = self.page.url
             logger.info(f"URL after login attempt: {current_url}")
-            await self.page.screenshot(path="screenshots/login_5_after_password.png")
+            screenshot_path = get_screenshot_dir() / "login_5_after_password.png"
+            await self.page.screenshot(path=str(screenshot_path))
             
             # Check for 2-Step Verification page
             page_title = await self.page.title()
@@ -491,7 +497,8 @@ class GoogleDashboardClient:
                 
                 # After 2FA, wait for the page to load
                 await self.page.wait_for_load_state('networkidle')
-                await self.page.screenshot(path="screenshots/login_6_after_2fa.png")
+                screenshot_path = get_screenshot_dir() / "login_6_after_2fa.png"
+                await self.page.screenshot(path=str(screenshot_path))
             
             # Final check - wait for redirect to complete
             await self.page.wait_for_load_state('networkidle', timeout=15000)
@@ -506,8 +513,9 @@ class GoogleDashboardClient:
         except Exception as e:
             logger.error(f"Login failed: {e}")
             # Take error screenshot
-            await self.page.screenshot(path="screenshots/login_error.png")
-            logger.error("Error screenshot saved as screenshots/login_error.png")
+            screenshot_path = get_screenshot_dir() / "login_error.png"
+            await self.page.screenshot(path=str(screenshot_path))
+            logger.error(f"Error screenshot saved as {screenshot_path}")
             
             # Log current page URL and title for debugging
             try:
@@ -525,7 +533,8 @@ class GoogleDashboardClient:
         logger.info("Handling 2-Step Verification...")
         
         # Take screenshot
-        await self.page.screenshot(path="screenshots/2step_verification.png")
+        screenshot_path = get_screenshot_dir() / "2step_verification.png"
+        await self.page.screenshot(path=str(screenshot_path))
         
         # Wait a moment for the page to fully load
         await self.page.wait_for_timeout(2000)
@@ -618,9 +627,7 @@ class GoogleDashboardClient:
                     break
             
             # Take screenshot for verification
-            screenshot_dir = Path('screenshots')
-            screenshot_dir.mkdir(exist_ok=True)
-            screenshot_path = screenshot_dir / f"google_dashboard_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            screenshot_path = get_screenshot_dir() / f"google_dashboard_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
             await self.page.screenshot(path=str(screenshot_path), full_page=True)
             
             return {

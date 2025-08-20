@@ -69,8 +69,9 @@ class Settings:
             # Progress check settings
             self.PROGRESS_CHECK_INTERVAL_HOURS = int(os.getenv('PROGRESS_CHECK_INTERVAL_HOURS', '6'))
             
-            # Screenshot directory
-            self.SCREENSHOT_DIR = Path(os.getenv('SCREENSHOT_DIR', './screenshots')).resolve()
+            # Screenshot directory - use central logs directory
+            project_root = Path(__file__).parent.parent.parent
+            self.SCREENSHOT_DIR = Path(os.getenv('SCREENSHOT_DIR', str(project_root / 'logs'))).resolve()
             
             # Browser settings
             self.BROWSER_HEADLESS = os.getenv('BROWSER_HEADLESS', 'false').lower() == 'true'
