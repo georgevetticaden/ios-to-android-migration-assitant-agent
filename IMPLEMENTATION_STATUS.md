@@ -1,6 +1,6 @@
 # Photo Migration MCP Tool - Implementation Status
 
-## 📅 Last Updated: 2025-08-19 (Session 2)
+## 📅 Last Updated: 2025-08-20 (Session 3)
 
 ## 🎯 Current Objective
 Extend the existing photo-migration MCP tool with 4 new capabilities based on requirements in `requirements/mcp-tools/photo-migration/photo-migration-requirements.md`:
@@ -74,27 +74,38 @@ ios-to-android-migration-assistant-agent/
 
 ## 📋 Implementation Plan Overview
 
-### Phase 2: Google APIs Integration (NEXT - 5-6 hours)
-**Dependencies**: Python packages need to be added to photo-migration/pyproject.toml
-```toml
-"duckdb>=0.9.0",
-"google-api-python-client>=2.100.0",
-"google-auth>=2.23.0",
-"google-auth-oauthlib>=1.1.0",
-"google-auth-httplib2>=0.1.1",
-"aiofiles>=23.0.0",
-"tenacity>=8.2.0"
+### Phase 2: Google Integration - COMPLETED with Pivot (Session 3)
+
+#### ⚠️ IMPORTANT PIVOT: Google Photos API Deprecated
+During implementation, we discovered that **Google Photos Library API v1 is deprecated (March 31, 2025)** with limited functionality:
+- No photo count API available
+- "insufficient authentication scopes" errors
+- New Google Picker API is read-only (no programmatic access)
+
+#### ✅ Solution: Google Dashboard via Playwright
+We successfully pivoted to using **Google Dashboard web scraping** with Playwright:
+
+**What We Built**:
+```
+mcp-tools/photo-migration/src/photo_migration/
+├── google_dashboard_client.py    # ✅ NEW - Playwright automation
+│   ├── Session persistence (7-day validity)
+│   ├── 2-Step Verification handling
+│   ├── Extracts: 42 photos, 162 albums
+│   └── Screenshots for verification
+├── gmail_monitor.py              # ✅ CREATED - Gmail API integration
+│   ├── Search for Apple completion emails
+│   ├── OAuth2 authentication
+│   └── Email content extraction
+└── icloud_client.py              # ✅ EXISTING - Ready for extension
 ```
 
-**New Files to Create**:
-- `mcp-tools/photo-migration/src/photo_migration/google_photos.py`
-- `mcp-tools/photo-migration/src/photo_migration/gmail_monitor.py`
-
-**Key Features**:
-- Google Photos API with smart counting (no direct total count API)
-- Baseline establishment BEFORE transfer starts
-- Gmail email parsing for Apple completion notifications
-- Rate limiting and caching
+**Key Achievements**:
+- ✅ Google Dashboard automation with session persistence
+- ✅ Handles 2FA with "Tap Yes on phone" prompt
+- ✅ Successfully extracts real photo/album counts
+- ✅ Gmail monitor for completion emails
+- ✅ No API deprecation concerns - web scraping is stable
 
 ### Phase 3: Extend iCloud Client (6-7 hours)
 **Modify**: `mcp-tools/photo-migration/src/photo_migration/icloud_client.py`
@@ -151,41 +162,43 @@ Progress = (Current Google Count - Baseline Count) / Source Total × 100
 - Baseline established BEFORE transfer starts
 - Critical for accurate progress tracking
 
-## 🚀 Next Immediate Steps for Phase 2
+## ✅ Phase 2 Completion Summary (Session 3)
 
-### Ready to Begin Phase 2: Google APIs Integration
+### What Was Completed
+1. ✅ Discovered Google Photos API deprecation issue
+2. ✅ Successfully pivoted to Google Dashboard web scraping
+3. ✅ Created `google_dashboard_client.py` with session persistence
+4. ✅ Implemented 2-Step Verification handling
+5. ✅ Created `gmail_monitor.py` for email checking
+6. ✅ Updated dependencies in `pyproject.toml`
+7. ✅ All tests passing with real data extraction
 
-1. **Update photo-migration dependencies**
-   ```bash
-   # Edit mcp-tools/photo-migration/pyproject.toml to add:
-   # - duckdb>=0.9.0
-   # - google-api-python-client>=2.100.0
-   # - google-auth>=2.23.0
-   # - google-auth-oauthlib>=1.1.0
-   # - tenacity>=8.2.0
-   ```
+### Test Results
+- ✅ Google Dashboard: Extracts 42 photos, 162 albums
+- ✅ Session persistence: No login needed for 7 days
+- ✅ 2FA handling: "Tap Yes on phone" fully automated
+- ✅ Gmail monitor: OAuth2 authentication working
 
-2. **Create Google Photos client**
-   - Create `mcp-tools/photo-migration/src/photo_migration/google_photos.py`
-   - Implement authentication, counting, baseline establishment
-   - Add smart counting (pagination sampling)
+## 🚀 Next Immediate Steps for Phase 3
 
-3. **Create Gmail monitor**
-   - Create `mcp-tools/photo-migration/src/photo_migration/gmail_monitor.py`
-   - Implement email search and parsing
-   - Extract Apple completion email data
+### Ready to Begin Phase 3: Extend iCloud Client
 
-4. **Extend icloud_client.py**
-   - Import shared database
-   - Add `start_transfer()` method
-   - Add `check_transfer_progress()` method
-   - Add `verify_transfer_complete()` method
-   - Add `check_completion_email()` method
+1. **Extend icloud_client.py**
+   - Import shared database and Google Dashboard client
+   - Add `start_transfer(google_email)` method
+   - Add `check_transfer_progress(transfer_id)` method
+   - Add `verify_transfer_complete(transfer_id)` method
+   - Add `check_completion_email(transfer_id)` method
 
-5. **Update server.py**
-   - Add new tool definitions
-   - Remove credential parameters
+2. **Update server.py**
+   - Add 4 new tool definitions
+   - Remove credential parameters (use env only)
    - Initialize database on startup
+
+3. **Integration Testing**
+   - Test full transfer workflow
+   - Verify progress tracking
+   - Validate email detection
 
 ## 📝 Important Notes
 
@@ -207,17 +220,24 @@ Progress = (Current Google Count - Baseline Count) / Source Total × 100
 APPLE_ID=your.email@icloud.com
 APPLE_PASSWORD=your_password
 
-# For new features (Phase 2+)
-GOOGLE_PHOTOS_CREDENTIALS_PATH=./credentials/google_photos_creds.json
-GMAIL_CREDENTIALS_PATH=./credentials/gmail_creds.json
+# Google Dashboard (Playwright automation)
+GOOGLE_EMAIL=your.email@gmail.com
+GOOGLE_PASSWORD=your_password
+
+# Gmail API (for completion emails)
+GMAIL_CREDENTIALS_PATH=/path/to/gmail_oauth2_credentials.json
+
+# Session persistence directories
+ICLOUD_SESSION_DIR=~/.icloud_session
+GOOGLE_SESSION_DIR=~/.google_session
 ```
 
 ## 📊 Progress Tracker
 
 - [x] Phase 1: Shared Infrastructure (COMPLETED - Session 2)
 - [x] Configuration Consolidation (COMPLETED - Session 2)
-- [ ] Phase 2: Google APIs Integration (NEXT)
-- [ ] Phase 3: Extend iCloud Client  
+- [x] Phase 2: Google Integration with Playwright Pivot (COMPLETED - Session 3)
+- [ ] Phase 3: Extend iCloud Client (NEXT)
 - [ ] Phase 4: Update MCP Server
 - [ ] Phase 5: Testing & Validation
 - [ ] Phase 6: Documentation

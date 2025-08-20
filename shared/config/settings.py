@@ -43,12 +43,13 @@ class Settings:
             self.APPLE_ID = os.getenv('APPLE_ID')
             self.APPLE_PASSWORD = os.getenv('APPLE_PASSWORD')
             
-            # Google API credentials (paths to JSON files)
-            google_photos_path = os.getenv('GOOGLE_PHOTOS_CREDENTIALS_PATH')
-            self.GOOGLE_PHOTOS_CREDENTIALS_PATH = Path(google_photos_path).resolve() if google_photos_path else None
-            
+            # Gmail API credentials (path to JSON file)
             gmail_path = os.getenv('GMAIL_CREDENTIALS_PATH')
             self.GMAIL_CREDENTIALS_PATH = Path(gmail_path).resolve() if gmail_path else None
+            
+            # Google account credentials for Playwright dashboard access
+            self.GOOGLE_EMAIL = os.getenv('GOOGLE_EMAIL')
+            self.GOOGLE_PASSWORD = os.getenv('GOOGLE_PASSWORD')
             
             # Session management
             self.ICLOUD_SESSION_DIR = Path(os.getenv(
@@ -56,13 +57,16 @@ class Settings:
                 '~/.icloud_session'
             )).expanduser()
             
+            self.GOOGLE_SESSION_DIR = Path(os.getenv(
+                'GOOGLE_SESSION_DIR',
+                '~/.google_session'
+            )).expanduser()
+            
             # Logging configuration
             self.LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
             self.LOG_DIR = Path(os.getenv('LOG_DIR', './logs')).resolve()
             
-            # API settings
-            self.GOOGLE_PHOTOS_CACHE_TTL = int(os.getenv('GOOGLE_PHOTOS_CACHE_TTL', '3600'))
-            self.GOOGLE_PHOTOS_RATE_LIMIT = int(os.getenv('GOOGLE_PHOTOS_RATE_LIMIT', '100'))
+            # Progress check settings
             self.PROGRESS_CHECK_INTERVAL_HOURS = int(os.getenv('PROGRESS_CHECK_INTERVAL_HOURS', '6'))
             
             # Screenshot directory
@@ -75,6 +79,7 @@ class Settings:
             # Create directories if they don't exist
             self.MIGRATION_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
             self.ICLOUD_SESSION_DIR.mkdir(parents=True, exist_ok=True)
+            self.GOOGLE_SESSION_DIR.mkdir(parents=True, exist_ok=True)
             self.LOG_DIR.mkdir(parents=True, exist_ok=True)
             self.SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
             
@@ -98,13 +103,13 @@ class Settings:
             if not self.APPLE_PASSWORD:
                 errors.append("APPLE_PASSWORD not configured")
             
-            # Google Photos is optional but warn if not configured
-            if not self.GOOGLE_PHOTOS_CREDENTIALS_PATH:
-                logger.warning("GOOGLE_PHOTOS_CREDENTIALS_PATH not configured - progress tracking will be limited")
-            elif not self.GOOGLE_PHOTOS_CREDENTIALS_PATH.exists():
-                errors.append(f"Google Photos credentials file not found: {self.GOOGLE_PHOTOS_CREDENTIALS_PATH}")
+            # Google credentials for dashboard access (optional)
+            if not self.GOOGLE_EMAIL:
+                logger.warning("GOOGLE_EMAIL not configured - dashboard photo counting unavailable")
+            if not self.GOOGLE_PASSWORD:
+                logger.warning("GOOGLE_PASSWORD not configured - dashboard photo counting unavailable")
             
-            # Gmail is optional
+            # Gmail is optional but recommended
             if self.GMAIL_CREDENTIALS_PATH and not self.GMAIL_CREDENTIALS_PATH.exists():
                 logger.warning(f"Gmail credentials file not found: {self.GMAIL_CREDENTIALS_PATH}")
         
@@ -118,10 +123,6 @@ class Settings:
         
         return errors
     
-    def get_google_photos_scopes(self) -> List[str]:
-        """Get required Google Photos API scopes"""
-        return ['https://www.googleapis.com/auth/photoslibrary.readonly']
-    
     def get_gmail_scopes(self) -> List[str]:
         """Get required Gmail API scopes"""
         return ['https://www.googleapis.com/auth/gmail.readonly']
@@ -132,9 +133,11 @@ class Settings:
             'MIGRATION_DB_PATH': str(self.MIGRATION_DB_PATH),
             'APPLE_ID': self.APPLE_ID[:3] + '***' if self.APPLE_ID else None,
             'APPLE_PASSWORD': '***' if self.APPLE_PASSWORD else None,
-            'GOOGLE_PHOTOS_CREDENTIALS_PATH': str(self.GOOGLE_PHOTOS_CREDENTIALS_PATH) if self.GOOGLE_PHOTOS_CREDENTIALS_PATH else None,
+            'GOOGLE_EMAIL': self.GOOGLE_EMAIL[:3] + '***' if self.GOOGLE_EMAIL else None,
+            'GOOGLE_PASSWORD': '***' if self.GOOGLE_PASSWORD else None,
             'GMAIL_CREDENTIALS_PATH': str(self.GMAIL_CREDENTIALS_PATH) if self.GMAIL_CREDENTIALS_PATH else None,
             'ICLOUD_SESSION_DIR': str(self.ICLOUD_SESSION_DIR),
+            'GOOGLE_SESSION_DIR': str(self.GOOGLE_SESSION_DIR),
             'LOG_LEVEL': self.LOG_LEVEL,
             'LOG_DIR': str(self.LOG_DIR),
             'SCREENSHOT_DIR': str(self.SCREENSHOT_DIR),
