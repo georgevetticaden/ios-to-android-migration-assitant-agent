@@ -24,6 +24,3 @@ env/
 .DS_Store
 Thumbs.db
 
-# Test files
-test_*.py
-!test_client.py

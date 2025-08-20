@@ -24,7 +24,37 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class GoogleDashboardClient:
-    """Google Dashboard client that saves session to avoid repeated logins"""
+    """Google Dashboard client for monitoring Google Photos during migration.
+    
+    This client provides access to Google Photos statistics via the Google
+    Dashboard (myaccount.google.com/dashboard) using browser automation.
+    It's used as an alternative to the deprecated Google Photos API.
+    
+    **Why Dashboard Instead of API**:
+        - Google Photos Library API v1 deprecated (March 31, 2025)
+        - API has no photo count endpoint
+        - Dashboard provides accurate, real-time counts
+        - Works with any Google account without API setup
+    
+    **Key Features**:
+        - Session persistence (7-day validity) to avoid repeated logins
+        - Handles 2-Step Verification ("Tap Yes" on phone)
+        - Extracts photo counts and album information
+        - Screenshots for verification and debugging
+        - Stealth mode to avoid detection (if playwright-stealth installed)
+    
+    **Used By**:
+        - ICloudClient.start_transfer() - Establishes baseline before transfer
+        - ICloudClient.check_transfer_progress() - Gets current count
+        - ICloudClient.verify_transfer_complete() - Final count verification
+    
+    Attributes:
+        session_dir (Path): Directory for storing browser session state
+        playwright: Playwright instance for browser automation
+        browser: Chrome browser instance
+        context: Browser context with saved session
+        page: Current page being automated
+    """
     
     def __init__(self, session_dir: Optional[str] = None):
         self.playwright = None
@@ -109,13 +139,55 @@ class GoogleDashboardClient:
                             google_email: str = None,
                             google_password: str = None,
                             force_fresh_login: bool = False) -> Dict[str, Any]:
-        """
-        Get photo and album counts from Google Dashboard
+        """Get current photo count from Google Dashboard.
+        
+        Navigates to myaccount.google.com/dashboard and extracts the
+        Google Photos statistics. This is the primary method for monitoring
+        transfer progress since the Photos API is deprecated.
+        
+        **Authentication Flow**:
+        1. Tries to use saved session if valid (<7 days old)
+        2. If no session or forced fresh, performs full login
+        3. Handles 2-Step Verification if enabled
+        4. Saves session for future use
+        
+        **Data Extraction**:
+        - Searches for "Google Photos" section
+        - Extracts photo count (e.g., "42 photos")
+        - Extracts album count (e.g., "162 albums")
+        - Takes screenshots for verification
         
         Args:
-            google_email: Google account email (from env if not provided)
-            google_password: Google account password (from env if not provided) 
-            force_fresh_login: Force fresh login even if session exists
+            google_email: Google account email. If None, uses GOOGLE_EMAIL env var
+            google_password: Google account password. If None, uses GOOGLE_PASSWORD env var
+            force_fresh_login: If True, forces new login even if valid session exists.
+                             Useful for switching accounts or debugging.
+        
+        Returns:
+            Dict containing:
+                - status: "success" or "error"
+                - photos: Number of photos in Google Photos
+                - albums: Number of albums (if found)
+                - session_used: Boolean indicating if saved session was used
+                - screenshot_path: Path to dashboard screenshot (if taken)
+                - error: Error message if status is "error"
+        
+        Example Response:
+            {
+                "status": "success",
+                "photos": 42,
+                "albums": 162,
+                "session_used": true,
+                "screenshot_path": "screenshots/dashboard_20250820_143022.png"
+            }
+        
+        Raises:
+            ValueError: If credentials are missing
+            Exception: If login fails or dashboard navigation errors
+        
+        Note:
+            First login may require user interaction for 2-Step Verification.
+            The browser will show "Tap Yes on your phone" prompt.
             
         Returns:
             Dictionary with photo/album counts and metadata
@@ -412,7 +484,8 @@ class GoogleDashboardClient:
             await self.page.screenshot(path="screenshots/login_5_after_password.png")
             
             # Check for 2-Step Verification page
-            if 'challenge' in current_url or 'signin/v2/challenge' in current_url or 'signin/challenge' in current_url or '2-step verification' in await self.page.title().lower():
+            page_title = await self.page.title()
+            if 'challenge' in current_url or 'signin/v2/challenge' in current_url or 'signin/challenge' in current_url or '2-step verification' in page_title.lower():
                 logger.info("2-Step Verification page detected")
                 await self._handle_2step_verification()
                 
