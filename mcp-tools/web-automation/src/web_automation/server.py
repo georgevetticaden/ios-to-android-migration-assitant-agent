@@ -1,7 +1,8 @@
 #!/usr/bin/env python3.11
 """
-Photo Migration MCP Server
-Connects to privacy.apple.com to get real iCloud photo counts
+Web Automation MCP Server
+Browser automation for web-based migrations and tasks
+Currently handles iCloud photo migration via privacy.apple.com
 """
 
 import asyncio
@@ -19,7 +20,7 @@ from .icloud_client import ICloudClientWithSession
 from .logging_config import setup_logging
 
 # Load environment variables from project root
-# Project root is 4 levels up from this file: src/photo_migration/server.py
+# Project root is 4 levels up from this file: src/web_automation/server.py
 root_dir = Path(__file__).parent.parent.parent.parent
 env_file = root_dir / '.env'
 load_dotenv(env_file)
@@ -27,7 +28,7 @@ load_dotenv(env_file)
 # Use centralized logging
 logger = setup_logging(__name__)
 
-server = Server("photo-migration")
+server = Server("web-automation")
 icloud_client = None
 
 @server.list_tools()
@@ -370,15 +371,123 @@ Apple typically sends completion emails within 24 hours of transfer completion."
     
     return [types.TextContent(type="text", text=f"Unknown tool: {name}")]
 
+class PhotoMigrationServer:
+    """Wrapper class for test compatibility"""
+    def __init__(self):
+        self.server = server
+        self.icloud_client = None
+        
+    async def run(self):
+        """Initialize the internal client"""
+        global icloud_client
+        if not icloud_client:
+            session_dir = os.path.expanduser("~/.icloud_session")
+            icloud_client = ICloudClientWithSession(session_dir=session_dir)
+            await icloud_client.initialize()
+            await icloud_client.initialize_apis()
+        self.icloud_client = icloud_client
+        
+    def list_tools(self):
+        """Return list of available tools"""
+        # Return the tools directly (same as handle_list_tools but synchronously)
+        return [
+            types.Tool(
+                name="check_icloud_status",
+                description="Check iCloud photo library status via privacy.apple.com (with session persistence to avoid repeated 2FA)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "reuse_session": {
+                            "type": "boolean",
+                            "description": "Whether to reuse saved browser session (default: true)",
+                            "default": True
+                        }
+                    },
+                    "required": []
+                }
+            ),
+            types.Tool(
+                name="start_photo_transfer",
+                description="Start iCloud to Google Photos transfer. Establishes baseline, gets counts, initiates transfer workflow.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "reuse_session": {
+                            "type": "boolean",
+                            "description": "Whether to reuse saved browser session (default: true)",
+                            "default": True
+                        }
+                    },
+                    "required": []
+                }
+            ),
+            types.Tool(
+                name="check_photo_transfer_progress",
+                description="Monitor ongoing photo transfer progress. Shows percentage complete, transfer rate, and time estimates.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "transfer_id": {
+                            "type": "string",
+                            "description": "The transfer ID returned from start_photo_transfer"
+                        }
+                    },
+                    "required": ["transfer_id"]
+                }
+            ),
+            types.Tool(
+                name="verify_photo_transfer_complete",
+                description="Verify that photo transfer completed successfully. Checks counts, email confirmation, and generates completion certificate.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "transfer_id": {
+                            "type": "string",
+                            "description": "The transfer ID to verify"
+                        },
+                        "important_photos": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Optional list of important photo filenames to check"
+                        },
+                        "include_email_check": {
+                            "type": "boolean",
+                            "description": "Whether to check for Apple completion email (default: true)",
+                            "default": True
+                        }
+                    },
+                    "required": ["transfer_id"]
+                }
+            ),
+            types.Tool(
+                name="check_photo_transfer_email",
+                description="Check Gmail for Apple transfer completion email notification.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "transfer_id": {
+                            "type": "string",
+                            "description": "The transfer ID to check emails for"
+                        }
+                    },
+                    "required": ["transfer_id"]
+                }
+            )
+        ]
+    
+    async def call_tool(self, name: str, arguments: dict):
+        """Call a tool by name"""
+        return await handle_call_tool(name, arguments)
+
 async def main():
     """Main entry point"""
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
-        logger.info("Photo Migration MCP Server starting...")
+        logger.info("Web Automation MCP Server starting...")
         await server.run(
             read_stream,
             write_stream,
             InitializationOptions(
-                server_name="photo-migration",
+                server_name="web-automation",
                 server_version="0.1.0",
                 capabilities=server.get_capabilities(
                     notification_options=NotificationOptions(),

@@ -1,5 +1,5 @@
 """
-Centralized logging configuration for photo migration tools.
+Centralized logging configuration for web automation tools.
 All logs go to the main project logs directory.
 """
 
@@ -20,10 +20,10 @@ def setup_logging(name: str = None, level=logging.INFO):
         Configured logger instance
     """
     # Main project logs directory
-    # From: mcp-tools/photo-migration/src/photo_migration/logging_config.py
+    # From: mcp-tools/web-automation/src/web_automation/logging_config.py
     # To: ios-to-android-migration-assitant-agent/logs
-    # Path structure: .../ios-to-android-migration-assitant-agent/mcp-tools/photo-migration/src/photo_migration/
-    # Need to go up 5 levels: photo_migration -> src -> photo-migration -> mcp-tools -> ios-to-android-migration-assitant-agent
+    # Path structure: .../ios-to-android-migration-assitant-agent/mcp-tools/web-automation/src/web_automation/
+    # Need to go up 5 levels: web_automation -> src -> web-automation -> mcp-tools -> ios-to-android-migration-assitant-agent
     project_root = Path(__file__).parent.parent.parent.parent.parent
     log_dir = project_root / "logs"
     
@@ -31,7 +31,7 @@ def setup_logging(name: str = None, level=logging.INFO):
     log_dir.mkdir(exist_ok=True)
     
     # Create log file with date
-    log_file = log_dir / f"photo_migration_{datetime.now().strftime('%Y%m%d')}.log"
+    log_file = log_dir / f"web_automation_{datetime.now().strftime('%Y%m%d')}.log"
     
     # Configure logger
     logger = logging.getLogger(name) if name else logging.getLogger()

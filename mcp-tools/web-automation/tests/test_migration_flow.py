@@ -16,11 +16,11 @@ import json
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-from photo_migration.icloud_client import ICloudClientWithSession
+from web_automation.icloud_client import ICloudClientWithSession
 
 # Set up logging
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.photo_migration.logging_config import setup_logging
+from web_automation.logging_config import setup_logging
 logger = setup_logging(__name__)
 
 # Load environment variables

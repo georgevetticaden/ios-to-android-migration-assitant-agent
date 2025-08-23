@@ -24,7 +24,7 @@ class MCPServerTester:
         # Add src to path
         sys.path.insert(0, str(Path(__file__).parent / 'src'))
         
-        from photo_migration.server import PhotoMigrationServer
+        from web_automation.server import PhotoMigrationServer
         
         # Create server instance
         self.server = PhotoMigrationServer()

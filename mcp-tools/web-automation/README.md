@@ -1,7 +1,7 @@
-# Photo Migration Tool - iCloud to Google Photos
+# Web Automation MCP Tool
 
 ## Overview
-A production-ready tool that automates the complete migration of photos from iCloud to Google Photos. Currently processing 60,238 photos (383GB) with zero manual intervention required after initial setup.
+A browser automation tool using Playwright for web-based migrations and tasks. Currently focused on iCloud to Google Photos migration, processing 60,238 photos (383GB) with zero manual intervention required after initial setup. Extensible to any web automation needs.
 
 ## ✅ Current Status
 **COMPLETE & OPERATIONAL** - Transfer TRF-20250820-180056 is actively running

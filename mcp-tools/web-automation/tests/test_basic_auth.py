@@ -12,11 +12,11 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
-from src.photo_migration.icloud_client import ICloudClientWithSession
+from web_automation.icloud_client import ICloudClientWithSession
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.photo_migration.logging_config import setup_logging
+from web_automation.logging_config import setup_logging
 
 # Set up centralized logging
 logger = setup_logging(__name__)

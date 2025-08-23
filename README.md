@@ -99,8 +99,8 @@ pip install --upgrade pip
 # Install all dependencies
 pip install -r requirements.txt
 
-# Install photo-migration package in development mode
-pip install -e mcp-tools/photo-migration/
+# Install web-automation package in development mode
+pip install -e mcp-tools/web-automation/
 
 # Install Playwright browsers for automation
 playwright install chromium
@@ -161,7 +161,7 @@ python scripts/migration_status.py
 
 ##### Basic Authentication Test
 ```bash
-cd mcp-tools/photo-migration
+cd mcp-tools/web-automation
 
 # Test authentication and status checking
 python test_basic_auth.py         # Uses saved session if available
@@ -208,10 +208,10 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "photo-migration": {
+    "web-automation": {
       "command": "/absolute/path/to/.venv/bin/python",
-      "args": ["-m", "photo_migration.server"],
-      "cwd": "/absolute/path/to/mcp-tools/photo-migration",
+      "args": ["-m", "web_automation.server"],
+      "cwd": "/absolute/path/to/mcp-tools/web-automation",
       "env": {
         "APPLE_ID": "your.email@icloud.com",
         "APPLE_PASSWORD": "your_password"
@@ -226,6 +226,12 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
       "env": {
         "NODE_ENV": "production"
       }
+    },
+    "migration-state": {
+      "command": "/absolute/path/to/.venv/bin/python",
+      "args": [
+        "/absolute/path/to/mcp-tools/migration-state/server.py"
+      ]
     }
   }
 }
@@ -239,9 +245,9 @@ echo $VIRTUAL_ENV/bin/python  # Copy this for 'command'
 
 ### Using with Claude Desktop
 
-#### Photo Migration
+#### Web Automation (iCloud Migration)
 1. Restart Claude Desktop after configuration
-2. Look for "photo-migration" in available tools
+2. Look for "web-automation" in available tools
 3. Use the tool: "Check my iCloud photo status"
 4. First use will require 2FA in the browser window
 5. Subsequent uses will reuse the saved session
@@ -256,6 +262,14 @@ echo $VIRTUAL_ENV/bin/python  # Copy this for 'command'
    - Automating UI interactions
    - Natural language commands (e.g., "Open WhatsApp and create a new group")
 
+#### Migration State (Database)
+1. Restart Claude Desktop after configuration
+2. Migration-state tools will be available for:
+   - Checking overall migration status
+   - Tracking progress across all tools
+   - Querying pending items
+   - Viewing migration statistics
+
 ## 📁 Project Structure
 
 ```
@@ -267,15 +281,15 @@ ios-to-android-migration-assistant-agent/
 │   ├── config/              # Configuration management
 │   └── utils/               # Shared utilities
 ├── mcp-tools/               # MCP tool implementations
-│   ├── photo-migration/     # iCloud → Google Photos
+│   ├── web-automation/      # Browser automation via Playwright
 │   │   ├── src/
-│   │   │   └── photo_migration/
+│   │   │   └── web_automation/
 │   │   │       ├── icloud_client.py  # Client with session persistence
 │   │   │       └── server.py         # MCP server implementation
 │   │   ├── test_client.py           # Standalone test script
 │   │   └── pyproject.toml           # Package configuration
-│   ├── whatsapp/           # (Future) WhatsApp tools
-│   └── family-services/    # (Future) Family coordination
+│   ├── mobile-mcp/         # Android device control (external)
+│   └── migration-state/    # DuckDB state management
 ├── scripts/                 # Utility scripts
 │   ├── setup_database.py   # Initialize database
 │   ├── migration_status.py # Check migration progress

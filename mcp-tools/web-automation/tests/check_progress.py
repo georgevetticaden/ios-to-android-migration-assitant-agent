@@ -10,8 +10,8 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.photo_migration.icloud_client import ICloudClientWithSession
-from src.photo_migration.logging_config import setup_logging
+from web_automation.icloud_client import ICloudClientWithSession
+from web_automation.logging_config import setup_logging
 from dotenv import load_dotenv
 
 # Setup logging
