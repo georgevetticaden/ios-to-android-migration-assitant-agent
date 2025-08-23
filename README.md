@@ -68,6 +68,8 @@ This project provides MCP tools that assist with the complete migration journey 
 - Apple ID with iCloud Photos enabled
 - Device capable of receiving 2FA codes
 - Google Cloud account (for Phase 2+)
+- Android device with USB debugging enabled (for mobile-mcp)
+- Node.js 18+ (for mobile-mcp)
 
 ## 📦 Installation
 
@@ -104,7 +106,25 @@ pip install -e mcp-tools/photo-migration/
 playwright install chromium
 ```
 
-### 4. Configure Environment Variables
+### 4. Set Up Mobile-MCP (Android Device Control)
+```bash
+# Navigate to mobile-mcp directory
+cd mcp-tools/mobile-mcp
+
+# Install Node.js dependencies
+npm install
+
+# Build the TypeScript project
+npm run build
+
+# Verify ADB connection to your Android device
+adb devices  # Should show your device ID
+
+# Test mobile-mcp functionality
+npm test  # Runs tests with connected Android device
+```
+
+### 5. Configure Environment Variables
 ```bash
 # Copy template and edit with your credentials
 cp .env.template .env
@@ -115,13 +135,13 @@ cp .env.template .env
 # (Future: Google API credentials paths)
 ```
 
-### 5. Initialize the Database
+### 6. Initialize the Database
 ```bash
 # Set up the shared database for all tools
 python scripts/setup_database.py
 ```
 
-### 6. Verify Installation
+### 7. Verify Installation
 ```bash
 # Test infrastructure
 python scripts/test_shared_infrastructure.py
@@ -196,6 +216,16 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
         "APPLE_ID": "your.email@icloud.com",
         "APPLE_PASSWORD": "your_password"
       }
+    },
+    "mobile-mcp": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/mcp-tools/mobile-mcp/lib/index.js",
+        "--stdio"
+      ],
+      "env": {
+        "NODE_ENV": "production"
+      }
     }
   }
 }
@@ -209,11 +239,22 @@ echo $VIRTUAL_ENV/bin/python  # Copy this for 'command'
 
 ### Using with Claude Desktop
 
+#### Photo Migration
 1. Restart Claude Desktop after configuration
 2. Look for "photo-migration" in available tools
 3. Use the tool: "Check my iCloud photo status"
 4. First use will require 2FA in the browser window
 5. Subsequent uses will reuse the saved session
+
+#### Mobile-MCP (Android Control)
+1. Connect your Android device via USB
+2. Enable USB debugging on the device
+3. Restart Claude Desktop after configuration
+4. Mobile-mcp tools will be available for:
+   - Taking screenshots
+   - Installing apps
+   - Automating UI interactions
+   - Natural language commands (e.g., "Open WhatsApp and create a new group")
 
 ## 📁 Project Structure
 

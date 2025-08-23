@@ -1,0 +1,3 @@
+mcp
+duckdb
+python-dotenv
