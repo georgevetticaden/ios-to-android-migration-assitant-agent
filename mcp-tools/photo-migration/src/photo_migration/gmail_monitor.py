@@ -584,6 +584,52 @@ class GmailMonitor:
             logger.error(f"Failed to get recent emails: {e}")
             return []
     
+    async def _parse_email(self, message):
+        """Parse email message to extract relevant data"""
+        try:
+            headers = message['payload'].get('headers', [])
+            
+            # Extract header fields
+            subject = ''
+            from_addr = ''
+            date = ''
+            
+            for header in headers:
+                name = header['name'].lower()
+                if name == 'subject':
+                    subject = header['value']
+                elif name == 'from':
+                    from_addr = header['value']
+                elif name == 'date':
+                    date = header['value']
+            
+            # Extract body
+            body = ''
+            if 'parts' in message['payload']:
+                for part in message['payload']['parts']:
+                    if part['mimeType'] == 'text/plain':
+                        data = part['body'].get('data', '')
+                        if data:
+                            import base64
+                            body = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                        break
+            elif message['payload']['body'].get('data'):
+                import base64
+                body = base64.urlsafe_b64decode(
+                    message['payload']['body']['data']
+                ).decode('utf-8', errors='ignore')
+            
+            return {
+                'id': message['id'],
+                'subject': subject,
+                'from': from_addr,
+                'date': date,
+                'body': body[:500]  # Limit body length
+            }
+        except Exception as e:
+            logger.warning(f"Failed to parse email: {e}")
+            return None
+    
     async def cleanup(self):
         """Cleanup resources"""
         if self.service:

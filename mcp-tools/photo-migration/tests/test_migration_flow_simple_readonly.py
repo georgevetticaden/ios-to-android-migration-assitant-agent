@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Simplified test for the complete photo migration flow.
-This test properly uses the Phase 3 methods without redundant authentication.
+Simplified test for the complete photo migration flow - READ-ONLY DATABASE MODE.
+Use this version when DBeaver or other tools have the database open.
 """
 
 import asyncio
@@ -42,26 +42,33 @@ else:
         logger.warning(f"Current directory: {Path.cwd()}")
         logger.warning(f"Test file location: {Path(__file__).resolve()}")
 
+# Set environment variable to use read-only mode for database
+os.environ['DUCKDB_ACCESS_MODE'] = 'READ_ONLY'
+
 async def test_simplified_flow():
     """Test the migration flow the way it should actually work"""
     
     logger.info("="*80)
-    logger.info("SIMPLIFIED PHOTO MIGRATION TEST")
+    logger.info("SIMPLIFIED PHOTO MIGRATION TEST - READ-ONLY MODE")
     logger.info("="*80)
     logger.info("This test demonstrates the proper flow:")
     logger.info("1. start_transfer() - Handles EVERYTHING including auth")
     logger.info("2. Confirm transfer - Explicit user confirmation")
     logger.info("3. Monitor progress - Check transfer status")
     logger.info("="*80)
+    logger.info("NOTE: Database is in READ-ONLY mode - no data will be saved")
+    logger.info("="*80)
     
     # Also print to console for interactive use
     print("\n" + "="*80)
-    print("SIMPLIFIED PHOTO MIGRATION TEST")
+    print("SIMPLIFIED PHOTO MIGRATION TEST - READ-ONLY MODE")
     print("="*80)
     print("This test demonstrates the proper flow:")
     print("1. start_transfer() - Handles EVERYTHING including auth")
     print("2. Confirm transfer - Explicit user confirmation")
     print("3. Monitor progress - Check transfer status")
+    print("="*80)
+    print("⚠️  NOTE: Database is in READ-ONLY mode - no data will be saved")
     print("="*80)
     
     # Initialize client
@@ -82,6 +89,7 @@ async def test_simplified_flow():
     print("  3. Establish Google baseline")
     print("  4. Navigate transfer workflow")
     print("  5. Stop at confirmation page")
+    print("\n⚠️  Database writes will be skipped in READ-ONLY mode")
     
     proceed = input("\nStart transfer process? (yes/no): ").strip().lower()
     
@@ -128,7 +136,7 @@ async def test_simplified_flow():
     print(f"   - {transfer_result['source_counts']['photos']:,} photos will be transferred")
     print(f"   - Destination: {transfer_result['destination']['account']}")
     print(f"   - Required storage: {transfer_result['source_counts']['size_gb']}GB")
-    print("   - Estimated time: 3-7 days")
+    print(f"   - Estimated time: 3-7 days")
     
     confirm = input("\n🔴 Ready to start the actual transfer? (yes/no): ").strip().lower()
     
@@ -149,74 +157,14 @@ async def test_simplified_flow():
         print("   (You can manually click 'Confirm Transfer' in the browser)")
     
     # ============================================================
-    # STEP 3: CHECK PROGRESS (Optional)
-    # ============================================================
-    print("\n" + "="*60)
-    print("STEP 3: CHECK TRANSFER PROGRESS")
-    print("="*60)
-    
-    check = input("\nCheck transfer progress? (yes/no): ").strip().lower()
-    
-    if check == 'yes':
-        progress = await client.check_transfer_progress(transfer_id)
-        
-        if progress.get('status') == 'in_progress':
-            print(f"\n📊 Transfer Progress:")
-            print(f"   Status: {progress['status']}")
-            print(f"   Progress: {progress['progress']['percent_complete']:.1f}%")
-            print(f"   Transferred: {progress['counts']['transferred_items']:,} items")
-            print(f"   Remaining: {progress['counts']['remaining_items']:,} items")
-            print(f"   Days elapsed: {progress['timeline']['days_elapsed']:.1f}")
-            
-            if progress['progress']['percent_complete'] < 100:
-                print(f"   Estimated completion: {progress['timeline']['estimated_completion']}")
-        else:
-            print(f"Progress check result: {progress}")
-    
-    # ============================================================
-    # STEP 4: CHECK EMAIL (Optional)
-    # ============================================================
-    print("\n" + "="*60)
-    print("STEP 4: CHECK FOR COMPLETION EMAIL")
-    print("="*60)
-    
-    check_email = input("\nCheck for completion email? (yes/no): ").strip().lower()
-    
-    if check_email == 'yes':
-        email_result = await client.check_completion_email(transfer_id)
-        
-        if email_result.get('email_found'):
-            print("✅ Completion email found!")
-            print(f"   Subject: {email_result['email_details']['subject']}")
-            print(f"   Received: {email_result['email_details']['received_at']}")
-        else:
-            print("📧 No completion email yet (transfer may still be in progress)")
-    
-    # ============================================================
     # SUMMARY
     # ============================================================
     print("\n" + "="*60)
     print("TEST COMPLETE")
     print("="*60)
-    
-    # Check database
-    if client.db:
-        try:
-            with client.db.get_connection() as conn:
-                result = conn.execute("""
-                    SELECT transfer_id, status, source_photos, baseline_google_count
-                    FROM photo_migration.transfers 
-                    WHERE transfer_id = ?
-                """, (transfer_id,)).fetchone()
-                
-                if result:
-                    print(f"\n💾 Database Record:")
-                    print(f"   Transfer ID: {result[0]}")
-                    print(f"   Status: {result[1]}")
-                    print(f"   Source Photos: {result[2]:,}")
-                    print(f"   Baseline: {result[3]}")
-        except Exception as e:
-            print(f"Could not query database: {e}")
+    print("\n⚠️  Note: Database was in READ-ONLY mode")
+    print("   No transfer records were saved to the database")
+    print("   Close DBeaver and run the regular test to save data")
     
     print("\n✅ Test completed successfully!")
     print("\n💡 Browser remains open for inspection")

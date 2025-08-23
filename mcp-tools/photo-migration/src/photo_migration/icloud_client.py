@@ -907,7 +907,11 @@ class ICloudClientWithSession:
             percent_complete = (transferred_items / source_total * 100) if source_total > 0 else 0
             
             # Calculate elapsed time
-            started_at = datetime.fromisoformat(transfer['started_at'])
+            # Handle both string and datetime objects from database
+            if isinstance(transfer['started_at'], str):
+                started_at = datetime.fromisoformat(transfer['started_at'])
+            else:
+                started_at = transfer['started_at']
             days_elapsed = (datetime.now() - started_at).total_seconds() / 86400
             
             # Calculate transfer rate
@@ -1212,7 +1216,11 @@ class ICloudClientWithSession:
                 return {"email_found": False, "error": "Transfer not found"}
             
             # Search for Apple emails since transfer started
-            transfer_start = datetime.fromisoformat(transfer['started_at'])
+            # Handle both string and datetime objects from database
+            if isinstance(transfer['started_at'], str):
+                transfer_start = datetime.fromisoformat(transfer['started_at'])
+            else:
+                transfer_start = transfer['started_at']
             
             logger.info(f"Searching for Apple emails since {transfer_start}")
             emails = await self.gmail_client.search_emails(
@@ -1728,7 +1736,7 @@ class ICloudClientWithSession:
                 with self.db.get_connection() as conn:
                     result = conn.execute("""
                         SELECT transfer_id, source_photos, source_videos, 
-                               source_size_gb, destination_service, destination_account,
+                               source_size_gb, google_email, apple_id,
                                baseline_google_count, status, started_at, completed_at
                         FROM photo_migration.transfers 
                         WHERE transfer_id = ?
@@ -1740,8 +1748,8 @@ class ICloudClientWithSession:
                             'source_photos': result[1],
                             'source_videos': result[2],
                             'source_size_gb': result[3],
-                            'destination_service': result[4],
-                            'destination_account': result[5],
+                            'destination_service': 'Google Photos',  # Fixed value
+                            'destination_account': result[4],  # google_email
                             'baseline_count': result[6],
                             'status': result[7],
                             'started_at': result[8],
@@ -1766,14 +1774,15 @@ class ICloudClientWithSession:
                     conn.execute("""
                         INSERT INTO photo_migration.progress_history (
                             transfer_id, checked_at, google_photos_total,
-                            transferred_items, percent_complete
-                        ) VALUES (?, ?, ?, ?, ?)
+                            transferred_items, transfer_rate_per_hour, notes
+                        ) VALUES (?, ?, ?, ?, ?, ?)
                     """, (
                         transfer_id,
-                        datetime.now().isoformat(),
+                        datetime.now(),
                         progress_data.get('current_google_count', 0),
                         progress_data.get('transferred_items', 0),
-                        progress_data.get('percent_complete', 0)
+                        progress_data.get('transfer_rate_per_hour', 0),
+                        f"Progress: {progress_data.get('percent_complete', 0):.1f}%"
                     ))
                     logger.info(f"Progress updated for transfer {transfer_id}")
             except Exception as e:

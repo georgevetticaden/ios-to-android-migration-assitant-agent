@@ -23,8 +23,8 @@ def setup_logging(name: str = None, level=logging.INFO):
     # From: mcp-tools/photo-migration/src/photo_migration/logging_config.py
     # To: ios-to-android-migration-assitant-agent/logs
     # Path structure: .../ios-to-android-migration-assitant-agent/mcp-tools/photo-migration/src/photo_migration/
-    # Go up 4 levels to reach ios-to-android-migration-assitant-agent
-    project_root = Path(__file__).parent.parent.parent.parent
+    # Need to go up 5 levels: photo_migration -> src -> photo-migration -> mcp-tools -> ios-to-android-migration-assitant-agent
+    project_root = Path(__file__).parent.parent.parent.parent.parent
     log_dir = project_root / "logs"
     
     # Create logs directory if it doesn't exist
@@ -63,7 +63,8 @@ def setup_logging(name: str = None, level=logging.INFO):
 def get_screenshot_dir():
     """Get the main project logs directory for screenshots."""
     # Same path as logging - ios-to-android-migration-assitant-agent/logs
-    project_root = Path(__file__).parent.parent.parent.parent
+    # Need to go up 5 levels to reach project root
+    project_root = Path(__file__).parent.parent.parent.parent.parent
     log_dir = project_root / "logs"
     log_dir.mkdir(exist_ok=True)
     return log_dir
