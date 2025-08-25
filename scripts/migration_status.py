@@ -46,7 +46,7 @@ async def main(migration_id: str = None):
             migration = await db.get_active_migration()
             if not migration:
                 print("\n📭 No active migration found")
-                print("\nTo start a new migration, use the photo-migration MCP tool")
+                print("\nTo start a new migration, use the web-automation MCP tool")
                 return True
         
         # Display migration info

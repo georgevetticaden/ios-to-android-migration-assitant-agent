@@ -225,7 +225,7 @@ class MigrationDatabase:
         # Log event
         await self.log_event(
             transfer_data['migration_id'],
-            'photo-migration',
+            'web-automation',
             'transfer_started',
             {
                 'transfer_id': transfer_data['transfer_id'],

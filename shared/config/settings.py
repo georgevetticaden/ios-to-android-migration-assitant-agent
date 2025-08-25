@@ -98,7 +98,7 @@ class Settings:
             errors.append("MIGRATION_DB_PATH not configured")
         
         # Tool-specific validations
-        if tool_name == 'photo-migration':
+        if tool_name == 'web-automation':
             if not self.APPLE_ID:
                 errors.append("APPLE_ID not configured")
             if not self.APPLE_PASSWORD:

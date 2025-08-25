@@ -1,455 +1,522 @@
-# Demo Script: iOS to Android AI Migration - Complete Final Version
-
-## Demo Overview
-**Duration**: 10 minutes  
-**Format**: Split screen - Claude Desktop (left 60%) | Galaxy Z Fold 7 via scrcpy (right 40%)  
-**Key Message**: AI orchestrating complex migration across multiple devices over 5-7 days
+# iOS to Android Migration Demo Script - Version 7
+**Duration**: 10 minutes (with editing)
+**Format**: Split-screen showing Claude Desktop (left) and Galaxy Z Fold 7 (right)
 
 ---
 
-## Pre-Demo Setup Checklist
+## 0:00-0:30 - OPENING HOOK
 
-### Technical Setup
-- [ ] Galaxy Z Fold 7 connected via USB (ADB verified)
-- [ ] Claude Desktop running with all 3 MCP tools configured
-- [ ] Mac Chrome logged into iCloud.com (but not on transfer page)
-- [ ] Google account signed into Galaxy
-- [ ] Contacts synced on Galaxy (for WhatsApp demo)
-- [ ] OBS Studio configured with scenes:
-  - Scene 1: Face camera (intro/outro)
-  - Scene 2: Split screen (main demo view)
-  - Scene 3: Mac Chrome full screen (iCloud automation)
-  - Scene 4: Galaxy full screen (unfold moment)
-  - Scene 5: Architecture diagram overlay
+### Visual Setup
+- **Camera**: Close-up of hands holding Galaxy Z Fold 7
+- **Action**: Slowly unfold the phone, revealing the expansive screen
 
-### Demo Environment
-- [ ] Reset migration database for clean start
-- [ ] Clear WhatsApp data if previously installed
-- [ ] Test ADB connection: `adb devices`
-- [ ] Verify scrcpy shows full unfolded resolution
-- [ ] Have backup phone ready (connection issues)
+### Narration
+**Me (voiceover)**: "In 2007, my girlfriend—now my wife—waited in line at a Chicago Apple Store while I took the Amtrak from St. Louis. When I arrived at Union Station past 10 PM and she handed me that iconic white box, I felt something I hadn't experienced with technology before—pure awe. The design, the interface, holding the future in my hands.
 
----
+For 18 years, I upgraded almost every other generation, hoping to recapture that moment. The last five years? Incremental updates. Bigger screens. Same experience. Another thousand dollars.
 
-## Demo Flow
+Three weeks ago, at a Verizon store with my daughter, I picked up this..."
 
-### 0:00-0:30 - Cold Open: The Unfold Moment
+[UNFOLDS the Galaxy Z Fold 7]
 
-**[SCENE: Close-up of hands holding folded Galaxy]**
+"...and there it was again. That same feeling from 2007. Innovation you can literally unfold.
 
-**Narrator (on camera):**
-"Eighteen years ago, I bought the first iPhone. It changed everything."
+But here's the problem: 18 years in the Apple ecosystem. 383 gigabytes of family photos. A wife and three kids who refuse to leave their iPhones. And me, wanting to switch but needing to stay connected to my Apple-locked family.
 
-**[UNFOLD the Galaxy Z Fold 7 slowly]**
-
-"Today, I'm holding the future again. But switching after 18 years? That's 380GB of photos, a family on iMessage, and two decades of muscle memory."
-
-**[SCENE: Transition to split screen]**
-
-"Watch an AI agent orchestrate this entire migration. No scripts. Real devices. Let's begin."
+So I did what any AI engineer would do—I built an agent to orchestrate the entire migration."
 
 ---
 
-### 0:30-1:30 - The Problem & Architecture
+## 0:30-1:00 - TECHNICAL ARCHITECTURE
 
-**[SCENE: Split screen - Claude Desktop + Galaxy]**
+### Screen Share
+Show architecture diagram with three MCP tools
 
-**Me:** "Hi Claude. I've been on iPhone for 18 years. I have 380GB of photos, my family of 5 is staying on iPhone, and I just got this Galaxy Z Fold 7. Can you help me migrate everything?"
+### Narration
+**Me**: "Here's what we built: Claude as the orchestrator, using three MCP tools:
+- **photo-migration-mcp**: Turns iCloud's hostile web interface into an API using Playwright
+- **mobile-mcp**: Controls my Galaxy through natural language—no code, just English
+- **shared-state-mcp**: DuckDB wrapper for persistent state across our 7-day migration
 
-**Claude:** "I can orchestrate your complete migration from iPhone to Android. I have access to three specialized tools that work together:
-- A browser automation tool for iCloud on your Mac
-- Direct control of your Galaxy via natural language
-- A state management system to track the multi-day process
-
-Let me first check what we're dealing with in your iCloud account..."
-
-**[SCENE: Brief architecture diagram overlay (3 seconds)]**
-
-**Narrator (voiceover):** "Three AI specialists, one orchestrator, zero code."
+Let me show you how this actually works..."
 
 ---
 
-### 1:30-3:00 - Photo Migration Initiation (Day 1)
+## 1:00-1:30 - INITIAL MIGRATION SETUP
 
-**[TOOL EXECUTION: photo-migration-mcp.check_icloud_status]**
+### Screen: Claude Interface
 
-**Claude:** "Checking your iCloud photo library..."
+### User-Agent Conversation
 
-**[SCENE: Quick transition to Mac Chrome - 5 seconds]**
-*Show browser navigating to iCloud.com automatically*
+**Me**: "Claude, I just got a Samsung Galaxy Z Fold 7 after 18 years on iPhone. I need to migrate everything from iCloud - especially my 383GB of photos going back to 2007. My wife Jaisy and our 3 kids - Laila who's 17, Ethan who's 15, and Maya who's 11 - they're all staying on iPhone. We rely heavily on iMessage, Find My, and Apple Cash. I need to replace these with cross-platform solutions - WhatsApp for messaging, Google Maps location sharing for Find My, and Venmo for payments. Can you help me migrate without disrupting my family?"
 
-**[SCENE: Back to split screen]**
+**Claude**: "I'll orchestrate your complete migration over 7 days:
 
-**Claude:** "You have 58,460 photos and 2,418 videos totaling 380GB. This will take 5-7 days to transfer. Let me start the official Apple transfer to Google Photos."
+**Day 1-5: Photo Migration** - 383GB transfer running in background
+**Day 1: Family Connectivity** - WhatsApp, Google Maps, and Venmo setup  
+**Day 3: Migration Check-in** - Verify family adoption, address any issues
+**Day 4: Photo Progress** - Monitor transfer, test early arrivals
+**Day 5: Payment Activation** - Venmo cards and teen accounts
+**Day 6: Near Completion** - Final family member onboarding
+**Day 7: Validation** - Verify all systems operational
 
-**[TOOL EXECUTION: photo-migration-mcp.start_transfer]**
+Let's start with your photos. May I access your iCloud to check your photo library?"
 
-**[SCENE: Mac Chrome full screen - 20 seconds]**
+**Me**: "Yes, go ahead."
 
-*Browser automatically:*
+### Tool Execution
+```
+[TOOL CALL]: web-automation.check_icloud_status()
+```
+
+### Visual
+- Chromium browser opens on Mac
 - Navigates to privacy.apple.com
-- Signs in (handling 2FA via Gmail)
-- Selects "Transfer a copy of your data"
-- Chooses Google Photos
-- Initiates transfer
+- Shows iCloud photo statistics
 
-**Narrator (voiceover):** "No APIs exist for this. We're turning Apple's hostile interface into an automated service."
+**Claude**: "I'm checking your iCloud library through Apple's privacy portal..."
 
-**[SCENE: Back to split screen]**
-
-**Claude:** "Transfer initiated. Now let me verify on your Galaxy..."
-
-**[TOOL EXECUTION: Natural language to mobile-mcp]**
-
-**Claude:** "Opening Google Photos to verify it's ready to receive..."
-
-*Claude sends: "Open Google Photos app"*
-
-**[Galaxy screen: Google Photos opens, shows existing photos]**
-
-**Claude:** "Google Photos is ready. Your photos will arrive over the next 5-7 days. Let's set up your family apps while we wait."
-
----
-
-### 3:00-5:00 - WhatsApp Family Setup (Day 1 continued)
-
-**Me:** "My wife refuses to leave iMessage. How do we stay connected?"
-
-**Claude:** "I'll set up WhatsApp as your cross-platform messaging solution. Watch your Galaxy..."
-
-**[TOOL EXECUTION: Natural language commands to mobile-mcp]**
-
-**Claude sending commands:**
-1. "Open Play Store"
-2. "Search for WhatsApp"
-3. "Click on WhatsApp Messenger by WhatsApp LLC"
-4. "Click Install button"
-
-**[Galaxy screen: Shows each action happening in real-time]**
-
-**Claude:** "WhatsApp installing... Now I'll help you create a family group."
-
-*After installation:*
-5. "Open WhatsApp"
-6. "Click Agree and Continue"
-7. "Enter phone number 630-555-0100"
-8. "Click Next"
-
-**[Galaxy: WhatsApp setup progressing]**
-
-**Claude:** "Once you verify with SMS, I'll create the family group..."
-
-9. "Click the new chat button"
-10. "Select New Group"
-11. "Search for Jaisy"
-12. "Select Jaisy"
-13. "Search for Laila"
-14. "Select Laila"
-[Continue for other family members]
-15. "Click the green arrow"
-16. "Type group name: Vetticaden Family"
-17. "Click Create"
-
-**[Galaxy: Shows family group created]**
-
-**Claude:** "Family WhatsApp group created! Your family can join from their iPhones."
-
-**[TOOL EXECUTION: shared-state-mcp.update_app_status]**
-
-**Claude:** "I've logged this in your migration status. WhatsApp: Complete."
-
----
-
-### 5:00-6:00 - Day 2: Progress Check
-
-**[TITLE CARD: "Day 2" - 2 seconds]**
-
-**Me:** "It's been a day. How's my photo transfer going?"
-
-**Claude:** "Let me check both the transfer status and your Galaxy..."
-
-**[TOOL EXECUTION: photo-migration-mcp.check_transfer_progress]**
-
-**[SCENE: Quick flash to Mac browser showing Apple's transfer dashboard]**
-
-**Claude:** "Apple shows 26% complete. Now checking your Galaxy..."
-
-**[TOOL EXECUTION: Natural language to mobile-mcp]**
-
-*Claude sends: "Open Google Photos"*
-*Claude sends: "Scroll to see photo count"*
-
-**[Galaxy: Google Photos showing 15,387 items]**
-
-**Claude creates React visualization:**
-
-**[VISUAL: Beautiful progress dashboard appears in Claude Desktop]**
+### Claude's Response with Visualization
 ```
-Photo Migration Progress
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░  26%
+[REACT ARTIFACT - Photo Library Analysis]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📸 Photos: 15,387 / 58,460
-🎬 Videos: 603 / 2,418
-📦 Size: 98GB / 380GB
-⏱️ Rate: 7,500 items/day
-📅 ETA: 5 more days
+📸 58,460 photos (85% of content)
+🎬 2,418 videos (15% of content)  
+💾 383 GB total storage
+📚 127 albums preserved
+⏱️ Estimated: 5-7 days
+
+Transfer via Apple's official service
+Original quality maintained
+Runs entirely in background
 ```
 
-**Claude:** "Excellent progress! 15,387 photos have arrived. At this rate, you'll have everything by Day 6."
+**Claude**: "Your iCloud contains 58,460 photos and 2,418 videos totaling 383GB. I'll use Apple's official transfer service which preserves all metadata, albums, and original quality. The transfer runs entirely in the background over 5-7 days. Ready to start?"
+
+**Me**: "Yes, let's do it."
 
 ---
 
-### 6:00-7:00 - Day 3: Location Sharing Setup
+## 1:30-2:30 - PHOTO TRANSFER INITIATION
 
-**[TITLE CARD: "Day 3"]**
-
-**Me:** "I need to track my kids' locations. They're staying on iPhone."
-
-**Claude:** "I'll set up Google Maps location sharing - it works perfectly across iOS and Android."
-
-**[TOOL EXECUTION: Natural language to mobile-mcp]**
-
-**Claude sending commands:**
-1. "Open Google Maps"
-2. "Tap your profile picture in top right"
-3. "Select Location sharing"
-4. "Tap Share location"
-5. "Choose Until you turn this off"
-6. "Search for Jaisy"
-7. "Select Jaisy and tap Share"
-
-**[Galaxy: Shows location sharing being configured]**
-
-**Claude:** "Location sharing active. Your family can see you, and once they accept, you'll see them."
-
-**[Family member location appears on map]**
-
-**Claude:** "Perfect! Jaisy has accepted. You can now see each other's locations across platforms."
-
----
-
-### 7:00-8:00 - Day 5: Migration Complete
-
-**[TITLE CARD: "Day 5"]**
-
-**Me:** "Is it finally done?"
-
-**Claude:** "Let me run a complete verification..."
-
-**[TOOL EXECUTION: photo-migration-mcp.verify_transfer_complete]**
-
-**[SCENE: Mac browser shows Apple confirmation email]**
-
-**Claude:** "Apple confirms transfer complete! Checking your Galaxy..."
-
-**[TOOL EXECUTION: Natural language to mobile-mcp]**
-
-*Claude sends: "Open Google Photos"*
-*Claude sends: "Show photo count"*
-
-**[Galaxy: Shows 58,460 photos, 2,418 videos]**
-
-**Claude creates final React celebration dashboard:**
-
-**[VISUAL: Animated celebration with confetti]**
+### Tool Execution
 ```
-🎉 MIGRATION COMPLETE! 🎉
-
-Photos:     ✅ 58,460 / 58,460
-Videos:     ✅ 2,418 / 2,418  
-Storage:    ✅ 380GB transferred
-Family:     ✅ 5/5 connected
-Apps:       ✅ All configured
-
-Zero data loss. Family harmony maintained.
-Welcome to Android!
+[TOOL CALL]: web-automation.start_transfer()
 ```
 
----
+### Visual
+- Browser navigates through privacy.apple.com
+- Shows "Transfer a copy of your data" → "Google Photos"
+- Confirmation screens
 
-### 8:00-9:00 - The Galaxy Z Fold 7 Showcase
+**Claude**: "Starting the Apple to Google Photos transfer..."
 
-**[SCENE: Transition to Galaxy full screen]**
-
-**Me:** "Show me why this was all worth it."
-
-**Claude:** "Let me demonstrate your new reality..."
-
-**[PHYSICAL: Pick up actual Galaxy, unfold it dramatically]**
-
-**[TOOL EXECUTION: Natural language to mobile-mcp]**
-
-*Claude sends: "Open Google Photos"*
-*Claude sends: "Open a photo from 2009"*
-
-**[Galaxy: Wedding photo fills the unfolded screen]**
-
-**Narrator:** "This is my wedding photo from 2009. It traveled from iPhone 1, through 15 iPhones, to this revolutionary device. Look at this canvas!"
-
-**[Demo multi-window]**
-- Google Photos on left
-- WhatsApp family chat on right
-- Both apps running simultaneously
-
-**[S Pen demonstration]**
-- Annotate a migrated photo
-- "This is the magic I've been missing"
-
----
-
-### 9:00-9:30 - Technical Deep Dive
-
-**[SCENE: Back to split screen]**
-
-**Me:** "How did you actually do all this?"
-
-**Claude:** "I orchestrated three specialized AI agents:
-
-1. **Browser Specialist** - Turned iCloud.com into an API using Playwright
-2. **Mobile Specialist** - Controlled your Galaxy through natural language
-3. **State Manager** - Remembered everything across 5 days
-
-No custom code. No brittle scripts. Just natural language orchestration."
-
-**[SCENE: Architecture diagram overlay - 5 seconds]**
-
-**Claude:** "The key innovation? I speak English to control your phone. When WhatsApp updates their UI, we don't rewrite code—we just adjust the conversation."
-
----
-
-### 9:30-10:00 - The Payoff
-
-**[SCENE: Face to camera]**
-
-**Narrator:** 
-"Five days. 380GB. Zero data loss. Family still connected.
-
-This isn't just about switching phones. It's about AI agents that actually DO things, not just talk about them.
-
-The code is open source. The pattern is reproducible. Your migration awaits."
-
-**[SCENE: Split screen showing both devices]**
-
-**Final shot:**
-- Claude Desktop showing completion dashboard
-- Galaxy Z Fold 7 showing family WhatsApp chat
-- Message arrives: "Dad, this actually works better than iMessage!"
-
-**[END CARD]**
+### Tool Execution
 ```
-GitHub: github.com/georgevetticaden/ios-to-android-migration-assistant-agent
+[TOOL CALL]: migration-state.initialize_migration()
+Data stored: {
+  "user_name": "George Vetticaden",
+  "photo_count": 58460,
+  "storage_gb": 383,
+  "transfer_started": "2025-08-23"
+}
+```
+
+**Claude**: "Transfer initiated. Apple will email you when complete, typically 5-7 days. Photos won't appear in Google Photos until around day 3-4. While this runs in the background, let's set up WhatsApp for family messaging to replace iMessage."
+
+**Me**: "Yes, let's create a family group. Call it 'Vetticaden Family'."
+
+---
+
+## 2:30-4:00 - WHATSAPP FAMILY SETUP (Day 1)
+
+### User-Agent Conversation
+
+**Claude**: "I'll help you create the Vetticaden Family WhatsApp group. I'll check which family members already have WhatsApp installed, add those who do, and send installation instructions via email to those who don't. I'll need your family members' names and email addresses."
+
+**Me**: "Sure. Jaisy is jaisy.vetticaden@gmail.com, Laila is laila.vetticaden@gmail.com, Ethan is ethan.vetticaden@gmail.com, and Maya is maya.vetticaden@gmail.com."
+
+### Tool Execution
+```
+[TOOL CALL]: migration-state.add_family_member() x4
+Data stored: Family member details with emails
+```
+
+**Claude**: "Now I'll create the WhatsApp group and see who's already using the app."
+
+### Mobile Control Sequence
+```
+[MOBILE-MCP COMMANDS]:
+"Open WhatsApp"
+"Tap the three dots menu in top right"
+"Select New group"
+```
+
+### Visual
+- Galaxy screen shows WhatsApp opening
+- New group creation screen
+
+### Contact Search Sequence
+```
+[MOBILE-MCP COMMANDS]:
+"Search for Jaisy" → Result: Not found
+"Search for Laila" → Result: Contact found
+"Select Laila"
+"Search for Ethan" → Result: Not found  
+"Search for Maya" → Result: Not found
+"Tap the green arrow"
+"Type 'Vetticaden Family' as group name"
+"Tap the green checkmark"
+```
+
+### Visual
+- Group created with just Laila
+
+**Claude**: "Group created with Laila who already has WhatsApp. Now I'll send installation invites to Jaisy, Ethan, and Maya via email."
+
+### Email Sending Sequence
+```
+[MOBILE-MCP COMMANDS]:
+"Open Gmail"
+"Tap compose button"
+"Enter recipient: jaisy.vetticaden@gmail.com"
+"Enter subject: Join our WhatsApp family group"
+"Enter message: Hi Jaisy, I've created our family WhatsApp group. Please install WhatsApp from the App Store to join us. -George"
+"Tap send"
+```
+
+### Visual
+- Gmail composing and sending email
+- Repeat visualization for Ethan and Maya
+
+**Claude**: "Installation instructions sent. Once they install WhatsApp, we can add them to the family group."
+
+---
+
+## 4:00-5:00 - LOCATION SHARING SETUP (Day 1 continued)
+
+### User-Agent Conversation
+
+**Me**: "What about location sharing? We use Find My constantly."
+
+**Claude**: "Google Maps location sharing works seamlessly between iPhone and Android. I'll set this up on your Galaxy."
+
+### Mobile Control Sequence
+```
+[MOBILE-MCP COMMANDS]:
+"Open Google Maps"
+"Tap your profile picture in top right"
+"Tap Location sharing"
+"Tap New share"
+"Select 'Until you turn this off'"
+"Search for Jaisy"
+"Select Jaisy"
+"Tap Share"
+```
+
+### Visual
+- Google Maps location sharing setup
+- Invitation sent to Jaisy
+- Process repeats for each family member
+
+**Claude**: "Location sharing invitations sent to all family members. They'll receive notifications on their iPhones."
+
+---
+
+## 5:00-6:00 - PAYMENT SYSTEM SETUP (Day 1 continued)
+
+### User-Agent Conversation
+
+**Me**: "How do I replace Apple Cash for the kids' allowances?"
+
+**Claude**: "Venmo with Teen accounts is perfect. You'll need to set up the accounts through Venmo's website, then they'll send physical debit cards."
+
+**Me**: "I'll go set those up now."
+
+[Brief pause/fade]
+
+**Me**: "Okay, I've created Teen accounts for Laila and Ethan. Venmo says cards will arrive in 3-5 days."
+
+### Tool Execution
+```
+[TOOL CALL]: migration-state.update_status()
+Data: Venmo accounts created, awaiting cards
+```
+
+**Claude**: "Perfect. When the cards arrive, I'll help you activate them."
+
+---
+
+## 6:00-6:30 - DAY 3: MIGRATION CHECK-IN
+
+### Visual
+[TITLE CARD: "Day 3"]
+
+### User-Agent Conversation
+
+**Me**: "It's day 3. Any updates?"
+
+### Tool Execution
+```
+[TOOL CALL]: migration-state.get_daily_summary()
+```
+
+**Claude**: "Great progress! All family members have installed WhatsApp. Let me add them to your group."
+
+### Mobile Control Sequence
+```
+[MOBILE-MCP COMMANDS]:
+"Open WhatsApp"
+"Open 'Vetticaden Family' group"
+"Tap the group name at top"
+"Tap 'Add participant'"
+"Search for Jaisy" → Found
+"Select Jaisy"
+"Search for Ethan" → Found
+"Select Ethan"
+"Search for Maya" → Found
+"Select Maya"
+"Tap the green checkmark"
+```
+
+### Visual
+- All family members now in WhatsApp group
+
+**Claude**: "Perfect! All 5 family members are now connected through WhatsApp. Your photos should start appearing tomorrow."
+
+---
+
+## 6:30-7:00 - DAY 4: PHOTO PROGRESS
+
+### Visual
+[TITLE CARD: "Day 4"]
+
+### User-Agent Conversation
+
+**Me**: "Day 4 - are my photos showing up?"
+
+**Claude**: "Let me check Google Photos..."
+
+### Mobile Control Sequence
+```
+[MOBILE-MCP COMMANDS]:
+"Open Google Photos"
+"Scroll down slowly"
+```
+
+### Visual
+- Google Photos showing thousands of arriving photos
+
+### Claude's Progress Update
+```
+[REACT ARTIFACT - Migration Progress Day 4]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▓▓▓▓▓▓▓▓░░░░░░░░░░░░░  28%
+
+📸 16,369 photos arrived
+🎬 677 videos transferred
+💾 107GB processed
+📈 ~4,100 items/day
+⏱️ 3 more days estimated
+```
+
+**Claude**: "Your photos are arriving! 16,369 already in Google Photos. Jaisy and Ethan have also accepted location sharing."
+
+---
+
+## 7:00-7:30 - DAY 5: PAYMENT ACTIVATION
+
+### Visual
+[TITLE CARD: "Day 5"]
+
+### User-Agent Conversation
+
+**Me**: "The Venmo debit cards just arrived for Laila and Ethan."
+
+**Claude**: "Perfect! Let me help you activate them."
+
+### Mobile Control Sequence
+```
+[MOBILE-MCP COMMANDS]:
+"Open Venmo"
+"Tap the menu icon"
+"Select 'Teen accounts'"
+"Tap on 'Laila's account'"
+"Tap 'Activate card'"
+"Enter last 4 digits of card"
+```
+
+**Me**: "5678"
+
+```
+[MOBILE-MCP COMMANDS]:
+"Type 5678"
+"Tap 'Activate'"
+```
+
+### Visual
+- Venmo card activation for both teens
+
+### Claude's Status Update
+```
+[REACT ARTIFACT - Day 5 Status]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░  65%
+
+📸 38,099 / 58,460 photos
+✅ WhatsApp: All connected
+✅ Location: 3/4 sharing
+✅ Venmo: Cards activated
+```
+
+---
+
+## 7:30-8:00 - DAY 6: NEAR COMPLETION
+
+### Visual
+[TITLE CARD: "Day 6"]
+
+### User-Agent Conversation
+
+**Me**: "Day 6 update?"
+
+### Claude's Status Report
+```
+[REACT ARTIFACT - Day 6 Status]
+════════════════════════════════
+
+📱 PHOTOS: 88% Complete
+   51,445 / 58,460 photos
+   2,130 / 2,418 videos
+   
+👨‍👩‍👧‍👦 FAMILY ECOSYSTEM:
+   ✅ WhatsApp: Fully operational
+   ✅ Location: 4/4 now sharing
+   ✅ Venmo: Both teens active
+   
+⏰ Final photos tomorrow
+```
+
+**Claude**: "Almost there! Maya just accepted location sharing - all family members now visible in Google Maps."
+
+---
+
+## 8:00-9:00 - DAY 7: MIGRATION COMPLETE
+
+### Visual
+[TITLE CARD: "Day 7 - Complete"]
+
+### User-Agent Conversation
+
+**Me**: "It's day 7. Are we done?"
+
+### Tool Execution
+```
+[TOOL CALL]: web-automation.check_transfer_email()
+```
+
+### Visual
+- Gmail showing Apple's completion email
+
+**Claude**: "Apple sent the completion email! Let me verify everything transferred..."
+
+### Mobile Control Sequence
+```
+[MOBILE-MCP COMMANDS]:
+"Open Google Photos"
+"Tap search icon"
+"Type '2007'"
+"Scroll through results"
+```
+
+### Visual
+- Photos from 2007 iPhone visible
+
+### Claude's Final Report
+```
+[REACT ARTIFACT - Migration Complete]
+🎉 MIGRATION COMPLETE 🎉
+════════════════════════════════
+
+18 YEARS OF PHOTOS: LIBERATED
+
+📸 58,460 photos transferred
+🎬 2,418 videos moved
+💾 383GB in Google Photos
+📚 127 albums preserved
+
+👨‍👩‍👧‍👦 FAMILY CONNECTED
+✅ WhatsApp: 5 members active
+✅ Maps: All locations shared
+✅ Venmo: Teen cards operational
+
+⏱️ Total: 7 days
+👆 Your effort: ~10 minutes
+
+Welcome to Android. Welcome to choice.
+```
+
+---
+
+## 9:00-10:00 - CLOSING REFLECTION
+
+### Visual
+- Holding Galaxy Z Fold 7, slowly folding and unfolding
+
+### Narration
+**Me**: "Seven days. 383 gigabytes. Eighteen years of digital memories. All orchestrated through natural conversation with Claude."
+
+**Me (to camera)**: "The hardest part wasn't the technical migration - it was deciding to leave. Once I made that choice, AI handled the complexity. No manual copying. No abandoned family members. Just freedom."
+
+### Visual
+- GitHub repository on screen
+
+**Me**: "Every MCP tool, every orchestration pattern, all the family coordination logic - it's open source. Link in the description."
+
+### End Card
+```
+GitHub: github.com/georgevetticaden/ios-to-android-migration-agent
 Blog: "From iPhone Devotee to Galaxy Fold Convert"
-Built with: Claude + MCP + Natural Language
-
-Your move, Apple.
+Tools: Claude + MCP + Natural Language
 ```
 
----
+### Final Shot
+- Galaxy Z Fold 7 next to old iPhone
 
-## Key Demo Points
+**Me**: "Eighteen years with one choice. Now I have options."
 
-### What Makes This Compelling
-
-1. **The Unfold Moment** - Physical drama with the Galaxy
-2. **Real Devices** - Not emulators or mockups
-3. **Time-lapse Story** - Day 1, 2, 3, 5 progression
-4. **Natural Language** - "Open WhatsApp" not code
-5. **Family Complexity** - Not just single user
-6. **Visual Feedback** - See every action on Galaxy
-7. **Data Visualization** - React dashboards in Claude
-8. **The Payoff** - Family message at the end
-
-### Technical Innovations to Highlight
-
-- **No APIs** - We create them with Playwright
-- **Natural Language** - English commands, not code
-- **State Persistence** - AI with long-term memory
-- **Parallel Orchestration** - Mac and Android simultaneously
-- **The Three Amigos** - How we built this (brief mention)
-
-### Contingency Plans
-
-**If ADB disconnects:**
-- Have backup connection ready
-- Say: "Let me reconnect to your Galaxy..."
-- Continue within 10 seconds
-
-**If photo transfer is slow:**
-- Have pre-staged progress screenshots
-- Say: "Here's what it looked like at Day 2..."
-
-**If app won't install:**
-- Move to next demo section
-- Say: "WhatsApp installed earlier, let me show you the family group..."
+[END]
 
 ---
 
-## Speaking Notes
+## TECHNICAL APPENDIX
 
-### Energy and Pacing
-- **High energy** at unfold moment
-- **Slow down** for technical explanations
-- **Build tension** before revealing completion
-- **Emotional peak** at family message
+### MCP Tool Architecture
+```
+photo-migration-mcp (Playwright)
+├── check_icloud_status() → photo counts
+├── start_transfer() → initiate Apple service
+└── check_transfer_email() → verify completion
 
-### Key Phrases to Emphasize
-- "Eighteen years of iPhone"
-- "380GB of memories"
-- "No APIs exist for this"
-- "Natural language, not code"
-- "Real devices, real data"
-- "Family harmony maintained"
-- "Your move, Apple"
+mobile-mcp (Natural Language)
+├── execute(command) → Android control
+├── input_text(field, text) → text entry
+└── All commands in plain English
 
-### Audience Engagement
-- Ask: "Anyone else stuck in ecosystem lock-in?"
-- Point out: "Watch the Galaxy respond to English"
-- Highlight: "This is all open source"
+migration-state-mcp (DuckDB)
+├── initialize_migration() → setup tracking
+├── add_family_member() → store family data
+├── update_status() → track progress
+└── get_daily_summary() → status reports
+```
 
----
-
-## Post-Demo
-
-### Q&A Preparation
-1. **"Does this work for any Android phone?"**
-   - Yes, mobile-mcp works with any Android device
-
-2. **"What about iMessage?"**
-   - WhatsApp is superior for cross-platform
-   - RCS is improving Android-iPhone messaging
-
-3. **"How long did this take to build?"**
-   - 2 weeks using Three Amigos pattern
-   - Most time on requirements and testing
-
-4. **"Can it migrate other services?"**
-   - Architecture supports any migration
-   - Community can add more services
-
-### Call to Action
-1. Star the GitHub repo
-2. Read the blog for technical details
-3. Try it yourself
-4. Share your migration story
-5. Contribute improvements
-
----
-
-## Success Metrics
-
-### During Demo
-- [ ] All tools respond correctly
-- [ ] Galaxy shows every action
-- [ ] Time-lapse feels natural
-- [ ] Family message arrives
-- [ ] Unfold moment gets reaction
-
-### After Demo
-- [ ] GitHub stars increase
-- [ ] Blog post shared
-- [ ] Community engagement
-- [ ] Fork activity
-- [ ] Migration stories shared
-
-This demo proves that AI agents can orchestrate complex, multi-day, multi-device operations through natural language. The future of automation isn't code—it's conversation.
+### Data Flow
+```
+Day 1: Initialize → Start photo transfer → Setup WhatsApp/Maps/Venmo
+Day 3: Check family adoption → Complete WhatsApp group
+Day 4: Monitor photo arrival → Update progress
+Day 5: Activate Venmo cards → Track adoption
+Day 6: Final family onboarding → Near completion
+Day 7: Verify transfer → Validate all systems
+```

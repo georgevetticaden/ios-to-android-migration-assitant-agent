@@ -37,7 +37,7 @@ A browser automation tool using Playwright for web-based migrations and tasks. C
 
 ```bash
 # Clone the repository
-cd mcp-tools/photo-migration
+cd mcp-tools/web-automation
 
 # Create virtual environment with Python 3.11
 uv venv --python python3.11

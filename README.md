@@ -211,13 +211,9 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
     "web-automation": {
       "command": "/absolute/path/to/.venv/bin/python",
       "args": ["-m", "web_automation.server"],
-      "cwd": "/absolute/path/to/mcp-tools/web-automation",
-      "env": {
-        "APPLE_ID": "your.email@icloud.com",
-        "APPLE_PASSWORD": "your_password"
-      }
+      "cwd": "/absolute/path/to/mcp-tools/web-automation"
     },
-    "mobile-mcp": {
+    "mobile-mcp-local": {
       "command": "node",
       "args": [
         "/absolute/path/to/mcp-tools/mobile-mcp/lib/index.js",
@@ -236,6 +232,8 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
+
+**Note**: The `web-automation` server reads Apple credentials from the `.env` file in the project root, so you don't need to add them to the Claude Desktop config.
 
 To find your absolute paths:
 ```bash
@@ -274,31 +272,46 @@ echo $VIRTUAL_ENV/bin/python  # Copy this for 'command'
 
 ```
 ios-to-android-migration-assistant-agent/
-├── shared/                   # Shared infrastructure (Phase 1)
-│   ├── database/            # Centralized DuckDB
-│   │   ├── migration_db.py  # Database singleton
-│   │   └── schemas/         # SQL schemas for all tools
-│   ├── config/              # Configuration management
-│   └── utils/               # Shared utilities
-├── mcp-tools/               # MCP tool implementations
-│   ├── web-automation/      # Browser automation via Playwright
+├── mcp-tools/                    # MCP tool implementations
+│   ├── web-automation/          # Browser automation (formerly photo-migration)
 │   │   ├── src/
-│   │   │   └── web_automation/
-│   │   │       ├── icloud_client.py  # Client with session persistence
-│   │   │       └── server.py         # MCP server implementation
-│   │   ├── test_client.py           # Standalone test script
-│   │   └── pyproject.toml           # Package configuration
-│   ├── mobile-mcp/         # Android device control (external)
-│   └── migration-state/    # DuckDB state management
+│   │   │   └── web_automation/  # Python module
+│   │   │       ├── icloud_client.py      # iCloud automation
+│   │   │       ├── google_dashboard_client.py  # Google Photos
+│   │   │       ├── gmail_monitor.py      # Gmail integration
+│   │   │       ├── icloud_transfer_workflow.py # Transfer logic
+│   │   │       ├── logging_config.py     # Logging setup
+│   │   │       └── server.py             # MCP server (5 tools)
+│   │   ├── tests/              # Test scripts
+│   │   └── pyproject.toml      # Package configuration
+│   ├── mobile-mcp/             # Android device control (external)
+│   │   ├── lib/                # Compiled TypeScript
+│   │   ├── src/                # Source TypeScript
+│   │   ├── SETUP.md           # Setup instructions
+│   │   └── package.json        # Node.js configuration
+│   └── migration-state/        # Database state management
+│       ├── server.py           # MCP wrapper for DuckDB (6 tools)
+│       ├── README.md          # Documentation
+│       └── requirements.txt    # Dependencies
+├── shared/                     # Shared infrastructure
+│   ├── database/              # Core database logic
+│   │   ├── migration_db.py   # Database operations
+│   │   └── schemas/          # Table schemas
+│   └── config/               # Configuration management
+├── requirements/              # Requirements documentation
+│   └── mcp-tools/            # MCP-specific requirements
+├── docs/                     # Documentation
+│   ├── blog/                # Blog posts
+│   └── demo/               # Demo scripts
+├── logs/                    # Centralized logging
 ├── scripts/                 # Utility scripts
-│   ├── setup_database.py   # Initialize database
-│   ├── migration_status.py # Check migration progress
-│   └── test_*.py           # Test scripts
-├── requirements/            # Tool specifications
 ├── .venv/                  # Virtual environment (create this)
 ├── .env                    # Your credentials (create this)
 ├── .env.template           # Environment template
-└── requirements.txt        # Python dependencies
+├── requirements.txt        # Python dependencies
+├── CLAUDE.md              # Project instructions
+├── README.md              # This file
+└── IMPLEMENTATION_STATUS.md # Current status
 ```
 
 ## 🗄️ Database Architecture
