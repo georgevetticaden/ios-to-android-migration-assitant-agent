@@ -83,19 +83,22 @@ python tests/check_progress.py
 tail -f ../../logs/photo_migration_$(date +%Y%m%d).log
 ```
 
-## Database Queries
+## Database Integration (V2)
 
-Check transfer status:
-```sql
-SELECT * FROM photo_migration.transfers 
-WHERE transfer_id = 'TRF-20250820-180056';
-```
+The tool now uses the simplified V2 database schema with migration_db helper methods.
 
-View progress history:
-```sql
-SELECT * FROM photo_migration.progress_history 
-WHERE transfer_id = 'TRF-20250820-180056'
-ORDER BY checked_at DESC;
+### Database Location
+- Path: `~/.ios_android_migration/migration.db`
+- Uses `photo_transfer` table (not the old photo_migration.transfers)
+
+### Check Transfer Status
+```python
+from shared.database.migration_db import MigrationDatabase
+
+db = MigrationDatabase()
+# Get active migration
+active = await db.get_active_migration()
+print(active)
 ```
 
 ## Architecture
@@ -178,6 +181,9 @@ python utils/clear_sessions.py
 
 ### Run Tests
 ```bash
+# Test database compatibility (V2)
+python3 tests/test_icloud_db.py
+
 # Full migration flow
 python tests/test_migration_flow_simple.py
 
@@ -189,12 +195,13 @@ python tests/test_basic_auth.py --fresh
 ```
 
 ### Test Coverage
+- ✅ V2 Database compatibility
 - ✅ Authentication flow
 - ✅ Session persistence
 - ✅ Transfer initiation
 - ✅ Progress tracking
 - ✅ Email monitoring
-- ✅ Database operations
+- ✅ Database operations (using migration_db helpers)
 - ✅ Error recovery
 
 ## MCP Integration

@@ -1682,31 +1682,29 @@ class ICloudClientWithSession:
     async def _save_transfer(self, transfer_data: Dict[str, Any]):
         """Save transfer data to database or local storage"""
         if self.db:
-            # Save to database using raw SQL
+            # Save to database using new schema
             try:
-                with self.db.get_connection() as conn:
-                    # First, create a migration record if it doesn't exist
-                    migration_id = f"MIG-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-                    
-                    conn.execute("""
-                        INSERT INTO photo_migration.transfers (
-                            transfer_id, migration_id, source_photos, source_videos, 
-                            source_size_gb, google_email, apple_id,
-                            baseline_google_count, status, started_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        transfer_data['transfer_id'],
-                        migration_id,  # Required by schema
-                        transfer_data['source_photos'],
-                        transfer_data['source_videos'],
-                        transfer_data['source_size_gb'],
-                        transfer_data.get('google_email', os.getenv('GOOGLE_EMAIL', '')),
-                        transfer_data.get('apple_id', os.getenv('APPLE_ID', '')),
-                        transfer_data['baseline_count'],
-                        transfer_data['status'],
-                        transfer_data['started_at']
-                    ))
-                    logger.info(f"Transfer {transfer_data['transfer_id']} saved to database")
+                # First create a migration if needed
+                migration_id = await self.db.create_migration(
+                    user_name=transfer_data.get('apple_id', 'Unknown User'),
+                    photo_count=transfer_data['source_photos'],
+                    video_count=transfer_data['source_videos'],
+                    storage_gb=transfer_data['source_size_gb']
+                )
+                
+                # Create photo transfer record
+                transfer_id = await self.db.create_photo_transfer(
+                    migration_id=migration_id,
+                    total_photos=transfer_data['source_photos'],
+                    total_videos=transfer_data['source_videos'],
+                    total_size_gb=transfer_data['source_size_gb']
+                )
+                
+                # Update the transfer_data with the generated IDs
+                transfer_data['migration_id'] = migration_id
+                transfer_data['transfer_id'] = transfer_id
+                
+                logger.info(f"Transfer {transfer_id} saved to database with migration {migration_id}")
             except Exception as e:
                 logger.error(f"Failed to save transfer to database: {e}")
                 # Fall back to local storage
@@ -1734,26 +1732,32 @@ class ICloudClientWithSession:
         if self.db:
             try:
                 with self.db.get_connection() as conn:
+                    # Query from new photo_transfer table
                     result = conn.execute("""
-                        SELECT transfer_id, source_photos, source_videos, 
-                               source_size_gb, google_email, apple_id,
-                               baseline_google_count, status, started_at, completed_at
-                        FROM photo_migration.transfers 
-                        WHERE transfer_id = ?
+                        SELECT pt.transfer_id, pt.migration_id,
+                               pt.total_photos, pt.total_videos, pt.total_size_gb,
+                               pt.transferred_photos, pt.transferred_videos,
+                               pt.status, pt.apple_transfer_initiated,
+                               m.user_name, m.started_at
+                        FROM photo_transfer pt
+                        JOIN migration_status m ON pt.migration_id = m.id
+                        WHERE pt.transfer_id = ?
                     """, (transfer_id,)).fetchone()
                     
                     if result:
                         return {
                             'transfer_id': result[0],
-                            'source_photos': result[1],
-                            'source_videos': result[2],
-                            'source_size_gb': result[3],
-                            'destination_service': 'Google Photos',  # Fixed value
-                            'destination_account': result[4],  # google_email
-                            'baseline_count': result[6],
+                            'migration_id': result[1],
+                            'source_photos': result[2],
+                            'source_videos': result[3],
+                            'source_size_gb': result[4],
+                            'transferred_photos': result[5],
+                            'transferred_videos': result[6],
                             'status': result[7],
-                            'started_at': result[8],
-                            'completed_at': result[9]
+                            'started_at': result[8] or result[10],  # Use transfer or migration start
+                            'baseline_count': 0,  # Not in new schema, default to 0
+                            'destination_service': 'Google Photos',
+                            'destination_account': os.getenv('GOOGLE_EMAIL', 'unknown')
                         }
             except Exception as e:
                 logger.error(f"Failed to get transfer from database: {e}")
@@ -1769,21 +1773,17 @@ class ICloudClientWithSession:
         """Update progress for a transfer"""
         if self.db:
             try:
-                with self.db.get_connection() as conn:
-                    # Insert progress history record
-                    conn.execute("""
-                        INSERT INTO photo_migration.progress_history (
-                            transfer_id, checked_at, google_photos_total,
-                            transferred_items, transfer_rate_per_hour, notes
-                        ) VALUES (?, ?, ?, ?, ?, ?)
-                    """, (
-                        transfer_id,
-                        datetime.now(),
-                        progress_data.get('current_google_count', 0),
-                        progress_data.get('transferred_items', 0),
-                        progress_data.get('transfer_rate_per_hour', 0),
-                        f"Progress: {progress_data.get('percent_complete', 0):.1f}%"
-                    ))
+                # Get migration_id for this transfer
+                transfer = await self._get_transfer(transfer_id)
+                if transfer and 'migration_id' in transfer:
+                    # Update photo progress using migration_db methods
+                    await self.db.update_photo_progress(
+                        migration_id=transfer['migration_id'],
+                        transferred_photos=progress_data.get('transferred_items', 0),
+                        transferred_videos=0,  # Not tracked separately in progress
+                        transferred_size_gb=progress_data.get('transferred_size_gb', 0),
+                        status='in_progress' if progress_data.get('percent_complete', 0) < 100 else 'completed'
+                    )
                     logger.info(f"Progress updated for transfer {transfer_id}")
             except Exception as e:
                 logger.error(f"Failed to update progress in database: {e}")
@@ -1800,13 +1800,21 @@ class ICloudClientWithSession:
         """Mark a transfer as complete"""
         if self.db:
             try:
-                with self.db.get_connection() as conn:
-                    conn.execute("""
-                        UPDATE photo_migration.transfers 
-                        SET status = 'complete', 
-                            completed_at = ?
-                        WHERE transfer_id = ?
-                    """, (datetime.now().isoformat(), transfer_id))
+                # Get migration_id for this transfer
+                transfer = await self._get_transfer(transfer_id)
+                if transfer and 'migration_id' in transfer:
+                    # Update photo transfer status
+                    await self.db.update_photo_progress(
+                        migration_id=transfer['migration_id'],
+                        status='completed'
+                    )
+                    
+                    # Update migration status
+                    await self.db.update_migration_status(
+                        migration_id=transfer['migration_id'],
+                        status='completed'
+                    )
+                    
                     logger.info(f"Transfer {transfer_id} marked as complete")
             except Exception as e:
                 logger.error(f"Failed to mark transfer complete in database: {e}")

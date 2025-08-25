@@ -30,13 +30,14 @@ The actual database logic remains in `shared/database/` to maintain separation b
 - **Core Logic**: Database operations, schemas, business logic
 - **MCP Interface**: Protocol handling, JSON serialization
 
-## Available Tools
+## Current Available Tools (6 tools)
 
 ### get_migration_status
 Query current migration state or specific migration by ID.
 
 ### update_migration_progress
 Update progress metrics for photos, videos, and total size.
+**Note**: Status must be one of: `initialization`, `photo_transfer`, `family_setup`, `validation`, `completed`
 
 ### get_pending_items
 Get items still to be migrated by category (photos, contacts, apps, messages).
@@ -49,6 +50,21 @@ Return migration statistics as JSON, optionally including history.
 
 ### log_migration_event
 Log migration events with metadata.
+
+## Upcoming Tools (Phase 2 - 10 new tools)
+
+To be implemented next:
+
+1. **initialize_migration** - Start new migration with user details
+2. **add_family_member** - Add family member with email
+3. **setup_whatsapp_group** - Track WhatsApp group creation
+4. **track_app_installation** - Monitor app setup progress
+5. **update_daily_progress** - Record daily milestones
+6. **setup_venmo_teen** - Track teen card ordering/arrival
+7. **get_family_app_status** - Query family app adoption
+8. **get_migration_summary** - Get complete migration overview
+9. **mark_phase_complete** - Update migration phase
+10. **generate_completion_report** - Final migration report
 
 ## Setup
 
@@ -92,7 +108,16 @@ After configuration and restart:
 - "Update photo transfer progress"
 - "Mark WhatsApp migration complete"
 
-### Standalone Testing
+### Testing
+
+```bash
+# Run compatibility test
+python3 tests/test_server.py
+
+# Should show 10 tests passing
+```
+
+### Direct Database Testing
 
 ```python
 # Test the database directly
@@ -103,14 +128,18 @@ status = await db.get_active_migration()
 print(status)
 ```
 
-## Database Schema
+## Database Schema (V2 - Simplified)
 
-The database uses DuckDB with schemas defined in `shared/database/schemas/`:
-- Migration master records
-- Photo transfer details
-- App migration status
-- Event logs
-- Progress metrics
+The database uses DuckDB with 7 tables (no schema prefixes):
+- `migration_status` - Core migration tracking
+- `family_members` - Family details with emails
+- `photo_transfer` - Photo migration progress
+- `app_setup` - WhatsApp, Maps, Venmo configuration
+- `family_app_adoption` - Per-member app status
+- `daily_progress` - Day-by-day snapshots
+- `venmo_setup` - Teen card tracking
+
+Schema defined in: `shared/database/schemas/migration_schema.sql`
 
 ## Integration with Other Tools
 

@@ -45,7 +45,7 @@ async def list_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "migration_id": {"type": "string"},
-                    "status": {"type": "string", "enum": ["planning", "in_progress", "completed", "failed"]},
+                    "status": {"type": "string", "enum": ["initialization", "photo_transfer", "family_setup", "validation", "completed"]},
                     "photos_transferred": {"type": "integer"},
                     "videos_transferred": {"type": "integer"},
                     "total_size_gb": {"type": "number"}

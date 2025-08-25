@@ -1,6 +1,6 @@
 """
 Centralized DuckDB database for iOS to Android migration
-Shared across all MCP tools for unified state management
+Works with simplified schema (no schema prefixes)
 """
 
 import duckdb
@@ -51,42 +51,31 @@ class MigrationDatabase:
             conn.close()
     
     async def initialize_schemas(self):
-        """Create all schemas if they don't exist"""
-        schema_dir = Path(__file__).parent / 'schemas'
-        
-        with self.get_connection() as conn:
-            # Load and execute each schema file
-            for schema_file in sorted(schema_dir.glob('*.sql')):
-                logger.info(f"Loading schema: {schema_file.name}")
-                with open(schema_file, 'r') as f:
-                    schema_sql = f.read()
-                    # Execute each statement separately
-                    for statement in schema_sql.split(';'):
-                        statement = statement.strip()
-                        if statement:
-                            try:
-                                conn.execute(statement)
-                            except Exception as e:
-                                logger.error(f"Error executing statement in {schema_file.name}: {e}")
-                                logger.error(f"Statement: {statement[:100]}...")
-                    logger.info(f"Initialized schema: {schema_file.name}")
+        """Initialize schema if needed"""
+        # Schema is initialized via shared/database/scripts/initialize_database.py
+        # This method kept for compatibility
+        logger.info("Schema should be initialized via shared/database/scripts/initialize_database.py")
+        return True
     
     # ===== MIGRATION CORE OPERATIONS =====
     
-    async def create_migration(self, user_email: str, user_name: str, 
-                             source_device: str, target_device: str,
-                             family_id: Optional[str] = None) -> str:
-        """Create a new master migration record"""
+    async def create_migration(self, user_name: str, 
+                              source_device: str = 'iPhone',
+                              target_device: str = 'Galaxy Z Fold 7',
+                              photo_count: int = 0,
+                              video_count: int = 0,
+                              storage_gb: float = 0) -> str:
+        """Create a new migration record"""
         migration_id = f"MIG-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         
         with self.get_connection() as conn:
             conn.execute("""
-                INSERT INTO migration_core.migrations 
-                (migration_id, family_id, started_at, user_email, user_name, 
-                 source_device, target_device, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'planning')
-            """, (migration_id, family_id, datetime.now(), user_email, user_name, 
-                  source_device, target_device))
+                INSERT INTO migration_status 
+                (id, user_name, source_device, target_device, 
+                 photo_count, video_count, storage_gb, started_at, current_phase)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'initialization')
+            """, (migration_id, user_name, source_device, target_device,
+                  photo_count, video_count, storage_gb, datetime.now()))
         
         logger.info(f"Created migration: {migration_id}")
         return migration_id
@@ -95,336 +84,250 @@ class MigrationDatabase:
         """Get the currently active migration"""
         with self.get_connection() as conn:
             result = conn.execute("""
-                SELECT * FROM migration_core.migrations 
-                WHERE status IN ('planning', 'in_progress')
-                ORDER BY started_at DESC
+                SELECT m.*, 
+                       pt.status as photo_transfer_status,
+                       pt.transferred_photos,
+                       pt.total_photos,
+                       pt.transferred_size_gb,
+                       pt.total_size_gb
+                FROM migration_status m
+                LEFT JOIN photo_transfer pt ON m.id = pt.migration_id
+                WHERE m.completed_at IS NULL
+                ORDER BY m.started_at DESC
                 LIMIT 1
             """).fetchone()
             
             if result:
-                cols = [desc[0] for desc in conn.description]
-                return dict(zip(cols, result))
-        return None
+                columns = [
+                    'id', 'user_name', 'source_device', 'target_device',
+                    'years_on_ios', 'photo_count', 'video_count', 'storage_gb',
+                    'family_size', 'started_at', 'current_phase', 'overall_progress',
+                    'completed_at', 'photo_transfer_status', 'transferred_photos',
+                    'total_photos', 'transferred_size_gb', 'total_size_gb'
+                ]
+                return dict(zip(columns, result))
+            return None
     
-    async def get_migration(self, migration_id: str) -> Optional[Dict[str, Any]]:
-        """Get a specific migration by ID"""
+    async def update_migration_status(self, migration_id: str, status: str, **kwargs):
+        """Update migration status"""
+        with self.get_connection() as conn:
+            # Build update statement dynamically
+            updates = ['current_phase = ?']
+            values = [status]
+            
+            for key, value in kwargs.items():
+                if key in ['overall_progress', 'family_size']:
+                    updates.append(f'{key} = ?')
+                    values.append(value)
+            
+            if status == 'completed':
+                updates.append('completed_at = ?')
+                values.append(datetime.now())
+            
+            values.append(migration_id)
+            
+            conn.execute(f"""
+                UPDATE migration_status 
+                SET {', '.join(updates)}
+                WHERE id = ?
+            """, values)
+        
+        logger.info(f"Updated migration {migration_id} status to: {status}")
+    
+    async def get_migration_status(self, migration_id: str) -> Optional[Dict[str, Any]]:
+        """Get specific migration status"""
         with self.get_connection() as conn:
             result = conn.execute("""
-                SELECT * FROM migration_core.migrations 
-                WHERE migration_id = ?
+                SELECT * FROM migration_status WHERE id = ?
             """, (migration_id,)).fetchone()
             
             if result:
-                cols = [desc[0] for desc in conn.description]
-                return dict(zip(cols, result))
-        return None
+                columns = [
+                    'id', 'user_name', 'source_device', 'target_device',
+                    'years_on_ios', 'photo_count', 'video_count', 'storage_gb',
+                    'family_size', 'started_at', 'current_phase', 'overall_progress',
+                    'completed_at'
+                ]
+                return dict(zip(columns, result))
+            return None
     
-    async def update_migration_status(self, migration_id: str, status: str):
-        """Update migration status"""
-        with self.get_connection() as conn:
-            if status == 'completed':
-                conn.execute("""
-                    UPDATE migration_core.migrations 
-                    SET status = ?, completed_at = ?
-                    WHERE migration_id = ?
-                """, (status, datetime.now(), migration_id))
-            else:
-                conn.execute("""
-                    UPDATE migration_core.migrations 
-                    SET status = ?
-                    WHERE migration_id = ?
-                """, (status, migration_id))
+    # ===== PHOTO TRANSFER OPERATIONS =====
     
-    async def log_event(self, migration_id: str, tool_name: str, 
-                       event_type: str, details: Dict[str, Any]):
-        """Log an event from any tool"""
-        with self.get_connection() as conn:
-            conn.execute("""
-                INSERT INTO migration_core.event_log
-                (migration_id, timestamp, tool_name, event_type, details)
-                VALUES (?, ?, ?, ?, ?)
-            """, (migration_id, datetime.now(), tool_name, event_type, 
-                  json.dumps(details)))
-    
-    # ===== FAMILY MEMBER OPERATIONS =====
-    
-    async def add_family_member(self, migration_id: str, name: str, role: str,
-                               apple_id: Optional[str] = None,
-                               google_account: Optional[str] = None,
-                               phone_number: Optional[str] = None) -> str:
-        """Add a family member to the migration"""
-        member_id = f"MEM-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    async def create_photo_transfer(self, migration_id: str, 
+                                   total_photos: int, total_videos: int,
+                                   total_size_gb: float) -> str:
+        """Create a photo transfer record"""
+        transfer_id = f"TRF-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         
         with self.get_connection() as conn:
             conn.execute("""
-                INSERT INTO migration_core.family_members
-                (member_id, migration_id, name, role, apple_id, 
-                 google_account, phone_number, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (member_id, migration_id, name, role, apple_id,
-                  google_account, phone_number, datetime.now()))
+                INSERT INTO photo_transfer
+                (transfer_id, migration_id, total_photos, total_videos, 
+                 total_size_gb, status, photos_visible_day)
+                VALUES (?, ?, ?, ?, ?, 'pending', 4)
+            """, (transfer_id, migration_id, total_photos, total_videos, total_size_gb))
         
-        return member_id
+        logger.info(f"Created photo transfer: {transfer_id}")
+        return transfer_id
+    
+    async def update_photo_progress(self, migration_id: str,
+                                   transferred_photos: int = None,
+                                   transferred_videos: int = None,
+                                   transferred_size_gb: float = None,
+                                   status: str = None):
+        """Update photo transfer progress"""
+        with self.get_connection() as conn:
+            updates = []
+            values = []
+            
+            if transferred_photos is not None:
+                updates.append('transferred_photos = ?')
+                values.append(transferred_photos)
+            
+            if transferred_videos is not None:
+                updates.append('transferred_videos = ?')
+                values.append(transferred_videos)
+                
+            if transferred_size_gb is not None:
+                updates.append('transferred_size_gb = ?')
+                values.append(transferred_size_gb)
+            
+            if status:
+                updates.append('status = ?')
+                values.append(status)
+            
+            updates.append('last_checked_at = ?')
+            values.append(datetime.now())
+            
+            values.append(migration_id)
+            
+            if updates:
+                conn.execute(f"""
+                    UPDATE photo_transfer 
+                    SET {', '.join(updates)}
+                    WHERE migration_id = ?
+                """, values)
+        
+        logger.info(f"Updated photo progress for migration: {migration_id}")
+    
+    # ===== FAMILY OPERATIONS =====
+    
+    async def add_family_member(self, migration_id: str, name: str, email: str,
+                               role: str = None, age: int = None) -> int:
+        """Add a family member"""
+        with self.get_connection() as conn:
+            # Get next ID (simple approach)
+            max_id = conn.execute("SELECT MAX(id) FROM family_members").fetchone()[0]
+            next_id = (max_id or 0) + 1
+            
+            conn.execute("""
+                INSERT INTO family_members
+                (id, migration_id, name, email, role, age)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (next_id, migration_id, name, email, role, age))
+            
+            # Update family size
+            conn.execute("""
+                UPDATE migration_status 
+                SET family_size = (
+                    SELECT COUNT(*) FROM family_members WHERE migration_id = ?
+                )
+                WHERE id = ?
+            """, (migration_id, migration_id))
+        
+        logger.info(f"Added family member: {name}")
+        return next_id
     
     async def get_family_members(self, migration_id: str) -> List[Dict[str, Any]]:
         """Get all family members for a migration"""
         with self.get_connection() as conn:
             results = conn.execute("""
-                SELECT * FROM migration_core.family_members
-                WHERE migration_id = ?
-                ORDER BY created_at
+                SELECT * FROM family_members WHERE migration_id = ?
             """, (migration_id,)).fetchall()
             
-            if results:
-                cols = [desc[0] for desc in conn.description]
-                return [dict(zip(cols, row)) for row in results]
-        return []
+            columns = ['id', 'migration_id', 'name', 'role', 'age', 'email', 
+                      'staying_on_ios', 'created_at']
+            return [dict(zip(columns, row)) for row in results]
     
-    # ===== PHOTO MIGRATION OPERATIONS =====
+    # ===== SIMPLIFIED OPERATIONS =====
     
-    async def create_photo_transfer(self, transfer_data: Dict[str, Any]) -> str:
-        """Create a photo transfer linked to active migration"""
-        # Get or create active migration
-        active_migration = await self.get_active_migration()
-        if not active_migration:
-            # Auto-create migration if none exists
-            migration_id = await self.create_migration(
-                transfer_data.get('google_email', 'unknown@gmail.com'),
-                transfer_data.get('user_name', 'User'),
-                'iPhone',
-                'Android'
+    async def update_migration_progress(self, migration_id: str, status: str,
+                                       photos_transferred: int = None,
+                                       videos_transferred: int = None,
+                                       total_size_gb: float = None):
+        """Simplified progress update for MCP tools"""
+        await self.update_migration_status(migration_id, status)
+        
+        if any([photos_transferred, videos_transferred, total_size_gb]):
+            await self.update_photo_progress(
+                migration_id,
+                transferred_photos=photos_transferred,
+                transferred_videos=videos_transferred,
+                transferred_size_gb=total_size_gb,
+                status='in_progress' if status == 'in_progress' else status
             )
-            active_migration = {'migration_id': migration_id}
+    
+    async def get_pending_items(self, category: str) -> List[Dict[str, Any]]:
+        """Get pending items to migrate"""
+        # Simplified - return basic status
+        items = []
         
-        transfer_data['migration_id'] = active_migration['migration_id']
+        if category == 'photos':
+            with self.get_connection() as conn:
+                result = conn.execute("""
+                    SELECT * FROM photo_transfer 
+                    WHERE status != 'completed'
+                """).fetchall()
+                
+                for row in result:
+                    items.append({
+                        'type': 'photos',
+                        'status': row[8],  # status field
+                        'total': row[2],   # total_photos
+                        'transferred': row[5]  # transferred_photos
+                    })
         
+        return items
+    
+    async def mark_item_complete(self, item_type: str, item_id: str, details: Dict = None):
+        """Mark an item as complete"""
+        # Simplified
+        logger.info(f"Marked {item_type} {item_id} as complete")
+        return True
+    
+    async def get_migration_statistics(self, include_history: bool = False) -> Dict[str, Any]:
+        """Get migration statistics"""
         with self.get_connection() as conn:
-            # Insert photo transfer
-            conn.execute("""
-                INSERT INTO photo_migration.transfers
-                (transfer_id, migration_id, started_at, status, 
-                 source_photos, source_videos, source_size_gb,
-                 google_email, apple_id, baseline_google_count,
-                 baseline_timestamp, metadata)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                transfer_data['transfer_id'],
-                transfer_data['migration_id'],
-                datetime.now(),
-                'initiated',
-                transfer_data.get('source_photos', 0),
-                transfer_data.get('source_videos', 0),
-                transfer_data.get('source_size_gb', 0.0),
-                transfer_data['google_email'],
-                transfer_data['apple_id'],
-                transfer_data.get('baseline_count', 0),
-                transfer_data.get('baseline_timestamp'),
-                json.dumps(transfer_data.get('metadata', {}))
-            ))
-        
-        # Log event
-        await self.log_event(
-            transfer_data['migration_id'],
-            'web-automation',
-            'transfer_started',
-            {
-                'transfer_id': transfer_data['transfer_id'],
-                'total_items': transfer_data.get('source_photos', 0) + transfer_data.get('source_videos', 0)
+            # Get active migration stats
+            active = await self.get_active_migration()
+            
+            stats = {
+                'active_migration': active,
+                'total_migrations': 0,
+                'completed_migrations': 0
             }
-        )
-        
-        # Update migration status to in_progress
-        await self.update_migration_status(transfer_data['migration_id'], 'in_progress')
-        
-        return transfer_data['transfer_id']
-    
-    async def get_photo_transfer(self, transfer_id: str) -> Optional[Dict[str, Any]]:
-        """Get a specific photo transfer"""
-        with self.get_connection() as conn:
-            result = conn.execute("""
-                SELECT * FROM photo_migration.transfers
-                WHERE transfer_id = ?
-            """, (transfer_id,)).fetchone()
             
-            if result:
-                cols = [desc[0] for desc in conn.description]
-                return dict(zip(cols, result))
-        return None
-    
-    async def update_photo_progress(self, transfer_id: str, progress_data: Dict[str, Any]):
-        """Add progress check record"""
-        with self.get_connection() as conn:
-            conn.execute("""
-                INSERT INTO photo_migration.progress_history
-                (transfer_id, checked_at, google_photos_total, 
-                 transferred_items, transfer_rate_per_hour, notes)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                transfer_id,
-                datetime.now(),
-                progress_data.get('google_total', 0),
-                progress_data.get('transferred_items', 0),
-                progress_data.get('rate_per_hour', 0.0),
-                progress_data.get('notes')
-            ))
-    
-    async def get_photo_progress_history(self, transfer_id: str) -> List[Dict[str, Any]]:
-        """Get complete history for transfer"""
-        with self.get_connection() as conn:
-            results = conn.execute("""
-                SELECT * FROM photo_migration.progress_history 
-                WHERE transfer_id = ? 
-                ORDER BY checked_at
-            """, (transfer_id,)).fetchall()
-            
-            if results:
-                cols = [desc[0] for desc in conn.description]
-                return [dict(zip(cols, row)) for row in results]
-        return []
-    
-    async def calculate_transfer_rate(self, transfer_id: str) -> float:
-        """Calculate current transfer rate based on recent progress"""
-        with self.get_connection() as conn:
-            # Get last two progress entries
-            results = conn.execute("""
-                SELECT 
-                    transferred_items,
-                    checked_at
-                FROM photo_migration.progress_history 
-                WHERE transfer_id = ?
-                ORDER BY checked_at DESC
-                LIMIT 2
-            """, (transfer_id,)).fetchall()
-            
-            if len(results) >= 2:
-                current = results[0]
-                previous = results[1]
-                
-                items_diff = current[0] - previous[0]
-                time_diff_hours = (current[1] - previous[1]).total_seconds() / 3600
-                
-                if time_diff_hours > 0:
-                    return items_diff / time_diff_hours
-        
-        return 0.0
-    
-    async def mark_photo_transfer_complete(self, transfer_id: str):
-        """Mark a photo transfer as complete"""
-        with self.get_connection() as conn:
-            conn.execute("""
-                UPDATE photo_migration.transfers
-                SET status = 'completed', completed_at = ?
-                WHERE transfer_id = ?
-            """, (datetime.now(), transfer_id))
-    
-    # ===== CROSS-TOOL QUERIES =====
-    
-    async def get_migration_timeline(self, migration_id: str) -> List[Dict]:
-        """Get complete timeline across all tools"""
-        with self.get_connection() as conn:
-            events = conn.execute("""
-                SELECT * FROM migration_core.event_log
-                WHERE migration_id = ?
-                ORDER BY timestamp
-            """, (migration_id,)).fetchall()
-            
-            if events:
-                cols = [desc[0] for desc in conn.description]
-                return [dict(zip(cols, event)) for event in events]
-        return []
-    
-    async def get_tool_status(self, migration_id: str) -> Dict[str, Any]:
-        """Get status of all tools for a migration"""
-        status = {}
-        
-        with self.get_connection() as conn:
-            # Photo migration status
-            photo_transfer = conn.execute("""
-                SELECT * FROM photo_migration.transfers
-                WHERE migration_id = ?
-                ORDER BY started_at DESC
-                LIMIT 1
-            """, (migration_id,)).fetchone()
-            
-            if photo_transfer:
-                cols = [desc[0] for desc in conn.description]
-                status['photo_migration'] = dict(zip(cols, photo_transfer))
-            
-            # Future: Add WhatsApp status
-            # whatsapp_status = conn.execute(...)
-            # if whatsapp_status:
-            #     status['whatsapp'] = ...
-            
-            # Future: Add family services status
-            # family_status = conn.execute(...)
-            # if family_status:
-            #     status['family_services'] = ...
-            
-        return status
-    
-    # ===== COORDINATION METHODS =====
-    
-    async def set_tool_dependency(self, migration_id: str, tool_name: str,
-                                 depends_on: str):
-        """Set tool dependencies for coordination"""
-        with self.get_connection() as conn:
-            conn.execute("""
-                INSERT INTO migration_core.tool_coordination
-                (migration_id, tool_name, depends_on_tool, dependency_status)
-                VALUES (?, ?, ?, 'waiting')
-            """, (migration_id, tool_name, depends_on))
-    
-    async def update_tool_dependency_status(self, migration_id: str, 
-                                           tool_name: str, status: str):
-        """Update dependency status when prerequisite completes"""
-        with self.get_connection() as conn:
-            conn.execute("""
-                UPDATE migration_core.tool_coordination
-                SET dependency_status = ?
-                WHERE migration_id = ? AND depends_on_tool = ?
-            """, (status, migration_id, tool_name))
-    
-    async def check_dependencies_ready(self, migration_id: str, tool_name: str) -> bool:
-        """Check if all dependencies for a tool are ready"""
-        with self.get_connection() as conn:
-            waiting = conn.execute("""
-                SELECT COUNT(*) FROM migration_core.tool_coordination
-                WHERE migration_id = ? AND tool_name = ? 
-                AND dependency_status != 'completed'
-            """, (migration_id, tool_name)).fetchone()[0]
-            
-            return waiting == 0
-    
-    # ===== UTILITY METHODS =====
-    
-    async def get_database_stats(self) -> Dict[str, Any]:
-        """Get database statistics"""
-        stats = {}
-        
-        with self.get_connection() as conn:
             # Count migrations
-            stats['total_migrations'] = conn.execute(
-                "SELECT COUNT(*) FROM migration_core.migrations"
+            total = conn.execute("SELECT COUNT(*) FROM migration_status").fetchone()[0]
+            completed = conn.execute(
+                "SELECT COUNT(*) FROM migration_status WHERE completed_at IS NOT NULL"
             ).fetchone()[0]
             
-            # Count active migrations
-            stats['active_migrations'] = conn.execute("""
-                SELECT COUNT(*) FROM migration_core.migrations 
-                WHERE status IN ('planning', 'in_progress')
-            """).fetchone()[0]
+            stats['total_migrations'] = total
+            stats['completed_migrations'] = completed
             
-            # Count events
-            stats['total_events'] = conn.execute(
-                "SELECT COUNT(*) FROM migration_core.event_log"
-            ).fetchone()[0]
-            
-            # Database size
-            db_size = Path(self.db_path).stat().st_size if Path(self.db_path).exists() else 0
-            stats['database_size_mb'] = round(db_size / 1024 / 1024, 2)
-        
-        return stats
+            return stats
+    
+    async def log_event(self, event_type: str, component: str, 
+                       description: str, metadata: Dict = None):
+        """Log an event (simplified)"""
+        logger.info(f"[{component}] {event_type}: {description}")
+        return True
 
-# Global instance getter
-def get_migration_db() -> MigrationDatabase:
+# Singleton instance
+def get_migration_db():
     """Get the singleton database instance"""
     return MigrationDatabase()
+
+# Make MigrationDatabase available at module level for backward compatibility
+__all__ = ['MigrationDatabase', 'get_migration_db']

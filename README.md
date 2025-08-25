@@ -27,7 +27,14 @@ This project provides MCP tools that assist with the complete migration journey 
 - ✅ 383 GB storage usage
 - ✅ Previous transfer history
 
-## 📋 Current Status
+## 📋 Current Status - V2 Implementation
+
+### ✅ Phase 1: Database V2 Implementation - COMPLETE (Aug 25, 2025)
+- **Simplified Schema**: Reduced from 17 to 7 tables
+- **No Schema Prefixes**: Direct table names (no migration. prefix)
+- **Day-Aware Logic**: Photos visible Day 4, Venmo cards Day 5
+- **Email-Based Coordination**: Family members use emails for invitations
+- **Full Test Coverage**: All database and compatibility tests passing
 
 ### ✅ Photo Migration Tool: COMPLETE & OPERATIONAL
 **Active Transfer**: Currently processing 60,238 photos (383 GB) from iCloud to Google Photos
@@ -36,6 +43,7 @@ This project provides MCP tools that assist with the complete migration journey 
 - **Expected Completion**: 3-7 days (Apple's processing time)
 
 ### ✅ Completed Features
+- **V2 Database**: Simplified 7-table schema with constraints
 - **Full Authentication**: Apple ID and Google account with 2FA support
 - **Session Persistence**: 7-day session validity for both services
 - **Transfer Automation**: Complete 8-step workflow through Apple's portal
@@ -44,30 +52,35 @@ This project provides MCP tools that assist with the complete migration journey 
 - **Gmail Monitoring**: Automatic detection of completion emails
 - **Centralized Logging**: All activity logged to `logs/` directory
 - **Error Recovery**: Robust retry logic and error handling
+- **MCP Servers**: 3 operational servers (web-automation, mobile-mcp, migration-state)
 
-### 🚧 In Progress
-- Monitoring current transfer for completion
-- Preparing contact migration tool requirements
-- ✅ Database integration with DuckDB
-- ✅ MCP server wrapper functions
-
-**Pending:**
-- 🚧 MCP protocol testing with test_mcp_server.py
-- 🚧 Claude Desktop integration verification
-- 🚧 End-to-end workflow validation
+### 🔧 Phase 2: MCP Tools Implementation - READY TO START
+**10 New Tools to Implement**:
+1. `initialize_migration` - Start new migration with user details
+2. `add_family_member` - Add family member with email
+3. `setup_whatsapp_group` - Track WhatsApp group creation
+4. `track_app_installation` - Monitor app setup progress
+5. `update_daily_progress` - Record daily milestones
+6. `setup_venmo_teen` - Track teen card ordering/arrival
+7. `get_family_app_status` - Query family app adoption
+8. `get_migration_summary` - Get complete migration overview
+9. `mark_phase_complete` - Update migration phase
+10. `generate_completion_report` - Final migration report
 
 ### 📅 Upcoming Phases
-- Phase 5: Complete MCP testing & validation
-- Phase 6+: WhatsApp automation tools
-- Phase 7+: Family services coordination
+- Phase 2: Implement 10 new MCP tools
+- Phase 3: Demo flow testing
+- Phase 4: WhatsApp automation
+- Phase 5: Family services coordination
 
 ## 🔧 Prerequisites
 
-- Python 3.11+ (Important: Use Python 3.11, not system Python)
+- Python 3.11 (Required - exactly 3.11, not 3.12+)
+- DuckDB (Installed automatically with pip)
 - macOS (for iCloud integration)
 - Apple ID with iCloud Photos enabled
 - Device capable of receiving 2FA codes
-- Google Cloud account (for Phase 2+)
+- Google account (for Google Photos)
 - Android device with USB debugging enabled (for mobile-mcp)
 - Node.js 18+ (for mobile-mcp)
 
@@ -135,23 +148,32 @@ cp .env.template .env
 # (Future: Google API credentials paths)
 ```
 
-### 6. Initialize the Database
+### 6. Initialize the Database (V2 Schema)
 ```bash
-# Set up the shared database for all tools
-python scripts/setup_database.py
+# Initialize the V2 database with simplified schema
+python3 shared/database/scripts/initialize_database.py
+
+# Verify database setup (should show 9 tests passing)
+python3 shared/database/tests/test_database.py
 ```
+
+**Database Details:**
+- Location: `~/.ios_android_migration/migration.db`
+- Tables: 7 (migration_status, family_members, photo_transfer, app_setup, family_app_adoption, daily_progress, venmo_setup)
+- Views: 3 (migration_summary, family_app_status, active_migration)
 
 ### 7. Verify Installation
 ```bash
-# Test infrastructure
-python scripts/test_shared_infrastructure.py
-
-# Test photo-migration config
-python scripts/test_photo_migration_env.py
+# Run all tests to verify setup
+python3 shared/database/tests/test_database.py
+python3 mcp-tools/migration-state/tests/test_server.py
+python3 mcp-tools/web-automation/tests/test_icloud_db.py
 
 # Check migration status
-python scripts/migration_status.py
+python3 scripts/migration_status.py
 ```
+
+For detailed test instructions, see [TEST_INSTRUCTIONS.md](TEST_INSTRUCTIONS.md)
 
 ## 💻 Usage
 

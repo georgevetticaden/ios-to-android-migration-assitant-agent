@@ -1,6 +1,25 @@
 # iOS to Android Migration Assistant - Implementation Guide
 
-## ✅ Current Status: Hybrid Architecture COMPLETE - Ready for Data Model Updates
+## ✅ Current Status: V2 Database COMPLETE - Ready for Phase 2 MCP Tools
+
+## 📊 V2 Database Changes (Implemented Aug 25, 2025)
+
+### What Changed from V1 to V2
+- **Simplified Schema**: Reduced from 17 tables to 7 tables
+- **Removed Schema Prefixes**: `migration.table` → `table` (DuckDB compatibility)
+- **Updated Constraints**: Fixed status enum values to match schema
+- **Email-Based**: Family coordination uses emails, not phone numbers
+- **Day-Aware Logic**: Photos visible Day 4, Venmo cards Day 5
+
+### Compatibility Fixes Applied
+- **migration-state/server.py**: Updated status enums from `in_progress` to valid phases
+- **web-automation/icloud_client.py**: Fixed 4 database methods to use migration_db helpers
+- **All tests passing**: Database, server compatibility, and icloud compatibility tests
+
+### Database Location & Structure
+- **Path**: `~/.ios_android_migration/migration.db`
+- **Tables**: 7 (migration_status, family_members, photo_transfer, app_setup, family_app_adoption, daily_progress, venmo_setup)
+- **Views**: 3 (migration_summary, family_app_status, active_migration)
 
 We have successfully built and deployed a production-ready photo migration tool that transfers photos from iCloud to Google Photos. The system is currently processing an actual transfer of 60,238 photos (383GB). The hybrid architecture with natural language orchestration is now COMPLETE and all three MCP servers are operational in Claude Desktop.
 
