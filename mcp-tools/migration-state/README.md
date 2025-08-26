@@ -1,87 +1,131 @@
-# Migration State MCP Tool
-
-DuckDB-based state management for tracking migration progress across all tools.
+# Migration State MCP Server
 
 ## Overview
 
-This is a thin MCP wrapper around the existing migration database (`shared/database/migration_db.py`). It exposes database operations as MCP tools that return raw JSON for Claude to visualize and process.
+The Migration State MCP server provides 16 tools for managing iOS to Android migration state in a centralized DuckDB database. It tracks the complete 7-day migration journey including photos, family members, app adoption, and progress milestones.
 
 ## Features
 
-- **Track Migration Progress**: Monitor overall migration status
-- **Store Metadata**: Persist migration details and configuration
-- **Query Migration Status**: Get current and historical migration data
-- **Coordinate Tools**: Share state between web-automation and mobile-mcp
-- **Event Logging**: Track all migration events and milestones
+- **16 MCP Tools**: Complete state management for migration flow
+- **DuckDB Backend**: Persistent state in `~/.ios_android_migration/migration.db`
+- **7-Day Demo Flow**: Day-aware logic for realistic migration timeline
+- **JSON Responses**: All tools return JSON for easy visualization
+- **No Foreign Keys**: Workaround for DuckDB UPDATE limitation
 
-## Architecture
+## Available Tools
 
-```
-migration-state/
-├── server.py          # Thin MCP wrapper
-├── requirements.txt   # Dependencies (mcp, duckdb)
-└── README.md         # This file
+### Original 6 Tools
 
-Imports from:
-../../shared/database/migration_db.py  # Core database logic
-```
+1. **get_migration_status**
+   - Get current migration state
+   - Returns active migration or empty
 
-The actual database logic remains in `shared/database/` to maintain separation between:
-- **Core Logic**: Database operations, schemas, business logic
-- **MCP Interface**: Protocol handling, JSON serialization
+2. **update_migration_progress**
+   - Update migration progress metrics
+   - Parameters: migration_id, status, photos_transferred, videos_transferred, total_size_gb
 
-## Current Available Tools (6 tools)
+3. **initialize_migration** (enhanced in Phase 2)
+   - Start new migration with full details
+   - Parameters: user_name, years_on_ios, photo_count, video_count, storage_gb
 
-### get_migration_status
-Query current migration state or specific migration by ID.
+4. **get_pending_items**
+   - List items pending migration
+   - Parameters: category (photos, apps, etc.)
 
-### update_migration_progress
-Update progress metrics for photos, videos, and total size.
-**Note**: Status must be one of: `initialization`, `photo_transfer`, `family_setup`, `validation`, `completed`
+5. **mark_item_complete**
+   - Mark migration items as complete
+   - Parameters: item_type, item_id, details
 
-### get_pending_items
-Get items still to be migrated by category (photos, contacts, apps, messages).
+6. **get_migration_statistics**
+   - Get overall migration statistics
+   - Parameters: include_history (optional)
 
-### mark_item_complete
-Mark individual migration items as complete.
+### New Phase 2 Tools (10 Additional)
 
-### get_statistics
-Return migration statistics as JSON, optionally including history.
+7. **add_family_member**
+   - Add family member to migration
+   - Parameters: name, email, role (spouse/child), age
 
-### log_migration_event
-Log migration events with metadata.
+8. **start_photo_transfer**
+   - Record Apple photo transfer initiation
+   - Parameters: transfer_initiated (boolean)
 
-## Upcoming Tools (Phase 2 - 10 new tools)
+9. **update_family_member_apps**
+   - Track app adoption per family member
+   - Parameters: family_member_name, app_name (WhatsApp/Google Maps/Venmo), status
 
-To be implemented next:
+10. **update_photo_progress**
+    - Update photo transfer percentage
+    - Parameters: transferred_percentage
 
-1. **initialize_migration** - Start new migration with user details
-2. **add_family_member** - Add family member with email
-3. **setup_whatsapp_group** - Track WhatsApp group creation
-4. **track_app_installation** - Monitor app setup progress
-5. **update_daily_progress** - Record daily milestones
-6. **setup_venmo_teen** - Track teen card ordering/arrival
-7. **get_family_app_status** - Query family app adoption
-8. **get_migration_summary** - Get complete migration overview
-9. **mark_phase_complete** - Update migration phase
-10. **generate_completion_report** - Final migration report
+11. **activate_venmo_card**
+    - Track teen Venmo card activation
+    - Parameters: family_member_name
 
-## Setup
+12. **get_daily_summary**
+    - Get progress snapshot for specific day
+    - Parameters: day_number (1-7)
 
-### Prerequisites
+13. **get_migration_overview**
+    - Get complete migration status overview
+    - No parameters required
 
-- Python 3.11+
-- DuckDB installed
-- MCP package
+14. **create_action_item**
+    - Placeholder for mobile-mcp coordination
+    - Parameters: action_type, description
 
-### Installation
+15. **generate_migration_report**
+    - Generate final migration completion report
+    - No parameters required
+
+16. **log_migration_event**
+    - Log migration events
+    - Parameters: event_type, component, description, metadata
+
+## Database Structure
+
+### Tables (7)
+- `migration_status` - Core migration tracking
+- `family_members` - Family member details
+- `photo_transfer` - Photo/video transfer progress
+- `app_setup` - App installation tracking
+- `family_app_adoption` - Per-member app status
+- `daily_progress` - Day-by-day snapshots
+- `venmo_setup` - Teen card tracking
+
+### Views (3)
+- `migration_summary` - Overall migration status
+- `family_app_status` - Family app adoption matrix
+- `active_migration` - Current active migration
+
+### Important: No Foreign Keys
+Foreign key constraints have been removed to work around a DuckDB limitation where UPDATE operations fail on tables with foreign key references. Referential integrity is enforced at the application layer instead.
+
+## Installation
 
 ```bash
-# From the migration-state directory
+# Install dependencies
 pip install -r requirements.txt
+
+# Initialize database
+python3 ../../shared/database/scripts/initialize_database.py
+
+# Run tests
+python3 tests/test_migration_state.py
 ```
 
-### Claude Desktop Configuration
+## Testing
+
+The test suite (`tests/test_migration_state.py`) validates all 16 tools through a complete 7-day demo flow:
+
+```bash
+cd mcp-tools/migration-state
+python3 tests/test_migration_state.py
+```
+
+Expected: 17 tests pass (all tools + cleanup)
+
+## Configuration for Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -89,98 +133,70 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "migration-state": {
-      "command": "/path/to/.venv/bin/python",
+      "command": "/absolute/path/to/.venv/bin/python",
       "args": [
-        "/path/to/mcp-tools/migration-state/server.py"
+        "/absolute/path/to/mcp-tools/migration-state/server.py"
       ]
     }
   }
 }
 ```
 
-## Usage
-
-### With Claude Desktop
-
-After configuration and restart:
-- "Get current migration status"
-- "Show migration statistics"
-- "Update photo transfer progress"
-- "Mark WhatsApp migration complete"
-
-### Testing
-
-```bash
-# Run compatibility test
-python3 tests/test_server.py
-
-# Should show 10 tests passing
-```
-
-### Direct Database Testing
+## Usage Example
 
 ```python
-# Test the database directly
-from shared.database.migration_db import MigrationDatabase
+# In Claude Desktop, the tools are available automatically
+# Example prompts:
 
-db = MigrationDatabase()
-status = await db.get_active_migration()
-print(status)
+"Check the current migration status"
+# Uses: get_migration_status
+
+"Initialize a migration for George with 60,000 photos"
+# Uses: initialize_migration
+
+"Add Jaisy as a family member"
+# Uses: add_family_member
+
+"Show me the Day 4 summary"
+# Uses: get_daily_summary
+
+"Generate the final migration report"
+# Uses: generate_migration_report
 ```
 
-## Database Schema (V2 - Simplified)
+## 7-Day Demo Timeline
 
-The database uses DuckDB with 7 tables (no schema prefixes):
-- `migration_status` - Core migration tracking
-- `family_members` - Family details with emails
-- `photo_transfer` - Photo migration progress
-- `app_setup` - WhatsApp, Maps, Venmo configuration
-- `family_app_adoption` - Per-member app status
-- `daily_progress` - Day-by-day snapshots
-- `venmo_setup` - Teen card tracking
-
-Schema defined in: `shared/database/schemas/migration_schema.sql`
-
-## Integration with Other Tools
-
-### web-automation
-Tracks iCloud photo extraction and transfer initiation.
-
-### mobile-mcp
-Records Android app installations and configurations.
-
-### Coordination
-All tools update the same database, enabling:
-- Unified progress tracking
-- Cross-tool dependencies
-- Complete migration history
+- **Day 1**: Initialize migration, add family, start photo transfer
+- **Day 2-3**: Family adopts WhatsApp
+- **Day 4**: Photos become visible (28% transferred)
+- **Day 5**: Venmo teen cards activated
+- **Day 6**: Location sharing setup
+- **Day 7**: Migration complete, final report
 
 ## Troubleshooting
 
+### Foreign Key Errors
+If you see foreign key constraint errors during UPDATE operations, ensure you're using the latest schema without foreign keys. Re-run `initialize_database.py`.
+
 ### Database Locked
-If DuckDB is locked by another process:
-```bash
-# Check what's using the database
-lsof | grep migration.db
+Close any database viewers (DBeaver) before running tests.
 
-# Kill the process if needed
-kill -9 [PID]
-```
+### Import Errors
+Ensure you're in the virtual environment and have installed all requirements.
 
-### Permission Issues
-Ensure the database directory exists and is writable:
-```bash
-mkdir -p ~/.ios_android_migration
-chmod 755 ~/.ios_android_migration
-```
+## Development
 
-### MCP Connection Issues
-Check server is running:
-```bash
-python server.py
-```
+The server implements the MCP protocol with:
+- Tool discovery via `tools/list`
+- Tool execution via `tools/call`
+- JSON serialization for all responses
+- Comprehensive error handling
 
-Test with simple JSON-RPC:
-```bash
-echo '{"jsonrpc":"2.0","method":"list_tools","id":1}' | python server.py
-```
+All database operations go through `shared/database/migration_db.py` for consistency.
+
+## Next Steps
+
+After Phase 2 completion, the next phase involves:
+1. Creating the iOS2Android agent using `agent/instructions/ios2android-agent-instructions.md`
+2. Testing natural language orchestration across all MCP servers
+3. Validating the complete 7-day demo flow

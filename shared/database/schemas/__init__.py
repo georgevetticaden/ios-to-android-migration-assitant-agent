@@ -1,1 +1,0 @@
-"""Database schemas for iOS to Android migration"""

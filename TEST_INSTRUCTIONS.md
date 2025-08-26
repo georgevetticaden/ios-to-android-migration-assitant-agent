@@ -1,7 +1,7 @@
 # Test Instructions for iOS to Android Migration Assistant (V2)
 
 ## Overview
-This document provides comprehensive testing instructions for validating the Phase 2 implementation of 10 new MCP tools for the iOS to Android migration assistant.
+This document provides comprehensive testing instructions for the iOS to Android migration assistant with Phase 2 complete (16 MCP tools operational).
 
 ## Prerequisites
 - Python 3.11+ installed
@@ -32,10 +32,11 @@ python3 shared/database/scripts/initialize_database.py
 ```
 Expected: 
 - Database backed up (if exists)
-- 7 tables created (WITHOUT foreign key constraints)
+- 7 tables created (WITHOUT foreign key constraints - by design to avoid DuckDB UPDATE limitations)
 - 7 indexes created
 - 3 views created
 - All expected tables verified
+- Foreign key count: 0 (removed to fix DuckDB bug)
 
 #### Step 3: Run Database Tests
 ```bash
