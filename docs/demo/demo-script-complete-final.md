@@ -48,7 +48,7 @@ Let me show you how this actually works..."
 
 ### User-Agent Conversation
 
-**Me**: "Claude, I just got a Samsung Galaxy Z Fold 7 after 18 years on iPhone. I need to migrate everything from iCloud - especially my 383GB of photos going back to 2007. My wife Jaisy and our 3 kids - Laila who's 17, Ethan who's 15, and Maya who's 11 - they're all staying on iPhone. We rely heavily on iMessage, Find My, and Apple Cash. I need to replace these with cross-platform solutions - WhatsApp for messaging, Google Maps location sharing for Find My, and Venmo for payments. Can you help me migrate without disrupting my family?"
+**Me**: "Claude, I just got a Samsung Galaxy Z Fold 7 after 18 years on iPhone. I need to migrate everything from iCloud - especially my almost half of terabyte of  photos going back to 2007. My wife Jaisy and our 3 kids - Laila who's 17, Ethan who's 15, and Maya who's 11 - they're all staying on iPhone. We rely heavily on iMessage, Find My, and Apple Cash. I need to replace these with cross-platform solutions - WhatsApp for messaging, Google Maps location sharing for Find My, and Venmo for payments. Can you help me migrate without disrupting my family?"
 
 **Claude**: "I'll orchestrate your complete migration over 7 days:
 
