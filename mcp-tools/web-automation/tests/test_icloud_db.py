@@ -8,14 +8,14 @@ old table references fail appropriately and new schema operations succeed.
 
 Test Coverage:
 1. Verifies old photo_migration.transfers table doesn't exist
-2. Validates new photo_transfer table structure and operations
+2. Validates new media_transfer table structure and operations (v2.0)
 3. Tests that old INSERT patterns fail as expected
 4. Demonstrates correct query patterns for new schema
 5. Checks that old progress_history table is properly removed
 
 Schema Changes Tested:
 - Old: photo_migration.transfers (17 tables with schema prefixes)
-- New: photo_transfer (7 tables without prefixes, no foreign keys)
+- New: media_transfer (8 tables without prefixes, no foreign keys) + storage_snapshots
 
 Key Validations:
 - Old table queries fail with "does not exist" errors
@@ -75,8 +75,8 @@ def test_icloud_db_compatibility():
         print(f"❌ FAIL: Database connection error: {e}")
         test_results.append(("old_table_check", False))
     
-    # Test 2: Check new photo_transfer table structure
-    print("\nTest 2: Check new photo_transfer table...")
+    # Test 2: Check new media_transfer table structure (v2.0)
+    print("\nTest 2: Check new media_transfer table (v2.0)...")
     try:
         with db.get_connection() as conn:
             # Create a test migration first
@@ -86,30 +86,30 @@ def test_icloud_db_compatibility():
                 VALUES (?, 'Test User', 1000, 50, 10.5)
             """, (migration_id,))
             
-            # Create a photo transfer record (new schema)
+            # Create a media transfer record (v2.0 schema with separate photo/video status)
             transfer_id = f"TRF-TEST-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
             conn.execute("""
-                INSERT INTO photo_transfer 
-                (transfer_id, migration_id, total_photos, total_videos, total_size_gb, status)
-                VALUES (?, ?, 1000, 50, 10.5, 'initiated')
+                INSERT INTO media_transfer 
+                (transfer_id, migration_id, total_photos, total_videos, total_size_gb, photo_status, video_status, overall_status)
+                VALUES (?, ?, 1000, 50, 10.5, 'initiated', 'initiated', 'initiated')
             """, (transfer_id, migration_id))
             
             # Retrieve it
             result = conn.execute("""
-                SELECT transfer_id, migration_id, total_photos, status 
-                FROM photo_transfer 
+                SELECT transfer_id, migration_id, total_photos, photo_status, video_status 
+                FROM media_transfer 
                 WHERE transfer_id = ?
             """, (transfer_id,)).fetchone()
             
             if result:
-                print(f"✅ PASS: New photo_transfer table works")
+                print(f"✅ PASS: New media_transfer table works (v2.0)")
                 print(f"  - Transfer ID: {result[0]}")
                 print(f"  - Migration ID: {result[1]}")
                 print(f"  - Photos: {result[2]}")
                 print(f"  - Status: {result[3]}")
                 test_results.append(("new_table_check", True))
             else:
-                print("❌ FAIL: Could not retrieve from photo_transfer table")
+                print("❌ FAIL: Could not retrieve from media_transfer table")
                 test_results.append(("new_table_check", False))
     except Exception as e:
         print(f"❌ FAIL: Error with new table: {e}")
@@ -177,23 +177,23 @@ def test_icloud_db_compatibility():
             
             # First ensure we have a migration
             conn.execute("""
-                INSERT INTO photo_transfer (
+                INSERT INTO media_transfer (
                     transfer_id, migration_id, 
                     total_photos, total_videos, total_size_gb,
                     transferred_photos, transferred_videos, transferred_size_gb,
-                    status, photos_visible_day
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    photo_status, video_status, overall_status, photos_visible_day
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 transfer_id, migration_id,
                 5000, 200, 25.5,
                 0, 0, 0.0,
-                'initiated', 4
+                'initiated', 'initiated', 'initiated', 4
             ))
             
             # Verify it was saved
             result = conn.execute("""
-                SELECT transfer_id, total_photos, status 
-                FROM photo_transfer 
+                SELECT transfer_id, total_photos, photo_status, video_status 
+                FROM media_transfer 
                 WHERE transfer_id = ?
             """, (transfer_id,)).fetchone()
             
@@ -251,7 +251,7 @@ def test_icloud_db_compatibility():
         print("\n✅ ALL TESTS PASSED - Database schema changes are working correctly!")
         print("\nVerified:")
         print("  ✅ Old tables (photo_migration.transfers) don't exist")
-        print("  ✅ New tables (photo_transfer) are working")
+        print("  ✅ New tables (media_transfer v2.0) are working with video support")
         print("  ✅ Old queries fail as expected (preventing use of old schema)")
         print("  ✅ New schema queries work correctly")
         print("\nNOTE: icloud_client.py has already been updated to use the new schema.")

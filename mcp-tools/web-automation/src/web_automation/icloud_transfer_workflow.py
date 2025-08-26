@@ -8,7 +8,7 @@ including OAuth popups and 2FA verification.
 
 Workflow Overview:
     1. Select Google Photos as destination
-    2. Check Photos checkbox (not Videos)
+    2. Check both Photos and Videos checkboxes (v2.0)
     3. Navigate through Apple's transfer pages
     4. Handle Google OAuth authentication
     5. Grant necessary permissions
@@ -33,7 +33,7 @@ class TransferWorkflow:
     
     **Workflow Steps**:
         1. Select Google Photos from service dropdown
-        2. Check Photos checkbox (Videos unchecked for photo-only migration)
+        2. Check both Photos and Videos checkboxes (complete media migration)
         3. Click Continue on initial selection page
         4. Click Continue on "Copy your photos" information page
         5. Handle Google OAuth popup for account selection
@@ -71,7 +71,7 @@ class TransferWorkflow:
         
         **Detailed Flow**:
         1. **Service Selection**: Choose "Google Photos" from dropdown
-        2. **Data Selection**: Check "Photos" checkbox only (not Videos)
+        2. **Data Selection**: Check both "Photos" and "Videos" checkboxes
         3. **Initial Continue**: Click Continue when button enables
         4. **Information Page**: Click Continue on "Copy your photos" page
         5. **Google OAuth**: Handle popup for Google account selection
@@ -127,8 +127,8 @@ class TransferWorkflow:
             logger.info("Step 1: Selecting Google Photos from dropdown")
             await self._select_google_photos()
             
-            # Step 2: Check Photos and Videos checkboxes
-            logger.info("Step 2: Checking Photos and Videos checkboxes")
+            # Step 2: Check both Photos and Videos checkboxes
+            logger.info("Step 2: Checking both Photos and Videos checkboxes")
             await self._check_transfer_checkboxes()
             
             # Step 3: Click Continue (should be enabled now)
@@ -196,27 +196,27 @@ class TransferWorkflow:
             raise
     
     async def _check_transfer_checkboxes(self):
-        """Check the Photos checkbox only (not videos - this is photo migration).
+        """Check both Photos and Videos checkboxes for complete media transfer.
         
-        Selects which data types to transfer. For the photo migration tool,
-        we only select Photos, not Videos, to keep the scope focused.
+        Selects which data types to transfer. For v2.0, we now transfer
+        both photos AND videos together in a single operation.
         
         **Selection Logic**:
-        - Photos: Always checked (primary purpose)
-        - Videos: Always unchecked (not part of photo migration)
+        - Photos: Always checked (primary content)
+        - Videos: Always checked (v2.0 enhancement)
         
         **Dynamic Selectors**:
         Uses multiple selector strategies to handle Apple's changing HTML:
-        - Label text matching \"Photos\" with count
-        - Checkbox siblings of photo labels
-        - Input elements with photo-related IDs
+        - Label text matching \"Photos\" and \"Videos\" with counts
+        - Checkbox siblings of media labels
+        - Input elements with photo/video-related IDs
         
         Note:
-            Apple shows counts like \"Photos (60,238 photos)\" which
-            we match with flexible patterns to avoid hardcoding numbers.
+            Apple shows counts like \"Photos (60,238 photos)\" and \"Videos (2,418 videos)\"
+            which we match with flexible patterns to avoid hardcoding numbers.
         """
         try:
-            # Try multiple selectors to find the Photos checkbox
+            # Check Photos checkbox
             photos_selectors = [
                 'label:has-text("Photos (")',  # Match label containing "Photos (" 
                 'label:text-matches("Photos.*photos")',  # Match pattern "Photos...photos"
@@ -235,21 +235,48 @@ class TransferWorkflow:
                 except:
                     continue
             
-            # Fallback: click the first checkbox if we couldn't find it by label
-            if not photos_clicked:
+            # Check Videos checkbox
+            videos_selectors = [
+                'label:has-text("Videos (")',  # Match label containing "Videos ("
+                'label:text-matches("Videos.*videos")',  # Match pattern "Videos...videos"
+                'label:has-text("videos)")',  # Match label ending with "videos)"
+            ]
+            
+            videos_clicked = False
+            for selector in videos_selectors:
+                try:
+                    videos_label = await self.page.query_selector(selector)
+                    if videos_label:
+                        await videos_label.click()
+                        logger.info(f"✅ Clicked Videos checkbox using selector: {selector}")
+                        videos_clicked = True
+                        break
+                except:
+                    continue
+            
+            # Fallback: click checkboxes by index if we couldn't find them by label
+            if not photos_clicked or not videos_clicked:
                 checkboxes = await self.page.query_selector_all('input[type="checkbox"]')
                 logger.info(f"Found {len(checkboxes)} checkboxes on page")
                 
-                if len(checkboxes) >= 1:
+                # Try to check first two checkboxes (usually Photos and Videos)
+                if not photos_clicked and len(checkboxes) >= 1:
                     is_checked = await checkboxes[0].is_checked()
                     if not is_checked:
                         await checkboxes[0].click()
                         logger.info("✅ Checked Photos checkbox (first checkbox)")
                     else:
                         logger.info("Photos checkbox already checked")
+                
+                if not videos_clicked and len(checkboxes) >= 2:
+                    is_checked = await checkboxes[1].is_checked()
+                    if not is_checked:
+                        await checkboxes[1].click()
+                        logger.info("✅ Checked Videos checkbox (second checkbox)")
+                    else:
+                        logger.info("Videos checkbox already checked")
             
-            # Note: NOT checking Videos checkbox - this is photo migration only
-            logger.info("Skipping Videos checkbox - this is photo migration only")
+            logger.info("✅ Both Photos and Videos checkboxes selected for complete media transfer")
                     
             await self.page.wait_for_timeout(1000)
             

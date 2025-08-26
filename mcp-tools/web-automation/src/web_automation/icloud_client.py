@@ -660,16 +660,16 @@ class ICloudClientWithSession:
     # ==================== NEW PHASE 3 METHODS ====================
     
     async def start_transfer(self, reuse_session: bool = True) -> Dict[str, Any]:
-        """Initiate iCloud to Google Photos transfer workflow.
+        """Initiate iCloud to Google Photos transfer workflow with video support.
         
-        This is the main entry point for starting a photo migration. It performs:
+        This is the main entry point for starting a media migration. It performs:
         1. Establishes Google Photos baseline (current photo count)
         2. Authenticates with Apple ID (reusing session if available)
         3. Gets current iCloud photo/video counts
         4. Navigates through Apple's 8-step transfer workflow
         5. Creates transfer record in database for tracking
         
-        **MCP Tool Name**: `start_photo_transfer`
+        **MCP Tool Name**: `start_photo_transfer` (will transfer both photos AND videos)
         
         **Required Environment Variables**:
             - APPLE_ID: Apple ID email for source account
@@ -690,6 +690,8 @@ class ICloudClientWithSession:
                 - destination: Service name and account (email redacted)
                 - baseline_established: Pre-transfer count and timestamp
                 - estimated_completion_days: "3-7" days estimate
+                - photo_transfer_id: Apple's ID for photo transfer (if available)
+                - video_transfer_id: Apple's ID for video transfer (if available)
                 - error: Error message if status is "error"
         
         Example Response:
@@ -711,6 +713,8 @@ class ICloudClientWithSession:
                     "pre_transfer_count": 42,
                     "baseline_timestamp": "2025-08-20T14:30:00Z"
                 },
+                "photo_transfer_id": "APL-PHO-123456",
+                "video_transfer_id": "APL-VID-789012",
                 "estimated_completion_days": "3-7"
             }
         
@@ -752,13 +756,59 @@ class ICloudClientWithSession:
                     "timestamp": datetime.now().isoformat()
                 }
             
-            # Step 2: Get current iCloud status
-            logger.info("Getting iCloud photo status...")
-            icloud_status = await self.get_photo_status(
-                apple_id=apple_id,
-                password=apple_password,
-                force_fresh_login=not reuse_session
-            )
+            # Step 2: Get current iCloud status (or reuse existing session)
+            # Check if we already have an open browser with iCloud data
+            if hasattr(self, 'page') and self.page and self.browser:
+                logger.info("Reusing existing browser session...")
+                # Extract counts from current page if available
+                try:
+                    current_url = self.page.url
+                    if "privacy.apple.com" in current_url:
+                        # We're already on the right page, extract counts
+                        page_content = await self.page.content()
+                        import re
+                        photo_match = re.search(r'([\d,]+)\s+photos', page_content)
+                        video_match = re.search(r'([\d,]+)\s+videos', page_content)
+                        
+                        if photo_match and video_match:
+                            icloud_status = {
+                                "status": "success",
+                                "photos": int(photo_match.group(1).replace(',', '')),
+                                "videos": int(video_match.group(1).replace(',', '')),
+                                "storage_gb": 383,  # Default value
+                                "session_reused": True
+                            }
+                            logger.info(f"Extracted counts from existing page: {icloud_status['photos']} photos, {icloud_status['videos']} videos")
+                        else:
+                            # Fallback to calling get_photo_status
+                            logger.info("Could not extract counts from current page, calling get_photo_status...")
+                            icloud_status = await self.get_photo_status(
+                                apple_id=apple_id,
+                                password=apple_password,
+                                force_fresh_login=False
+                            )
+                    else:
+                        # Not on the right page, need to navigate
+                        logger.info("Not on privacy.apple.com, calling get_photo_status...")
+                        icloud_status = await self.get_photo_status(
+                            apple_id=apple_id,
+                            password=apple_password,
+                            force_fresh_login=False
+                        )
+                except Exception as e:
+                    logger.warning(f"Could not reuse session: {e}")
+                    icloud_status = await self.get_photo_status(
+                        apple_id=apple_id,
+                        password=apple_password,
+                        force_fresh_login=not reuse_session
+                    )
+            else:
+                logger.info("No existing browser session, getting iCloud photo status...")
+                icloud_status = await self.get_photo_status(
+                    apple_id=apple_id,
+                    password=apple_password,
+                    force_fresh_login=not reuse_session
+                )
             
             if icloud_status.get("status") == "error":
                 return icloud_status

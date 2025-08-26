@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Phase 3 Integration Test - Complete Photo Migration Flow
+Phase 3 Integration Test - Complete Media Migration Flow (Photos + Videos)
 
-This test script validates the entire photo migration workflow from iCloud to 
-Google Photos using only the Phase 3 MCP methods. It demonstrates proper API
+This test script validates the entire media migration workflow from iCloud to 
+Google Photos using only the Phase 3 MCP methods. V2.0 now transfers both
+photos AND videos in a single operation. It demonstrates proper API
 usage without direct database manipulation, ensuring all state management goes
 through the designated MCP interfaces.
 
@@ -11,7 +12,7 @@ Test Workflow:
 1. CHECK ICLOUD STATUS - Retrieve photo/video counts from iCloud
 2. INITIALIZE APIS - Set up Gmail, Database, and Google Dashboard clients
 3. CHECK EXISTING TRANSFERS - Query database for previous transfers
-4. START NEW TRANSFER - Initiate Apple to Google migration (interactive)
+4. START NEW TRANSFER - Initiate Apple to Google migration for photos + videos
 5. CHECK TRANSFER PROGRESS - Monitor migration status
 6. CHECK FOR EMAILS - Look for Apple completion emails
 7. VERIFY TRANSFER COMPLETE - Validate final transfer state
@@ -141,16 +142,16 @@ async def test_phase3_flow():
             try:
                 with client.db.get_connection() as conn:
                     result = conn.execute("""
-                        SELECT transfer_id, status, started_at 
-                        FROM photo_migration.transfers 
-                        ORDER BY started_at DESC 
+                        SELECT transfer_id, photo_status, video_status, apple_transfer_initiated 
+                        FROM media_transfer 
+                        ORDER BY apple_transfer_initiated DESC 
                         LIMIT 5
                     """).fetchall()
                     
                     if result:
                         print(f"Found {len(result)} existing transfers:")
                         for row in result:
-                            print(f"   - {row[0]}: {row[1]} (created {row[2]})")
+                            print(f"   - {row[0]}: Photos={row[1]}, Videos={row[2]} (started {row[3]})")
                     else:
                         print("No existing transfers found in database")
             except Exception as e:
@@ -292,28 +293,28 @@ async def test_phase3_flow():
         
         if client.db:
             with client.db.get_connection() as conn:
-                # Check photo_migration.transfers table
+                # Check media_transfer table (v2.0)
                 transfers = conn.execute("""
-                    SELECT transfer_id, status, started_at, 
-                           source_photos, source_videos, baseline_google_count
-                    FROM photo_migration.transfers 
-                    ORDER BY started_at DESC 
+                    SELECT transfer_id, photo_status, video_status, 
+                           total_photos, total_videos, apple_transfer_initiated
+                    FROM media_transfer 
+                    ORDER BY apple_transfer_initiated DESC 
                     LIMIT 5
                 """).fetchall()
                 
                 print(f"\n📋 Recent Transfers ({len(transfers)} records):")
                 for transfer in transfers:
                     print(f"\n   Transfer: {transfer[0]}")
-                    print(f"   Status: {transfer[1]}")
-                    print(f"   Started: {transfer[2]}")
+                    print(f"   Photo Status: {transfer[1]}, Video Status: {transfer[2]}")
+                    print(f"   Started: {transfer[5]}")
                     print(f"   Photos: {transfer[3]:,}, Videos: {transfer[4]:,}")
-                    print(f"   Baseline: {transfer[5]:,} photos")
+                    print(f"   Media Type: Complete transfer (photos + videos)")
                 
-                # Check progress history
+                # Check daily progress (v2.0)
                 progress_records = conn.execute("""
-                    SELECT transfer_id, checked_at, google_photos_total, transferred_items
-                    FROM photo_migration.progress_history
-                    ORDER BY checked_at DESC
+                    SELECT migration_id, day_number, progress_percentage, notes
+                    FROM daily_progress
+                    ORDER BY created_at DESC
                     LIMIT 5
                 """).fetchall()
                 
