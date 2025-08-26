@@ -312,7 +312,7 @@ async def test_phase3_flow():
                 
                 # Check daily progress (v2.0)
                 progress_records = conn.execute("""
-                    SELECT migration_id, day_number, progress_percentage, notes
+                    SELECT migration_id, day_number, storage_percent_complete, key_milestone
                     FROM daily_progress
                     ORDER BY created_at DESC
                     LIMIT 5
@@ -321,7 +321,11 @@ async def test_phase3_flow():
                 if progress_records:
                     print(f"\n📈 Recent Progress Checks ({len(progress_records)} records):")
                     for record in progress_records:
-                        print(f"   {record[0]}: {record[3]:,} items transferred (checked {record[1]})")
+                        # record[0] = migration_id, record[1] = day_number, 
+                        # record[2] = storage_percent_complete, record[3] = key_milestone
+                        percent = record[2] or 0
+                        milestone = record[3] or "No milestone"
+                        print(f"   Day {record[1]}: {percent:.1f}% complete - {milestone}")
         else:
             print("Database not available")
         

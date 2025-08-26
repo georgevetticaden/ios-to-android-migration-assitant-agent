@@ -59,22 +59,30 @@ Implement storage-based progress tracking using Google One metrics for accurate 
 - Updated docstrings to reflect v2.0 media transfer support
 - Test files updated to use `media_transfer` table instead of `photo_transfer`
 
-#### Task 3.2: Google One Storage Extraction 🔜
+#### Task 3.2: Google One Storage Extraction ✅ COMPLETE
 **New File**: `mcp-tools/web-automation/src/web_automation/google_storage_client.py`
-**Status**: Not Started
-**Implementation**:
-- Navigate to one.google.com/storage
-- Extract storage breakdown (Photos, Drive, Gmail)
-- Parse GB values from page
-- Return structured data
+**Status**: Completed - August 26, 2025
+**Changes Made**:
+- Created `GoogleStorageClient` class with session persistence
+- Extracts storage metrics from one.google.com/storage
+- Successfully parses total storage (2TB), used storage (86.91GB)
+- Correctly extracts service breakdown: Photos (1.05GB), Drive (52.52GB), Gmail (33.26GB)
+- Updated `icloud_client.py` to use storage client instead of dashboard
+- Modified `_establish_baseline_in_new_context()` to get storage metrics
+- Removed deprecated `google_dashboard_client.py`
+- Test verified: `test_google_storage.py` working correctly
 
-#### Task 3.3: Update Database Calls 🔜
-**File**: `mcp-tools/web-automation/src/web_automation/icloud_transfer_workflow.py`
-**Status**: Not Started
-**Changes**:
-- Change `create_photo_transfer()` → `create_media_transfer()`
-- Pass video counts and transfer IDs
-- Store Google baseline in migration_status
+#### Task 3.3: Update Database Calls ✅ COMPLETE
+**Files Updated**: 
+- `mcp-tools/web-automation/src/web_automation/icloud_client.py`
+- `mcp-tools/web-automation/tests/test_migration_flow.py`
+**Status**: Completed - August 26, 2025
+**Changes Made**:
+- Fixed `photo_transfer` → `media_transfer` table references
+- Updated column references to v2.0 schema (photo_status, video_status)
+- Fixed `progress_percentage` → `storage_percent_complete`
+- Corrected JOIN clause to use proper migration_id
+- Updated result indexing for additional video_status column
 
 #### Task 3.4: New MCP Tools 🔜
 **File**: `mcp-tools/web-automation/src/web_automation/server.py`
@@ -172,10 +180,10 @@ Day 7: 99.3% (394.88GB) - Complete (+381GB)
 
 ## 🧪 Testing Requirements
 
-### Unit Tests Needed
-1. `test_video_checkbox.py` - Verify both checkboxes selected
-2. `test_google_storage.py` - Test storage extraction
-3. `test_storage_progress.py` - Validate calculations
+### Unit Tests Completed
+1. ✅ Video checkbox verification - Integrated in `test_migration_flow.py`
+2. ✅ `test_google_storage.py` - Test storage extraction (tests directory)
+3. 📋 `test_storage_progress.py` - Validate calculations (TODO)
 
 ### Integration Tests
 1. Day 1 flow with baselines
@@ -226,10 +234,12 @@ Day 7: 99.3% (394.88GB) - Complete (+381GB)
 
 ## 🚨 Known Issues & Risks
 
-### Current Issues
-1. **Confirm Transfer Button**: Test correctly stops at confirmation page (intentional safety feature)
-2. **Google Baseline**: Currently uses Dashboard instead of Google One storage page
-3. **Session Reuse**: Fixed - `start_transfer()` now reuses existing browser session to avoid double login
+### Current Issues (Fixed)
+1. **Confirm Transfer Button**: Test correctly stops at confirmation page (intentional safety feature) ✅
+2. **Google Baseline**: Fixed - Now uses Google One storage page instead of Dashboard ✅
+3. **Session Reuse**: Fixed - `start_transfer()` now reuses existing browser session to avoid double login ✅
+4. **Google Dashboard Removed**: Deprecated google_dashboard_client.py has been removed ✅
+5. **Database References**: Fixed - migration_status.id JOIN and daily_progress.key_milestone column ✅
 
 ### Potential Risks
 1. **Google One UI Changes**: Selectors may need updates
@@ -259,8 +269,11 @@ python3 shared/database/tests/test_database.py
 # Test MCP server
 python3 mcp-tools/migration-state/tests/test_migration_state.py
 
-# Test web automation (after updates)
-python3 mcp-tools/web-automation/test_basic_auth.py
+# Test web automation (from web-automation directory)
+cd mcp-tools/web-automation
+python3 tests/test_basic_auth.py
+python3 tests/test_google_storage.py
+python3 tests/test_migration_flow.py --phase 1
 ```
 
 ### MCP Tools Count

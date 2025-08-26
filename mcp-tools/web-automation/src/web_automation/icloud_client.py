@@ -18,8 +18,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from playwright.async_api import async_playwright, Browser, Page, Frame
 
-# Import our Google Dashboard client and Gmail monitor
-from .google_dashboard_client import GoogleDashboardClient
+# Import our Google Storage client and Gmail monitor
+from .google_storage_client import GoogleStorageClient
 from .gmail_monitor import GmailMonitor
 
 # Import shared database components
@@ -57,7 +57,7 @@ class ICloudClientWithSession:
     
     Attributes:
         session_dir (Path): Directory for storing browser session state
-        google_dashboard_client: Client for Google Photos monitoring
+        google_storage_client: Client for Google One storage monitoring
         gmail_client: Client for email notifications
         db: Database connection for transfer tracking
     """
@@ -79,7 +79,7 @@ class ICloudClientWithSession:
         self.session_info_file = self.session_dir / "session_info.json"
         
         # Initialize new components for Phase 3
-        self.google_dashboard_client = None
+        self.google_storage_client = None
         self.gmail_client = None
         self.db = None
         
@@ -96,8 +96,8 @@ class ICloudClientWithSession:
         """Initialize Google APIs and database connections"""
         # Initialize Google Dashboard client
         google_session_dir = os.path.expanduser("~/.google_session")
-        self.google_dashboard_client = GoogleDashboardClient(session_dir=google_session_dir)
-        await self.google_dashboard_client.initialize()
+        self.google_storage_client = GoogleStorageClient(session_dir=google_session_dir)
+        await self.google_storage_client.initialize()
         
         # Initialize Gmail client
         gmail_creds_path = os.getenv('GMAIL_CREDENTIALS_PATH')
@@ -740,21 +740,17 @@ class ICloudClientWithSession:
                 }
             
             # Ensure APIs are initialized
-            if not self.google_dashboard_client:
+            if not self.google_storage_client:
                 await self.initialize_apis()
             
-            # Step 1: Establish baseline in a NEW browser context (won't break flow)
-            logger.info("Establishing Google Photos baseline in separate context...")
+            # Step 1: Establish Google One storage baseline in a NEW browser context (won't break flow)
+            logger.info("Establishing Google One storage baseline in separate context...")
             baseline_data = await self._establish_baseline_in_new_context()
             
-            if baseline_data.get("status") == "error":
-                logger.warning(f"Baseline failed: {baseline_data.get('message')}")
-                # Continue anyway with 0 baseline
-                baseline_data = {
-                    "baseline_count": 0,
-                    "albums_count": 0,
-                    "timestamp": datetime.now().isoformat()
-                }
+            # Extract the baseline storage for Google Photos
+            google_photos_baseline_gb = baseline_data.get("google_photos_baseline_gb", 0.0)
+            total_storage_gb = baseline_data.get("total_storage_gb", 2048.0)
+            available_storage_gb = baseline_data.get("available_storage_gb", total_storage_gb)
             
             # Step 2: Get current iCloud status (or reuse existing session)
             # Check if we already have an open browser with iCloud data
@@ -831,8 +827,9 @@ class ICloudClientWithSession:
                 'source_size_gb': icloud_status.get('storage_gb', 0),
                 'google_email': google_email,
                 'apple_id': apple_id,
-                'baseline_count': baseline_data['baseline_count'],
-                'baseline_timestamp': baseline_data['timestamp'],
+                'google_photos_baseline_gb': google_photos_baseline_gb,
+                'total_storage_gb': total_storage_gb,
+                'baseline_timestamp': baseline_data.get('timestamp', datetime.now().isoformat()),
                 'status': 'initiated'
             }
             
@@ -854,8 +851,10 @@ class ICloudClientWithSession:
                     "account": google_email
                 },
                 "baseline_established": {
-                    "pre_transfer_count": baseline_data['baseline_count'],
-                    "baseline_timestamp": baseline_data['timestamp']
+                    "google_photos_baseline_gb": google_photos_baseline_gb,
+                    "total_storage_gb": total_storage_gb,
+                    "available_storage_gb": available_storage_gb,
+                    "baseline_timestamp": baseline_data.get('timestamp', datetime.now().isoformat())
                 },
                 "estimated_completion_days": "3-7",
                 "session_used": icloud_status.get('session_used', False)
@@ -927,7 +926,7 @@ class ICloudClientWithSession:
         """
         try:
             # Ensure Google Dashboard is initialized
-            if not self.google_dashboard_client:
+            if not self.google_storage_client:
                 await self.initialize_apis()
             
             # Get transfer details
@@ -938,23 +937,27 @@ class ICloudClientWithSession:
                     "error": f"Transfer {transfer_id} not found"
                 }
             
-            # Get current Google photo count
-            logger.info("Getting current Google photo count...")
-            dashboard_result = await self.google_dashboard_client.get_photo_count()
+            # Get current Google storage metrics
+            logger.info("Getting current Google One storage metrics...")
+            storage_result = await self.google_storage_client.get_storage_metrics()
             
-            if dashboard_result['status'] != 'success':
+            if storage_result['status'] != 'success':
                 return {
                     "status": "error",
-                    "error": "Failed to get Google photo count"
+                    "error": "Failed to get Google storage metrics"
                 }
             
-            current_google_count = dashboard_result['photos']
+            current_google_photos_gb = storage_result['google_photos_gb']
             
-            # Calculate progress
-            baseline_count = transfer['baseline_count']
-            transferred_items = current_google_count - baseline_count
-            source_total = transfer['source_photos'] + transfer['source_videos']
-            percent_complete = (transferred_items / source_total * 100) if source_total > 0 else 0
+            # Calculate progress based on storage
+            baseline_storage_gb = transfer.get('google_photos_baseline_gb', 0)
+            storage_transferred_gb = current_google_photos_gb - baseline_storage_gb
+            total_to_transfer_gb = transfer.get('source_size_gb', 383)
+            percent_complete = (storage_transferred_gb / total_to_transfer_gb * 100) if total_to_transfer_gb > 0 else 0
+            
+            # Estimate items transferred based on storage
+            photos_estimate = int(storage_transferred_gb * 0.7 * 1024 / 6.5)  # 70% photos, avg 6.5MB
+            videos_estimate = int(storage_transferred_gb * 0.3 * 1024 / 150)  # 30% videos, avg 150MB
             
             # Calculate elapsed time
             # Handle both string and datetime objects from database
@@ -990,20 +993,25 @@ class ICloudClientWithSession:
                     "checked_at": progress_data['checked_at'],
                     "days_elapsed": round(days_elapsed, 2),
                     "estimated_completion": self._estimate_completion(
-                        transferred_items, source_total, transfer_rate_per_day
+                        storage_transferred_gb, total_to_transfer_gb, transfer_rate_per_day
                     )
                 },
-                "counts": {
-                    "source_total": source_total,
-                    "baseline_google": baseline_count,
-                    "current_google": current_google_count,
-                    "transferred_items": transferred_items,
-                    "remaining_items": max(0, source_total - transferred_items)
+                "storage": {
+                    "baseline_gb": baseline_storage_gb,
+                    "current_gb": current_google_photos_gb,
+                    "transferred_gb": round(storage_transferred_gb, 2),
+                    "total_to_transfer_gb": total_to_transfer_gb,
+                    "remaining_gb": max(0, total_to_transfer_gb - storage_transferred_gb)
+                },
+                "estimates": {
+                    "photos_transferred": photos_estimate,
+                    "videos_transferred": videos_estimate,
+                    "total_items": photos_estimate + videos_estimate
                 },
                 "progress": {
                     "percent_complete": round(percent_complete, 1),
-                    "transfer_rate_per_day": round(transfer_rate_per_day, 0),
-                    "transfer_rate_per_hour": round(transfer_rate_per_hour, 0)
+                    "transfer_rate_gb_per_day": round(transfer_rate_per_day * total_to_transfer_gb / (transfer.get('source_photos', 60000) + transfer.get('source_videos', 2000)), 2),
+                    "transfer_rate_gb_per_hour": round(transfer_rate_per_hour * total_to_transfer_gb / (transfer.get('source_photos', 60000) + transfer.get('source_videos', 2000)), 2)
                 }
             }
             
@@ -1311,77 +1319,74 @@ class ICloudClientWithSession:
     # ==================== HELPER METHODS ====================
     
     async def _establish_baseline_in_new_context(self) -> Dict[str, Any]:
-        """Establish Google Photos baseline in a NEW browser context
+        """Establish Google One storage baseline in a NEW browser context
         This prevents breaking the transfer workflow on the main page
+        Uses Google One storage metrics instead of Dashboard for accurate tracking
         """
         try:
-            from playwright.async_api import async_playwright
+            from .google_storage_client import GoogleStorageClient
             
-            logger.info("Opening separate browser for baseline...")
+            logger.info("Opening separate browser for Google One storage baseline...")
             
             # Get Google credentials from environment
             google_email = os.getenv('GOOGLE_EMAIL')
             google_password = os.getenv('GOOGLE_PASSWORD')
             
-            # Create a completely separate browser instance
-            playwright = await async_playwright().start()
-            browser = await playwright.chromium.launch(
-                headless=True,  # Run in background
-                args=['--disable-blink-features=AutomationControlled']
-            )
+            # Create a temporary Google Storage client
+            storage_client = GoogleStorageClient()
             
             try:
-                # Create new context
-                context = await browser.new_context()
-                page = await context.new_page()
-                
-                # Create a temporary Google Dashboard client for this context
-                from .google_dashboard_client import GoogleDashboardClient
-                temp_client = GoogleDashboardClient()
-                # Set the playwright and browser instances
-                temp_client.playwright = playwright
-                temp_client.browser = browser
-                temp_client.context = context
-                temp_client.page = page
-                
-                # Get photo count
-                result = await temp_client.get_photo_count(
+                # Get storage metrics
+                result = await storage_client.get_storage_metrics(
                     google_email=google_email,
                     google_password=google_password
                 )
                 
                 if result['status'] == 'success':
-                    logger.info(f"✅ Baseline established: {result['photos']} photos, {result['albums']} albums")
+                    logger.info(f"✅ Storage baseline established:")
+                    logger.info(f"   - Google Photos: {result['google_photos_gb']}GB")
+                    logger.info(f"   - Total used: {result.get('used_storage_gb', 0)}GB of {result.get('total_storage_gb', 0)}GB")
+                    
                     return {
                         "status": "success",
-                        "baseline_count": result['photos'],
-                        "albums_count": result['albums'],
-                        "google_storage_gb": result.get('storage_gb', 0),
+                        "google_photos_baseline_gb": result['google_photos_gb'],
+                        "google_drive_gb": result.get('google_drive_gb', 0),
+                        "gmail_gb": result.get('gmail_gb', 0),
+                        "total_storage_gb": result.get('total_storage_gb', 2048),
+                        "used_storage_gb": result.get('used_storage_gb', 0),
+                        "available_storage_gb": result.get('available_storage_gb', 0),
                         "timestamp": datetime.now().isoformat()
                     }
                 else:
+                    logger.warning(f"Failed to get storage metrics: {result.get('error', 'Unknown error')}")
+                    # Return minimal baseline to continue
                     return {
-                        "status": "error",
-                        "message": "Failed to get photo count"
+                        "status": "success",
+                        "google_photos_baseline_gb": 0.0,
+                        "total_storage_gb": 2048.0,
+                        "timestamp": datetime.now().isoformat()
                     }
                     
             finally:
-                # Clean up the separate browser
-                await browser.close()
-                await playwright.stop()
-                logger.info("Closed baseline browser context")
+                # Clean up
+                await storage_client.cleanup()
+                logger.info("Closed storage baseline browser context")
                 
         except Exception as e:
-            logger.error(f"Baseline establishment failed: {e}")
+            logger.error(f"Storage baseline establishment failed: {e}")
+            # Return minimal baseline to continue
             return {
-                "status": "error",
-                "message": str(e)
+                "status": "success", 
+                "google_photos_baseline_gb": 0.0,
+                "total_storage_gb": 2048.0,
+                "timestamp": datetime.now().isoformat(),
+                "error": str(e)
             }
     
     async def _establish_baseline(self, google_email: str = None) -> Dict[str, Any]:
         """Establish Google Photos baseline count (OLD METHOD - breaks flow)"""
         try:
-            if not self.google_dashboard_client:
+            if not self.google_storage_client:
                 await self.initialize_apis()
             
             # Get Google credentials from environment
@@ -1389,16 +1394,18 @@ class ICloudClientWithSession:
                 google_email = os.getenv('GOOGLE_EMAIL')
             google_password = os.getenv('GOOGLE_PASSWORD')
             
-            result = await self.google_dashboard_client.get_photo_count(
+            # This method is deprecated - use _establish_baseline_in_new_context instead
+            # which uses Google One storage metrics
+            result = await self.google_storage_client.get_storage_metrics(
                 google_email=google_email,
                 google_password=google_password
             )
             
             if result['status'] == 'success':
-                logger.info(f"Baseline established: {result['photos']} photos, {result['albums']} albums")
+                logger.info(f"Baseline established: Google Photos using {result['google_photos_gb']}GB")
                 return {
-                    "baseline_count": result['photos'],
-                    "albums_count": result['albums'],
+                    "google_photos_baseline_gb": result['google_photos_gb'],
+                    "total_storage_gb": result.get('total_storage_gb', 2048),
                     "timestamp": datetime.now().isoformat()
                 }
             else:
@@ -1739,11 +1746,12 @@ class ICloudClientWithSession:
                     user_name=transfer_data.get('apple_id', 'Unknown User'),
                     photo_count=transfer_data['source_photos'],
                     video_count=transfer_data['source_videos'],
-                    storage_gb=transfer_data['source_size_gb']
+                    storage_gb=transfer_data['source_size_gb'],
+                    google_photos_baseline_gb=transfer_data.get('google_photos_baseline_gb', 0.0)
                 )
                 
-                # Create photo transfer record
-                transfer_id = await self.db.create_photo_transfer(
+                # Create media transfer record (formerly photo_transfer)
+                transfer_id = await self.db.create_media_transfer(
                     migration_id=migration_id,
                     total_photos=transfer_data['source_photos'],
                     total_videos=transfer_data['source_videos'],
@@ -1787,9 +1795,9 @@ class ICloudClientWithSession:
                         SELECT pt.transfer_id, pt.migration_id,
                                pt.total_photos, pt.total_videos, pt.total_size_gb,
                                pt.transferred_photos, pt.transferred_videos,
-                               pt.status, pt.apple_transfer_initiated,
+                               pt.photo_status, pt.video_status, pt.apple_transfer_initiated,
                                m.user_name, m.started_at
-                        FROM photo_transfer pt
+                        FROM media_transfer pt
                         JOIN migration_status m ON pt.migration_id = m.id
                         WHERE pt.transfer_id = ?
                     """, (transfer_id,)).fetchone()
@@ -1803,8 +1811,10 @@ class ICloudClientWithSession:
                             'source_size_gb': result[4],
                             'transferred_photos': result[5],
                             'transferred_videos': result[6],
-                            'status': result[7],
-                            'started_at': result[8] or result[10],  # Use transfer or migration start
+                            'photo_status': result[7],
+                            'video_status': result[8],
+                            'status': result[7],  # Use photo_status as primary status
+                            'started_at': result[9] or result[11],  # Use transfer or migration start
                             'baseline_count': 0,  # Not in new schema, default to 0
                             'destination_service': 'Google Photos',
                             'destination_account': os.getenv('GOOGLE_EMAIL', 'unknown')

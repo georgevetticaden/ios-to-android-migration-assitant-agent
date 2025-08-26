@@ -117,6 +117,7 @@ class MigrationDatabase:
                               photo_count: int = 0,
                               video_count: int = 0,
                               storage_gb: float = 0,
+                              google_photos_baseline_gb: float = 0.0,
                               years_on_ios: int = None) -> str:
         """
         Create a new migration record.
@@ -153,12 +154,13 @@ class MigrationDatabase:
                 (id, user_name, source_device, target_device, 
                  photo_count, video_count, total_icloud_storage_gb,
                  icloud_photo_storage_gb, icloud_video_storage_gb,
-                 years_on_ios, started_at, current_phase)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'initialization')
+                 google_photos_baseline_gb, years_on_ios, started_at, current_phase)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'initialization')
             """, (migration_id, user_name, source_device, target_device,
                   photo_count, video_count, storage_gb,
                   storage_gb * 0.7,  # Estimate 70% for photos
                   storage_gb * 0.3,  # Estimate 30% for videos
+                  google_photos_baseline_gb,  # Google Photos baseline storage
                   years_on_ios, datetime.now()))
         
         logger.info(f"Created migration: {migration_id}")
