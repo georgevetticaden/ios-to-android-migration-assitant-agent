@@ -1,8 +1,34 @@
 #!/usr/bin/env python3.11
 """
-Test client with session persistence
-First run: Requires 2FA
-Subsequent runs: No 2FA needed (for ~7 days)
+Basic Authentication Test for iCloud Photo Status
+
+This test script validates the authentication flow for accessing iCloud photos with
+session persistence. It demonstrates the complete authentication workflow including
+2FA handling and session caching for subsequent runs.
+
+Key Features:
+- First run requires 2FA authentication
+- Sessions are persisted for ~7 days (no 2FA needed)
+- Supports force-fresh login with --fresh flag
+- Can clear saved sessions with --clear flag
+- Retrieves photo/video counts and storage usage
+
+Authentication Flow:
+1. Checks for existing valid session
+2. If no session, performs login with 2FA
+3. Saves session for future use
+4. Retrieves photo library statistics
+
+Usage:
+    python test_basic_auth.py          # Use saved session if available
+    python test_basic_auth.py --fresh  # Force fresh login (require 2FA)
+    python test_basic_auth.py --clear  # Clear saved session
+
+Environment Variables Required:
+    APPLE_ID: Apple ID email address
+    APPLE_PASSWORD: Apple ID password
+
+Session Storage: ~/.icloud_session/
 """
 
 import asyncio

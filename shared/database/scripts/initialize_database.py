@@ -1,7 +1,34 @@
 #!/usr/bin/env python3
 """
-Database initialization for DuckDB
-Uses direct DuckDB commands without schema complexity
+Database Initialization Script for iOS to Android Migration
+
+This script initializes the DuckDB database with the V2 schema designed for the 7-day
+iOS to Android migration demo flow. It creates all necessary tables, indexes, and views
+required by the migration-state MCP server and web-automation tools.
+
+Key Features:
+- Creates 7 tables WITHOUT foreign key constraints (DuckDB UPDATE workaround)
+- Creates 7 performance indexes
+- Creates 3 convenience views for querying
+- Backs up existing database before recreation
+- Validates schema after creation
+
+Schema Design:
+- Simplified from V1 (17 tables) to V2 (7 tables)
+- No schema prefixes (direct table names)
+- Email-based family coordination
+- Day-aware logic (photos visible Day 4, Venmo cards Day 5)
+
+Database Location: ~/.ios_android_migration/migration.db
+
+Usage:
+    python3 initialize_database.py
+    
+This should be run once during initial setup or when resetting the database.
+The migration-state MCP server will use this database for all operations.
+
+Author: iOS2Android Migration Team
+Version: 2.0 (Phase 2 Complete)
 """
 
 import sys
@@ -15,7 +42,40 @@ import shutil
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 def initialize_database():
-    """Initialize the database with simplified approach"""
+    """
+    Initialize the DuckDB database with V2 schema.
+    
+    This function performs the following operations:
+    1. Creates database directory if it doesn't exist
+    2. Backs up existing database (if present) with timestamp
+    3. Removes old database file
+    4. Creates fresh database with all tables, indexes, and views
+    5. Validates the schema was created correctly
+    
+    Tables Created (7):
+    - migration_status: Core migration tracking
+    - family_members: Family member details (NO FK to migration_status)
+    - photo_transfer: Photo/video transfer progress (NO FK)
+    - app_setup: App installation tracking (NO FK)
+    - family_app_adoption: Per-member app status (NO FK)
+    - daily_progress: Day-by-day snapshots (NO FK)
+    - venmo_setup: Teen card tracking (NO FK)
+    
+    Indexes Created (7):
+    - One index per table on the most commonly queried field
+    
+    Views Created (3):
+    - migration_summary: Overall migration status with joins
+    - family_app_status: Family app adoption matrix
+    - active_migration: Current active migration with details
+    
+    Returns:
+        bool: True if initialization successful, False otherwise
+        
+    Note:
+        Foreign keys are intentionally NOT created due to DuckDB UPDATE limitation.
+        Referential integrity is enforced at the application layer instead.
+    """
     
     # Database path
     db_path = Path('~/.ios_android_migration/migration.db').expanduser()

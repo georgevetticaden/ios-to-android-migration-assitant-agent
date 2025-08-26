@@ -1,8 +1,27 @@
 #!/usr/bin/env python3
 """
 Migration State MCP Server
-Thin wrapper around the existing migration_db.py to expose database operations as MCP tools
-Returns raw JSON for Claude to visualize
+
+A comprehensive MCP server that provides 16 tools for managing iOS to Android migration state.
+This server acts as a thin wrapper around the migration_db.py module, exposing database 
+operations as MCP tools that can be called from Claude Desktop.
+
+The server manages:
+- Migration lifecycle (initialization, progress tracking, completion)
+- Family member management and app adoption tracking
+- Photo/video transfer progress monitoring
+- Daily summaries and reporting
+- Event logging and statistics
+
+All tools return raw JSON for easy visualization and processing by Claude.
+
+Database: DuckDB at ~/.ios_android_migration/migration.db
+Tables: 7 (migration_status, family_members, photo_transfer, app_setup, 
+        family_app_adoption, daily_progress, venmo_setup)
+Foreign Keys: None (removed to work around DuckDB UPDATE limitations)
+
+Author: iOS2Android Migration Team
+Version: 2.0 (Phase 2 Complete)
 """
 
 import sys
@@ -227,7 +246,30 @@ async def list_tools() -> list[Tool]:
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-    """Execute database operations and return raw JSON"""
+    """
+    Execute database operations based on tool name and return JSON results.
+    
+    This is the main handler for all 16 MCP tools. Each tool performs specific
+    database operations and returns structured JSON data for Claude to process.
+    
+    Args:
+        name (str): The name of the tool to execute. Must be one of the 16 registered tools.
+        arguments (dict): Tool-specific arguments as defined in the tool's inputSchema.
+    
+    Returns:
+        list[TextContent]: A list containing a single TextContent object with the JSON result.
+    
+    Tool Categories:
+        - Status Tools: get_migration_status, get_migration_overview, get_daily_summary
+        - Update Tools: update_migration_progress, update_photo_progress, update_family_member_apps
+        - Management Tools: initialize_migration, add_family_member, start_photo_transfer
+        - Tracking Tools: activate_venmo_card, create_action_item
+        - Reporting Tools: generate_migration_report, get_statistics
+        - Utility Tools: get_pending_items, mark_item_complete, log_migration_event
+    
+    Raises:
+        Exception: Any database or processing errors are caught and returned as error JSON.
+    """
     
     try:
         result = {}
@@ -857,7 +899,21 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         )]
 
 async def main():
-    """Run the MCP server"""
+    """
+    Run the Migration State MCP server.
+    
+    This function initializes the database schemas and starts the MCP server
+    using stdio for communication with Claude Desktop. The server will run
+    continuously, handling tool requests from Claude.
+    
+    The server communicates via:
+    - Input: JSON-RPC messages from Claude via stdin
+    - Output: JSON-RPC responses to Claude via stdout
+    
+    Database initialization is performed on startup to ensure the schema
+    exists, though the actual schema setup should be done via
+    shared/database/scripts/initialize_database.py
+    """
     # Initialize database schemas on startup
     await db.initialize_schemas()
     

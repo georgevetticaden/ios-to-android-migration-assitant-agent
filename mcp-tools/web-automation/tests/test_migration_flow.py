@@ -1,8 +1,58 @@
 #!/usr/bin/env python3
 """
-Phase 3 Integrated Test
-Tests the complete photo migration flow using ONLY the Phase 3 MCP methods
-No direct database manipulation - everything through the proper API methods
+Phase 3 Integration Test - Complete Photo Migration Flow
+
+This test script validates the entire photo migration workflow from iCloud to 
+Google Photos using only the Phase 3 MCP methods. It demonstrates proper API
+usage without direct database manipulation, ensuring all state management goes
+through the designated MCP interfaces.
+
+Test Workflow:
+1. CHECK ICLOUD STATUS - Retrieve photo/video counts from iCloud
+2. INITIALIZE APIS - Set up Gmail, Database, and Google Dashboard clients
+3. CHECK EXISTING TRANSFERS - Query database for previous transfers
+4. START NEW TRANSFER - Initiate Apple to Google migration (interactive)
+5. CHECK TRANSFER PROGRESS - Monitor migration status
+6. CHECK FOR EMAILS - Look for Apple completion emails
+7. VERIFY TRANSFER COMPLETE - Validate final transfer state
+8. DATABASE SUMMARY - Review all transfer records
+
+Phase 3 MCP Methods Used:
+- check_icloud_status(): Get current photo library counts
+- start_transfer(): Initiate transfer with baseline establishment
+- check_transfer_progress(): Monitor ongoing transfer
+- check_completion_email(): Check for confirmation emails
+- verify_transfer_complete(): Validate transfer completion
+
+Key Features:
+- No direct database manipulation (all through MCP methods)
+- Automatic database integration and state persistence
+- Interactive prompts for destructive operations
+- Comprehensive error handling and logging
+- Browser session reuse for efficiency
+
+Prerequisites:
+- Apple ID and password in environment variables
+- Google account credentials configured
+- Database initialized with V2 schema
+- Browser automation dependencies installed
+
+Environment Variables Required:
+- APPLE_ID: Apple account email
+- APPLE_PASSWORD: Apple account password
+- GOOGLE_EMAIL: Google account email
+- GOOGLE_PASSWORD: Google account password
+
+Usage:
+    python test_migration_flow.py
+    
+    Follow interactive prompts to:
+    - Start new transfer (optional)
+    - Check progress (if transfer exists)
+    - Verify completion (when ready)
+
+Note: Browser remains open after test for manual inspection.
+Press Enter to close browser and exit when done.
 """
 import asyncio
 import os

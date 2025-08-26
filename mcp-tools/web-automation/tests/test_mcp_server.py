@@ -1,7 +1,44 @@
 #!/usr/bin/env python3
 """
-Test MCP Server - Tests all 5 MCP tools via actual MCP protocol
-Simulates how Claude Desktop would interact with the tools
+MCP Server Integration Test
+
+This test script validates all 5 MCP (Model Context Protocol) tools provided by
+the photo migration server. It simulates how Claude Desktop interacts with these
+tools through the MCP protocol, ensuring proper functionality and integration.
+
+MCP Tools Tested:
+1. check_icloud_status - Retrieves photo/video counts from iCloud
+2. start_photo_transfer - Initiates Apple to Google photo transfer
+3. check_transfer_progress - Monitors ongoing transfer status
+4. verify_transfer_complete - Validates transfer completion
+5. check_completion_email - Checks for Apple confirmation emails
+
+Test Features:
+- Interactive menu for testing individual tools
+- Full test sequence that runs all tools in order
+- Simulates actual MCP client-server communication
+- Validates tool parameters and response formats
+- Tests with real or mock credentials based on environment
+
+Test Modes:
+1. Interactive Menu: Test individual tools on demand
+2. Full Sequence: Run complete transfer workflow test
+
+Environment Variables:
+- APPLE_ID: Apple ID for authentication
+- APPLE_PASSWORD: Password for Apple ID
+- GOOGLE_EMAIL: Google account email
+- GOOGLE_PASSWORD: Google account password
+
+Usage:
+    python test_mcp_server.py
+    
+    Then select:
+    1. Interactive menu - Test tools individually
+    2. Full test sequence - Run complete workflow
+
+Note: This test creates an actual MCP server instance and calls tools
+through the proper MCP protocol interface, not direct function calls.
 """
 import asyncio
 import json
