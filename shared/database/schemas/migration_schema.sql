@@ -37,7 +37,7 @@ CREATE TABLE migration_status (
 -- 2. Family members table
 CREATE TABLE family_members (
     id INTEGER PRIMARY KEY,
-    migration_id TEXT REFERENCES migration.migration_status(id),
+    migration_id TEXT NOT NULL,
     name TEXT NOT NULL,
     role TEXT, -- 'spouse', 'child'
     age INTEGER,
@@ -50,7 +50,7 @@ CREATE TABLE family_members (
 -- 3. Photo transfer tracking
 CREATE TABLE photo_transfer (
     transfer_id TEXT PRIMARY KEY DEFAULT ('TRF-' || strftime(CURRENT_TIMESTAMP, '%Y%m%d-%H%M%S')),
-    migration_id TEXT REFERENCES migration.migration_status(id),
+    migration_id TEXT NOT NULL,
     total_photos INTEGER,
     total_videos INTEGER,
     total_size_gb DECIMAL(10,2),
@@ -70,7 +70,7 @@ CREATE TABLE photo_transfer (
 -- 4. App setup tracking (WhatsApp, Google Maps, Venmo)
 CREATE TABLE app_setup (
     id INTEGER PRIMARY KEY,
-    migration_id TEXT REFERENCES migration.migration_status(id),
+    migration_id TEXT NOT NULL,
     app_name TEXT NOT NULL,
     category TEXT, -- 'messaging', 'location', 'payment'
     setup_status TEXT DEFAULT 'pending',
@@ -89,7 +89,7 @@ CREATE TABLE app_setup (
 -- 5. Family member app adoption
 CREATE TABLE family_app_adoption (
     id INTEGER PRIMARY KEY,
-    family_member_id INTEGER REFERENCES migration.family_members(id),
+    family_member_id INTEGER NOT NULL,
     app_name TEXT,
     status TEXT DEFAULT 'not_started',
     invitation_sent_at TIMESTAMP,
@@ -104,7 +104,7 @@ CREATE TABLE family_app_adoption (
 -- 6. Daily progress snapshots for demo timeline
 CREATE TABLE daily_progress (
     id INTEGER PRIMARY KEY,
-    migration_id TEXT REFERENCES migration.migration_status(id),
+    migration_id TEXT NOT NULL,
     day_number INTEGER NOT NULL,
     date DATE DEFAULT CURRENT_DATE,
     photos_transferred INTEGER,
@@ -121,8 +121,8 @@ CREATE TABLE daily_progress (
 -- 7. Venmo teen account setup (specific to demo)
 CREATE TABLE venmo_setup (
     id INTEGER PRIMARY KEY,
-    migration_id TEXT REFERENCES migration.migration_status(id),
-    family_member_id INTEGER REFERENCES migration.family_members(id),
+    migration_id TEXT NOT NULL,
+    family_member_id INTEGER NOT NULL,
     needs_teen_account BOOLEAN DEFAULT false,
     account_created_at TIMESTAMP,
     card_ordered_at TIMESTAMP,

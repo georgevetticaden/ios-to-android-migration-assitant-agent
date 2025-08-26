@@ -64,7 +64,8 @@ class MigrationDatabase:
                               target_device: str = 'Galaxy Z Fold 7',
                               photo_count: int = 0,
                               video_count: int = 0,
-                              storage_gb: float = 0) -> str:
+                              storage_gb: float = 0,
+                              years_on_ios: int = None) -> str:
         """Create a new migration record"""
         migration_id = f"MIG-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         
@@ -72,10 +73,10 @@ class MigrationDatabase:
             conn.execute("""
                 INSERT INTO migration_status 
                 (id, user_name, source_device, target_device, 
-                 photo_count, video_count, storage_gb, started_at, current_phase)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'initialization')
+                 photo_count, video_count, storage_gb, years_on_ios, started_at, current_phase)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'initialization')
             """, (migration_id, user_name, source_device, target_device,
-                  photo_count, video_count, storage_gb, datetime.now()))
+                  photo_count, video_count, storage_gb, years_on_ios, datetime.now()))
         
         logger.info(f"Created migration: {migration_id}")
         return migration_id
@@ -126,6 +127,7 @@ class MigrationDatabase:
             
             values.append(migration_id)
             
+            # Execute the UPDATE
             conn.execute(f"""
                 UPDATE migration_status 
                 SET {', '.join(updates)}
@@ -259,12 +261,23 @@ class MigrationDatabase:
         await self.update_migration_status(migration_id, status)
         
         if any([photos_transferred, videos_transferred, total_size_gb]):
+            # Map migration status to photo_transfer status
+            photo_status = None
+            if status == 'photo_transfer':
+                photo_status = 'in_progress'
+            elif status == 'completed':
+                photo_status = 'completed'
+            elif status in ['initialization', 'family_setup', 'validation']:
+                photo_status = 'pending'
+            else:
+                photo_status = 'in_progress'
+            
             await self.update_photo_progress(
                 migration_id,
                 transferred_photos=photos_transferred,
                 transferred_videos=videos_transferred,
                 transferred_size_gb=total_size_gb,
-                status='in_progress' if status == 'in_progress' else status
+                status=photo_status
             )
     
     async def get_pending_items(self, category: str) -> List[Dict[str, Any]]:

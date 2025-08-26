@@ -166,7 +166,7 @@ python3 shared/database/tests/test_database.py
 ```bash
 # Run all tests to verify setup
 python3 shared/database/tests/test_database.py
-python3 mcp-tools/migration-state/tests/test_server.py
+python3 mcp-tools/migration-state/tests/test_migration_state.py
 python3 mcp-tools/web-automation/tests/test_icloud_db.py
 
 # Check migration status
