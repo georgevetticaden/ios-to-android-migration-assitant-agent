@@ -16,13 +16,14 @@ Key Features:
 Database Location: ~/.ios_android_migration/migration.db
 
 Tables:
-- migration_status: Core migration tracking
+- migration_status: Core migration tracking with storage baselines
 - family_members: Family member details
-- photo_transfer: Photo/video transfer progress
+- media_transfer: Photo AND video transfer progress (formerly photo_transfer)
 - app_setup: App installation tracking
 - family_app_adoption: Per-member app status
-- daily_progress: Day-by-day snapshots
+- daily_progress: Day-by-day snapshots with video metrics
 - venmo_setup: Teen card tracking
+- storage_snapshots: Google One storage tracking for progress monitoring
 
 Usage:
     db = MigrationDatabase()
@@ -150,10 +151,15 @@ class MigrationDatabase:
             conn.execute("""
                 INSERT INTO migration_status 
                 (id, user_name, source_device, target_device, 
-                 photo_count, video_count, storage_gb, years_on_ios, started_at, current_phase)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'initialization')
+                 photo_count, video_count, total_icloud_storage_gb,
+                 icloud_photo_storage_gb, icloud_video_storage_gb,
+                 years_on_ios, started_at, current_phase)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'initialization')
             """, (migration_id, user_name, source_device, target_device,
-                  photo_count, video_count, storage_gb, years_on_ios, datetime.now()))
+                  photo_count, video_count, storage_gb,
+                  storage_gb * 0.7,  # Estimate 70% for photos
+                  storage_gb * 0.3,  # Estimate 30% for videos
+                  years_on_ios, datetime.now()))
         
         logger.info(f"Created migration: {migration_id}")
         return migration_id
@@ -176,25 +182,35 @@ class MigrationDatabase:
         with self.get_connection() as conn:
             result = conn.execute("""
                 SELECT m.*, 
-                       pt.status as photo_transfer_status,
-                       pt.transferred_photos,
-                       pt.total_photos,
-                       pt.transferred_size_gb,
-                       pt.total_size_gb
+                       mt.photo_status,
+                       mt.video_status,
+                       mt.overall_status,
+                       mt.transferred_photos,
+                       mt.transferred_videos,
+                       mt.total_photos,
+                       mt.total_videos,
+                       mt.transferred_size_gb,
+                       mt.total_size_gb
                 FROM migration_status m
-                LEFT JOIN photo_transfer pt ON m.id = pt.migration_id
+                LEFT JOIN media_transfer mt ON m.id = mt.migration_id
                 WHERE m.completed_at IS NULL
                 ORDER BY m.started_at DESC
                 LIMIT 1
             """).fetchone()
             
             if result:
+                # Note: migration_status has more columns now with storage baselines
                 columns = [
                     'id', 'user_name', 'source_device', 'target_device',
-                    'years_on_ios', 'photo_count', 'video_count', 'storage_gb',
-                    'family_size', 'started_at', 'current_phase', 'overall_progress',
-                    'completed_at', 'photo_transfer_status', 'transferred_photos',
-                    'total_photos', 'transferred_size_gb', 'total_size_gb'
+                    'years_on_ios', 'photo_count', 'video_count', 'total_icloud_storage_gb',
+                    'icloud_photo_storage_gb', 'icloud_video_storage_gb', 'album_count',
+                    'google_storage_total_gb', 'google_photos_baseline_gb', 'google_drive_baseline_gb',
+                    'gmail_baseline_gb', 'family_size', 'started_at', 'current_phase', 
+                    'overall_progress', 'completed_at',
+                    'photo_status', 'video_status', 'overall_status',
+                    'transferred_photos', 'transferred_videos',
+                    'total_photos', 'total_videos',
+                    'transferred_size_gb', 'total_size_gb'
                 ]
                 return dict(zip(columns, result))
             return None
@@ -258,31 +274,40 @@ class MigrationDatabase:
                 return dict(zip(columns, result))
             return None
     
-    # ===== PHOTO TRANSFER OPERATIONS =====
+    # ===== MEDIA TRANSFER OPERATIONS =====
     
-    async def create_photo_transfer(self, migration_id: str, 
+    async def create_media_transfer(self, migration_id: str, 
                                    total_photos: int, total_videos: int,
                                    total_size_gb: float) -> str:
-        """Create a photo transfer record"""
+        """Create a media transfer record for both photos and videos"""
         transfer_id = f"TRF-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         
         with self.get_connection() as conn:
             conn.execute("""
-                INSERT INTO photo_transfer
+                INSERT INTO media_transfer
                 (transfer_id, migration_id, total_photos, total_videos, 
-                 total_size_gb, status, photos_visible_day)
-                VALUES (?, ?, ?, ?, ?, 'pending', 4)
+                 total_size_gb, photo_status, video_status, overall_status, photos_visible_day)
+                VALUES (?, ?, ?, ?, ?, 'pending', 'pending', 'pending', 4)
             """, (transfer_id, migration_id, total_photos, total_videos, total_size_gb))
         
-        logger.info(f"Created photo transfer: {transfer_id}")
+        logger.info(f"Created media transfer: {transfer_id}")
         return transfer_id
     
-    async def update_photo_progress(self, migration_id: str,
+    # Backward compatibility alias
+    async def create_photo_transfer(self, migration_id: str, 
+                                   total_photos: int, total_videos: int,
+                                   total_size_gb: float) -> str:
+        """Backward compatibility wrapper for create_media_transfer"""
+        return await self.create_media_transfer(migration_id, total_photos, total_videos, total_size_gb)
+    
+    async def update_media_progress(self, migration_id: str,
                                    transferred_photos: int = None,
                                    transferred_videos: int = None,
                                    transferred_size_gb: float = None,
-                                   status: str = None):
-        """Update photo transfer progress"""
+                                   photo_status: str = None,
+                                   video_status: str = None,
+                                   overall_status: str = None):
+        """Update media transfer progress for photos and videos separately"""
         with self.get_connection() as conn:
             updates = []
             values = []
@@ -299,23 +324,47 @@ class MigrationDatabase:
                 updates.append('transferred_size_gb = ?')
                 values.append(transferred_size_gb)
             
-            if status:
-                updates.append('status = ?')
-                values.append(status)
+            if photo_status:
+                updates.append('photo_status = ?')
+                values.append(photo_status)
             
-            updates.append('last_checked_at = ?')
+            if video_status:
+                updates.append('video_status = ?')
+                values.append(video_status)
+                
+            if overall_status:
+                updates.append('overall_status = ?')
+                values.append(overall_status)
+            
+            updates.append('last_progress_check = ?')
             values.append(datetime.now())
             
             values.append(migration_id)
             
             if updates:
                 conn.execute(f"""
-                    UPDATE photo_transfer 
+                    UPDATE media_transfer 
                     SET {', '.join(updates)}
                     WHERE migration_id = ?
                 """, values)
         
-        logger.info(f"Updated photo progress for migration: {migration_id}")
+        logger.info(f"Updated media progress for migration: {migration_id}")
+    
+    # Backward compatibility alias
+    async def update_photo_progress(self, migration_id: str,
+                                   transferred_photos: int = None,
+                                   transferred_videos: int = None,
+                                   transferred_size_gb: float = None,
+                                   status: str = None):
+        """Backward compatibility wrapper for update_media_progress"""
+        # Map old status to new separate statuses
+        photo_status = status
+        video_status = status
+        overall_status = status
+        return await self.update_media_progress(
+            migration_id, transferred_photos, transferred_videos, 
+            transferred_size_gb, photo_status, video_status, overall_status
+        )
     
     # ===== FAMILY OPERATIONS =====
     
@@ -390,23 +439,25 @@ class MigrationDatabase:
         await self.update_migration_status(migration_id, status)
         
         if any([photos_transferred, videos_transferred, total_size_gb]):
-            # Map migration status to photo_transfer status
-            photo_status = None
-            if status == 'photo_transfer':
-                photo_status = 'in_progress'
+            # Map migration status to media_transfer statuses
+            media_status = None
+            if status == 'media_transfer':
+                media_status = 'in_progress'
             elif status == 'completed':
-                photo_status = 'completed'
+                media_status = 'completed'
             elif status in ['initialization', 'family_setup', 'validation']:
-                photo_status = 'pending'
+                media_status = 'pending'
             else:
-                photo_status = 'in_progress'
+                media_status = 'in_progress'
             
-            await self.update_photo_progress(
+            await self.update_media_progress(
                 migration_id,
                 transferred_photos=photos_transferred,
                 transferred_videos=videos_transferred,
                 transferred_size_gb=total_size_gb,
-                status=photo_status
+                photo_status=media_status,
+                video_status=media_status,
+                overall_status=media_status
             )
     
     async def get_pending_items(self, category: str) -> List[Dict[str, Any]]:
@@ -417,16 +468,20 @@ class MigrationDatabase:
         if category == 'photos':
             with self.get_connection() as conn:
                 result = conn.execute("""
-                    SELECT * FROM photo_transfer 
-                    WHERE status != 'completed'
+                    SELECT * FROM media_transfer 
+                    WHERE overall_status != 'completed'
                 """).fetchall()
                 
                 for row in result:
                     items.append({
                         'type': 'photos',
-                        'status': row[8],  # status field
-                        'total': row[2],   # total_photos
-                        'transferred': row[5]  # transferred_photos
+                        'photo_status': row[7],  # photo_status field
+                        'video_status': row[8],  # video_status field
+                        'overall_status': row[9],  # overall_status field
+                        'total_photos': row[4],   # total_photos
+                        'total_videos': row[5],   # total_videos
+                        'transferred_photos': row[10],  # transferred_photos
+                        'transferred_videos': row[11]   # transferred_videos
                     })
         
         return items

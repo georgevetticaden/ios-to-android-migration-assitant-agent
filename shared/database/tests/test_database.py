@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Test script for simplified V2 database (no schema prefix)
-Validates tables, constraints, and basic operations
+Test script for iOS to Android Migration Database Schema v2.0
+Validates video support, storage tracking, and all new features
 """
 
 import sys
@@ -53,10 +53,11 @@ class DatabaseTester:
             return False
     
     def test_all_tables_exist(self):
-        """Test that all 7 tables exist"""
+        """Test that all 8 tables exist (including new storage_snapshots)"""
         expected = [
-            'migration_status', 'family_members', 'photo_transfer',
-            'app_setup', 'family_app_adoption', 'daily_progress', 'venmo_setup'
+            'migration_status', 'family_members', 'media_transfer',
+            'app_setup', 'family_app_adoption', 'daily_progress', 'venmo_setup',
+            'storage_snapshots'
         ]
         
         tables = self.conn.execute("""
@@ -75,13 +76,15 @@ class DatabaseTester:
         return True
     
     def test_migration_initialization(self):
-        """Test creating a new migration"""
+        """Test creating a new migration with video and storage support"""
         try:
-            # Create a migration
+            # Create a migration with all new fields
             self.conn.execute("""
                 INSERT INTO migration_status 
-                (user_name, years_on_ios, photo_count, video_count, storage_gb, family_size)
-                VALUES ('George', 18, 58460, 2418, 383.0, 0)
+                (user_name, years_on_ios, photo_count, video_count, 
+                 total_icloud_storage_gb, icloud_photo_storage_gb, icloud_video_storage_gb,
+                 google_photos_baseline_gb, family_size)
+                VALUES ('George', 18, 60238, 2418, 383.0, 268.1, 114.9, 13.88, 5)
             """)
             
             # Get the created migration
@@ -154,52 +157,61 @@ class DatabaseTester:
                 pass
             return False
     
-    def test_photo_transfer(self):
-        """Test photo transfer tracking"""
+    def test_media_transfer(self):
+        """Test media transfer tracking with separate photo/video support"""
         try:
             # Create migration
             self.conn.execute("""
-                INSERT INTO migration_status (id, user_name, photo_count)
-                VALUES ('TEST-MIG-002', 'TestUser', 58460)
+                INSERT INTO migration_status (id, user_name, photo_count, video_count)
+                VALUES ('TEST-MIG-002', 'TestUser', 60238, 2418)
             """)
             
-            # Create photo transfer
+            # Create media transfer with separate IDs
             self.conn.execute("""
-                INSERT INTO photo_transfer 
-                (migration_id, total_photos, total_videos, total_size_gb, status, photos_visible_day)
-                VALUES ('TEST-MIG-002', 58460, 2418, 383.0, 'initiated', 4)
+                INSERT INTO media_transfer 
+                (migration_id, photo_transfer_id, video_transfer_id,
+                 total_photos, total_videos, total_size_gb, 
+                 photo_status, video_status, overall_status, photos_visible_day)
+                VALUES ('TEST-MIG-002', 'APL-PHOTO-123', 'APL-VIDEO-456',
+                        60238, 2418, 383.0, 
+                        'initiated', 'initiated', 'initiated', 4)
             """)
             
-            # Update progress
+            # Update progress with videos
             self.conn.execute("""
-                UPDATE photo_transfer 
-                SET transferred_photos = 16387,
+                UPDATE media_transfer 
+                SET transferred_photos = 16369,
+                    transferred_videos = 847,
                     transferred_size_gb = 107.0,
-                    status = 'in_progress'
+                    photo_status = 'in_progress',
+                    video_status = 'in_progress',
+                    overall_status = 'in_progress'
                 WHERE migration_id = 'TEST-MIG-002'
             """)
             
-            # Verify
+            # Verify both photos and videos
             result = self.conn.execute("""
-                SELECT transferred_photos, status 
-                FROM photo_transfer 
+                SELECT transferred_photos, transferred_videos, 
+                       photo_status, video_status 
+                FROM media_transfer 
                 WHERE migration_id = 'TEST-MIG-002'
             """).fetchone()
             
             # Clean up
-            self.conn.execute("DELETE FROM photo_transfer WHERE migration_id = 'TEST-MIG-002'")
+            self.conn.execute("DELETE FROM media_transfer WHERE migration_id = 'TEST-MIG-002'")
             self.conn.execute("DELETE FROM migration_status WHERE id = 'TEST-MIG-002'")
             
-            success = result[0] == 16387 and result[1] == 'in_progress'
+            success = (result[0] == 16369 and result[1] == 847 and 
+                      result[2] == 'in_progress' and result[3] == 'in_progress')
             if success:
-                print(f"    Photo progress updated: {result[0]} photos")
+                print(f"    Media progress: {result[0]} photos, {result[1]} videos")
             return success
             
         except Exception as e:
             print(f"    Error: {e}")
             # Try cleanup anyway
             try:
-                self.conn.execute("DELETE FROM photo_transfer WHERE migration_id = 'TEST-MIG-002'")
+                self.conn.execute("DELETE FROM media_transfer WHERE migration_id = 'TEST-MIG-002'")
                 self.conn.execute("DELETE FROM migration_status WHERE id = 'TEST-MIG-002'")
             except:
                 pass
@@ -315,6 +327,59 @@ class DatabaseTester:
                 self.conn.execute("DELETE FROM family_app_adoption WHERE family_member_id = 9999")
                 self.conn.execute("DELETE FROM family_members WHERE id = 9999")
                 self.conn.execute("DELETE FROM migration_status WHERE id = 'TEST-MIG-004'")
+            except:
+                pass
+            return False
+    
+    def test_storage_snapshots(self):
+        """Test storage snapshots for progress tracking"""
+        try:
+            # Create migration with baseline
+            self.conn.execute("""
+                INSERT INTO migration_status (id, user_name, google_photos_baseline_gb)
+                VALUES ('TEST-MIG-STORAGE', 'TestUser', 13.88)
+            """)
+            
+            # Add baseline snapshot
+            self.conn.execute("""
+                INSERT INTO storage_snapshots 
+                (migration_id, day_number, google_photos_gb, google_drive_gb, gmail_gb,
+                 total_used_gb, storage_growth_gb, percent_complete, is_baseline)
+                VALUES ('TEST-MIG-STORAGE', 1, 13.88, 52.52, 33.26, 
+                        99.75, 0.0, 0.0, true)
+            """)
+            
+            # Add Day 4 progress snapshot
+            self.conn.execute("""
+                INSERT INTO storage_snapshots 
+                (migration_id, day_number, google_photos_gb, storage_growth_gb, 
+                 percent_complete, estimated_photos_transferred, estimated_videos_transferred)
+                VALUES ('TEST-MIG-STORAGE', 4, 120.88, 107.0, 
+                        28.0, 16369, 847)
+            """)
+            
+            # Verify progress
+            result = self.conn.execute("""
+                SELECT google_photos_gb, storage_growth_gb, estimated_photos_transferred 
+                FROM storage_snapshots 
+                WHERE migration_id = 'TEST-MIG-STORAGE' AND day_number = 4
+            """).fetchone()
+            
+            # Clean up
+            self.conn.execute("DELETE FROM storage_snapshots WHERE migration_id = 'TEST-MIG-STORAGE'")
+            self.conn.execute("DELETE FROM migration_status WHERE id = 'TEST-MIG-STORAGE'")
+            
+            success = (abs(result[0] - 120.88) < 0.01 and abs(result[1] - 107.0) < 0.01 and result[2] == 16369)
+            if success:
+                print(f"    Storage tracking: {result[1]}GB growth, {result[2]} photos estimated")
+            return success
+            
+        except Exception as e:
+            print(f"    Error: {e}")
+            # Try cleanup
+            try:
+                self.conn.execute("DELETE FROM storage_snapshots WHERE migration_id = 'TEST-MIG-STORAGE'")
+                self.conn.execute("DELETE FROM migration_status WHERE id = 'TEST-MIG-STORAGE'")
             except:
                 pass
             return False
@@ -436,16 +501,21 @@ class DatabaseTester:
             except:
                 print("    ✓ CHECK constraint working (invalid phase rejected)")
             
-            # Test foreign key constraint
+            # Test foreign key constraint (intentionally disabled for DuckDB)
+            # Foreign keys are removed from schema to allow UPDATE operations
+            # due to DuckDB limitation. This is expected behavior.
             try:
+                # Create a family member with non-existent migration_id
                 self.conn.execute("""
-                    INSERT INTO family_members (migration_id, name, email)
-                    VALUES ('NONEXISTENT', 'Test', 'test@test.com')
+                    INSERT INTO family_members (id, migration_id, name, email)
+                    VALUES (99999, 'NONEXISTENT', 'Test', 'test@test.com')
                 """)
-                print("    ❌ Foreign key constraint not working")
+                # This SHOULD succeed since we removed foreign keys
+                self.conn.execute("DELETE FROM family_members WHERE id = 99999")
+                print("    ✓ Foreign keys disabled (expected for DuckDB compatibility)")
+            except Exception as e:
+                print(f"    ❌ Unexpected behavior with foreign keys: {e}")
                 return False
-            except:
-                print("    ✓ Foreign key constraint working")
             
             return True
             
@@ -466,7 +536,8 @@ class DatabaseTester:
         self.test("All tables exist", self.test_all_tables_exist)
         self.test("Migration initialization", self.test_migration_initialization)
         self.test("Family members with emails", self.test_family_members)
-        self.test("Photo transfer tracking", self.test_photo_transfer)
+        self.test("Media transfer tracking (photos + videos)", self.test_media_transfer)
+        self.test("Storage snapshots tracking", self.test_storage_snapshots)
         self.test("App setup tracking", self.test_app_setup)
         self.test("Family app adoption", self.test_family_app_adoption)
         self.test("Venmo teen setup", self.test_venmo_teen_setup)

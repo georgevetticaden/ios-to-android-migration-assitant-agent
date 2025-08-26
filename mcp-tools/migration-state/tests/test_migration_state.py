@@ -114,7 +114,7 @@ async def test_migration_state_tools():
         )
         
         # Create photo transfer record
-        transfer_id = await db.create_photo_transfer(
+        transfer_id = await db.create_media_transfer(
             migration_id=migration_id,
             total_photos=58460,
             total_videos=2418,
@@ -195,20 +195,22 @@ async def test_migration_state_tools():
         print("PASS: All 4 family members added")
     test_results.append(("add_family_member", family_test_passed))
     
-    # Test 9: start_photo_transfer (Day 1)
+    # Test 9: start_media_transfer (Day 1)
     print("\n📸 Test 9: Start Photo Transfer (Day 1)...")
     try:
-        # Check if photo_transfer already exists
+        # Check if media_transfer already exists
         with db.get_connection() as conn:
             existing = conn.execute("""
-                SELECT transfer_id FROM photo_transfer WHERE migration_id = ?
+                SELECT transfer_id FROM media_transfer WHERE migration_id = ?
             """, (migration_id,)).fetchone()
             
             if existing:
                 # Already exists, just update it
                 conn.execute("""
-                    UPDATE photo_transfer
-                    SET status = 'initiated',
+                    UPDATE media_transfer
+                    SET photo_status = 'initiated',
+                        video_status = 'initiated',
+                        overall_status = 'initiated',
                         apple_transfer_initiated = ?,
                         photos_visible_day = 4,
                         estimated_completion_day = 7
@@ -221,19 +223,20 @@ async def test_migration_state_tools():
                 transfer_id = f"TRF-{now.strftime('%Y%m%d-%H%M%S')}-{now.microsecond//1000:03d}"
                 
                 conn.execute("""
-                    INSERT INTO photo_transfer (
+                    INSERT INTO media_transfer (
                         transfer_id, migration_id, 
                         total_photos, total_videos, total_size_gb,
-                        status, apple_transfer_initiated,
+                        photo_status, video_status, overall_status,
+                        apple_transfer_initiated,
                         photos_visible_day, estimated_completion_day
-                    ) VALUES (?, ?, ?, ?, ?, 'initiated', ?, 4, 7)
+                    ) VALUES (?, ?, ?, ?, ?, 'initiated', 'initiated', 'initiated', ?, 4, 7)
                 """, (transfer_id, migration_id, 58460, 2418, 383, now))
         
-        print("PASS: Photo transfer started")
-        test_results.append(("start_photo_transfer", True))
+        print("PASS: Media transfer started")
+        test_results.append(("start_media_transfer", True))
     except Exception as e:
-        print(f"❌ FAIL: Start photo transfer - {e}")
-        test_results.append(("start_photo_transfer", False))
+        print(f"❌ FAIL: Start media transfer - {e}")
+        test_results.append(("start_media_transfer", False))
     
     # Test 10: update_family_member_apps (Day 1/3)
     print("\n📱 Test 10: Update Family Member Apps (Day 1/3)...")
@@ -267,7 +270,7 @@ async def test_migration_state_tools():
     try:
         await db.update_migration_progress(
             migration_id=migration_id,
-            status="photo_transfer",
+            status="media_transfer",
             photos_transferred=5000,
             videos_transferred=200,
             total_size_gb=30.0
@@ -336,11 +339,11 @@ async def test_migration_state_tools():
         with db.get_connection() as conn:
             stats_result = conn.execute("""
                 SELECT 
-                    pt.transferred_photos, pt.total_photos, pt.status as photo_status,
+                    mt.transferred_photos, mt.total_photos, mt.photo_status,
                     (SELECT COUNT(*) FROM family_app_adoption WHERE app_name = 'WhatsApp' AND status = 'configured') as whatsapp_configured,
                     (SELECT COUNT(*) FROM family_members WHERE migration_id = m.id) as total_family
                 FROM migration_status m
-                LEFT JOIN photo_transfer pt ON m.id = pt.migration_id
+                LEFT JOIN media_transfer mt ON m.id = mt.migration_id
                 WHERE m.id = ?
             """, (migration_id,)).fetchone()
             
@@ -410,14 +413,14 @@ async def test_migration_state_tools():
             report_result = conn.execute("""
                 SELECT 
                     m.user_name, m.years_on_ios,
-                    pt.total_photos, pt.total_videos, pt.total_size_gb,
+                    mt.total_photos, mt.total_videos, mt.total_size_gb,
                     COUNT(DISTINCT fm.id) as family_members
                 FROM migration_status m
-                JOIN photo_transfer pt ON m.id = pt.migration_id
+                JOIN media_transfer mt ON m.id = mt.migration_id
                 LEFT JOIN family_members fm ON m.id = fm.migration_id
                 WHERE m.id = ?
                 GROUP BY m.id, m.user_name, m.years_on_ios,
-                         pt.total_photos, pt.total_videos, pt.total_size_gb
+                         mt.total_photos, mt.total_videos, mt.total_size_gb
             """, (migration_id,)).fetchone()
             
             if report_result:
@@ -481,7 +484,7 @@ async def test_migration_state_tools():
             # Then app setup
             conn.execute("DELETE FROM app_setup WHERE migration_id = ?", (migration_id,))
             # Then photo transfer
-            conn.execute("DELETE FROM photo_transfer WHERE migration_id = ?", (migration_id,))
+            conn.execute("DELETE FROM media_transfer WHERE migration_id = ?", (migration_id,))
             # Finally migration status
             conn.execute("DELETE FROM migration_status WHERE id = ?", (migration_id,))
             print("✅ Test data cleaned up")

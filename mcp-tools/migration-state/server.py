@@ -23,8 +23,8 @@ Tool Categories:
 All tools return raw JSON optimized for React visualization and Claude processing.
 
 Database: DuckDB at ~/.ios_android_migration/migration.db
-Tables: 7 (migration_status, family_members, photo_transfer, app_setup, 
-        family_app_adoption, daily_progress, venmo_setup)
+Tables: 8 (migration_status, family_members, media_transfer, app_setup, 
+        family_app_adoption, daily_progress, venmo_setup, storage_snapshots)
 
 Author: iOS2Android Migration Team
 Version: 2.1 (Enhanced Tool Descriptions for 7-Day Workflow)
@@ -65,12 +65,12 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="update_migration_progress",
-            description="Update overall migration status and phase progression. Use this to advance through phases: initialization → photo_transfer → family_setup → validation → completed. Updates database state when major milestones are reached (e.g., photo transfer started, family apps configured, migration completed).",
+            description="Update overall migration status and phase progression. Use this to advance through phases: initialization → media_transfer → family_setup → validation → completed. Updates database state when major milestones are reached (e.g., media transfer started, family apps configured, migration completed).",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "migration_id": {"type": "string", "description": "Migration ID to update"},
-                    "status": {"type": "string", "enum": ["initialization", "photo_transfer", "family_setup", "validation", "completed"], "description": "New migration phase"},
+                    "status": {"type": "string", "enum": ["initialization", "media_transfer", "family_setup", "validation", "completed"], "description": "New migration phase"},
                     "photos_transferred": {"type": "integer", "description": "Optional: Number of photos transferred so far"},
                     "videos_transferred": {"type": "integer", "description": "Optional: Number of videos transferred so far"},
                     "total_size_gb": {"type": "number", "description": "Optional: Total size transferred in GB"}
@@ -248,6 +248,30 @@ async def list_tools() -> list[Tool]:
                     "format": {"type": "string", "enum": ["summary", "detailed"], "default": "summary", "description": "Level of detail in the report"}
                 }
             }
+        ),
+        Tool(
+            name="record_storage_snapshot",
+            description="Record Google One storage metrics for progress tracking. Use when checking Google One storage page to calculate actual transfer progress based on storage growth. Compares to baseline to determine percentage complete.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "google_photos_gb": {"type": "number", "description": "Current Google Photos storage in GB"},
+                    "google_drive_gb": {"type": "number", "description": "Current Google Drive storage in GB"},
+                    "gmail_gb": {"type": "number", "description": "Current Gmail storage in GB"},
+                    "day_number": {"type": "integer", "description": "Which day of migration (1-7)"},
+                    "is_baseline": {"type": "boolean", "default": False, "description": "True if this is the initial baseline before transfer"}
+                },
+                "required": ["google_photos_gb", "day_number"]
+            }
+        ),
+        Tool(
+            name="get_storage_progress",
+            description="Calculate transfer progress based on storage growth. Returns percentage complete by comparing current Google One storage to baseline and expected total. More accurate than Apple's estimates.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "description": "No parameters needed - calculates from latest snapshot"
+            }
         )
     ]
 
@@ -358,8 +382,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 years_on_ios=arguments.get("years_on_ios", 18)
             )
             
-            # Create photo transfer record
-            transfer_id = await db.create_photo_transfer(
+            # Create media transfer record
+            transfer_id = await db.create_media_transfer(
                 migration_id=migration_id,
                 total_photos=arguments["photo_count"],
                 total_videos=arguments.get("video_count", 0),
@@ -449,16 +473,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             else:
                 # Create or update photo transfer status
                 with db.get_connection() as conn:
-                    # Check if photo_transfer record exists
+                    # Check if media_transfer record exists
                     existing = conn.execute("""
-                        SELECT transfer_id FROM photo_transfer WHERE migration_id = ?
+                        SELECT transfer_id FROM media_transfer WHERE migration_id = ?
                     """, (active["id"],)).fetchone()
                     
                     if existing:
                         # Update existing record
                         conn.execute("""
-                            UPDATE photo_transfer
-                            SET status = 'initiated',
+                            UPDATE media_transfer
+                            SET photo_status = 'initiated',
+                                video_status = 'initiated',
+                                overall_status = 'initiated',
                                 apple_transfer_initiated = ?,
                                 photos_visible_day = 4,
                                 estimated_completion_day = 7
@@ -468,12 +494,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         # Create new record with proper transfer_id
                         transfer_id = f"TRF-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
                         conn.execute("""
-                            INSERT INTO photo_transfer (
+                            INSERT INTO media_transfer (
                                 transfer_id, migration_id, 
                                 total_photos, total_videos, total_size_gb,
-                                status, apple_transfer_initiated,
+                                photo_status, video_status, overall_status,
+                                apple_transfer_initiated,
                                 photos_visible_day, estimated_completion_day
-                            ) VALUES (?, ?, ?, ?, ?, 'initiated', ?, 4, 7)
+                            ) VALUES (?, ?, ?, ?, ?, 'initiated', 'initiated', 'initiated', ?, 4, 7)
                         """, (transfer_id, active["id"], 
                               active.get("photo_count", 0),
                               active.get("video_count", 0), 
@@ -483,7 +510,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     # Update migration phase
                     conn.execute("""
                         UPDATE migration_status
-                        SET current_phase = 'photo_transfer'
+                        SET current_phase = 'media_transfer'
                         WHERE id = ?
                     """, (active["id"],))
                 
@@ -569,7 +596,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 with db.get_connection() as conn:
                     transfer_result = conn.execute("""
                         SELECT total_photos, total_videos, total_size_gb, transfer_id
-                        FROM photo_transfer WHERE migration_id = ?
+                        FROM media_transfer WHERE migration_id = ?
                     """, (active["id"],)).fetchone()
                     
                     if transfer_result:
@@ -579,18 +606,20 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         videos_transferred = arguments.get("videos_transferred", int(total_videos * progress_percent / 100))
                         size_transferred_gb = arguments.get("size_transferred_gb", total_size_gb * progress_percent / 100)
                         
-                        # Update photo transfer progress
-                        await db.update_photo_progress(
+                        # Update media transfer progress
+                        await db.update_media_progress(
                             migration_id=active["id"],
                             transferred_photos=photos_transferred,
                             transferred_videos=videos_transferred,
                             transferred_size_gb=size_transferred_gb,
-                            status='completed' if progress_percent >= 100 else 'in_progress'
+                            photo_status='completed' if progress_percent >= 100 else 'in_progress',
+                            video_status='completed' if progress_percent >= 100 else 'in_progress',
+                            overall_status='completed' if progress_percent >= 100 else 'in_progress'
                         )
                         
                         # Calculate daily rate
                         start_result = conn.execute("""
-                            SELECT apple_transfer_initiated FROM photo_transfer 
+                            SELECT apple_transfer_initiated FROM media_transfer 
                             WHERE migration_id = ?
                         """, (active["id"],)).fetchone()
                         
@@ -608,7 +637,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                             "daily_rate": int(daily_rate)
                         }
                     else:
-                        result = {"status": "error", "message": "No photo transfer found"}
+                        result = {"status": "error", "message": "No media transfer found"}
                         
         elif name == "activate_venmo_card":
             # Get active migration
@@ -696,18 +725,19 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     # Get current stats
                     stats_result = conn.execute("""
                         SELECT 
-                            pt.transferred_photos, pt.total_photos, pt.status as photo_status,
-                            pt.transferred_size_gb, pt.total_size_gb,
+                            mt.transferred_photos, mt.total_photos, mt.photo_status,
+                            mt.transferred_videos, mt.total_videos, mt.video_status,
+                            mt.transferred_size_gb, mt.total_size_gb,
                             (SELECT COUNT(*) FROM family_app_adoption WHERE app_name = 'WhatsApp' AND status = 'configured') as whatsapp_configured,
                             (SELECT COUNT(*) FROM family_app_adoption WHERE app_name = 'WhatsApp' AND status = 'invited') as whatsapp_invited,
                             (SELECT COUNT(*) FROM family_members WHERE migration_id = m.id) as total_family
                         FROM migration_status m
-                        LEFT JOIN photo_transfer pt ON m.id = pt.migration_id
+                        LEFT JOIN media_transfer mt ON m.id = mt.migration_id
                         WHERE m.id = ?
                     """, (active["id"],)).fetchone()
                     
                     if stats_result:
-                        transferred_photos, total_photos, photo_status, transferred_gb, total_gb, whatsapp_configured, whatsapp_invited, total_family = stats_result
+                        transferred_photos, total_photos, photo_status, transferred_videos, total_videos, video_status, transferred_gb, total_gb, whatsapp_configured, whatsapp_invited, total_family = stats_result
                         
                         # Day-aware photo progress
                         if day_number < 4:
@@ -824,18 +854,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     report_result = conn.execute("""
                         SELECT 
                             m.user_name, m.years_on_ios, m.started_at,
-                            pt.total_photos, pt.total_videos, pt.total_size_gb,
+                            mt.total_photos, mt.total_videos, mt.total_size_gb,
                             COUNT(DISTINCT fm.id) as family_members,
                             COUNT(DISTINCT CASE WHEN faa.app_name = 'WhatsApp' AND faa.status = 'configured' THEN faa.family_member_id END) as whatsapp_members,
                             COUNT(DISTINCT CASE WHEN faa.app_name = 'Google Maps' AND faa.status = 'configured' THEN faa.family_member_id END) as maps_members,
                             COUNT(DISTINCT CASE WHEN faa.app_name = 'Venmo' AND faa.status = 'configured' THEN faa.family_member_id END) as venmo_members
                         FROM migration_status m
-                        JOIN photo_transfer pt ON m.id = pt.migration_id
+                        JOIN media_transfer mt ON m.id = mt.migration_id
                         LEFT JOIN family_members fm ON m.id = fm.migration_id
                         LEFT JOIN family_app_adoption faa ON fm.id = faa.family_member_id
                         WHERE m.id = ?
                         GROUP BY m.id, m.user_name, m.years_on_ios, m.started_at,
-                                 pt.total_photos, pt.total_videos, pt.total_size_gb
+                                 mt.total_photos, mt.total_videos, mt.total_size_gb
                     """, (active["id"],)).fetchone()
                     
                     if report_result:
@@ -873,6 +903,126 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         }
                     else:
                         result = {"status": "error", "message": "Could not generate report"}
+                        
+        elif name == "record_storage_snapshot":
+            # Get active migration
+            active = await db.get_active_migration()
+            if not active:
+                result = {"status": "error", "message": "No active migration"}
+            else:
+                with db.get_connection() as conn:
+                    # Get baseline storage if this is first snapshot
+                    baseline_result = conn.execute("""
+                        SELECT google_photos_baseline_gb, google_drive_baseline_gb, gmail_baseline_gb
+                        FROM migration_status WHERE id = ?
+                    """, (active["id"],)).fetchone()
+                    
+                    google_photos_gb = arguments["google_photos_gb"]
+                    google_drive_gb = arguments.get("google_drive_gb", 0)
+                    gmail_gb = arguments.get("gmail_gb", 0)
+                    day_number = arguments["day_number"]
+                    is_baseline = arguments.get("is_baseline", False)
+                    
+                    # If this is baseline, update migration_status
+                    if is_baseline:
+                        conn.execute("""
+                            UPDATE migration_status
+                            SET google_photos_baseline_gb = ?,
+                                google_drive_baseline_gb = ?,
+                                gmail_baseline_gb = ?
+                            WHERE id = ?
+                        """, (google_photos_gb, google_drive_gb, gmail_gb, active["id"]))
+                        
+                        storage_growth_gb = 0
+                        percent_complete = 0
+                    else:
+                        # Calculate growth and percentage
+                        baseline_photos = baseline_result[0] if baseline_result else 0
+                        storage_growth_gb = google_photos_gb - baseline_photos
+                        
+                        # Get expected total from media_transfer
+                        expected_result = conn.execute("""
+                            SELECT total_size_gb FROM media_transfer WHERE migration_id = ?
+                        """, (active["id"],)).fetchone()
+                        
+                        expected_total = expected_result[0] if expected_result else 383
+                        percent_complete = min(100, (storage_growth_gb / expected_total * 100) if expected_total > 0 else 0)
+                    
+                    # Calculate estimated items transferred
+                    photos_result = conn.execute("""
+                        SELECT total_photos, total_videos FROM media_transfer WHERE migration_id = ?
+                    """, (active["id"],)).fetchone()
+                    
+                    total_photos = photos_result[0] if photos_result else 0
+                    total_videos = photos_result[1] if photos_result else 0
+                    
+                    estimated_photos = int(total_photos * percent_complete / 100)
+                    estimated_videos = int(total_videos * percent_complete / 100)
+                    
+                    # Insert storage snapshot
+                    conn.execute("""
+                        INSERT INTO storage_snapshots (
+                            migration_id, day_number, google_photos_gb,
+                            google_drive_gb, gmail_gb, total_used_gb,
+                            storage_growth_gb, percent_complete,
+                            estimated_photos_transferred, estimated_videos_transferred,
+                            is_baseline
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        active["id"], day_number, google_photos_gb,
+                        google_drive_gb, gmail_gb, google_photos_gb + google_drive_gb + gmail_gb,
+                        storage_growth_gb, percent_complete,
+                        estimated_photos, estimated_videos, is_baseline
+                    ))
+                    
+                    result = {
+                        "status": "snapshot_recorded",
+                        "day": day_number,
+                        "google_photos_gb": google_photos_gb,
+                        "storage_growth_gb": storage_growth_gb,
+                        "percent_complete": round(percent_complete, 1),
+                        "estimated_photos": estimated_photos,
+                        "estimated_videos": estimated_videos,
+                        "is_baseline": is_baseline
+                    }
+                    
+        elif name == "get_storage_progress":
+            # Get active migration and latest snapshot
+            active = await db.get_active_migration()
+            if not active:
+                result = {"status": "error", "message": "No active migration"}
+            else:
+                with db.get_connection() as conn:
+                    # Get latest storage snapshot
+                    latest = conn.execute("""
+                        SELECT 
+                            ss.day_number, ss.google_photos_gb, ss.storage_growth_gb,
+                            ss.percent_complete, ss.estimated_photos_transferred,
+                            ss.estimated_videos_transferred, ss.snapshot_time,
+                            mt.total_photos, mt.total_videos, mt.total_size_gb,
+                            ms.google_photos_baseline_gb
+                        FROM storage_snapshots ss
+                        JOIN migration_status ms ON ss.migration_id = ms.id
+                        JOIN media_transfer mt ON ms.id = mt.migration_id
+                        WHERE ss.migration_id = ?
+                        ORDER BY ss.snapshot_time DESC
+                        LIMIT 1
+                    """, (active["id"],)).fetchone()
+                    
+                    if latest:
+                        result = {
+                            "day": latest[0],
+                            "current_storage_gb": latest[1],
+                            "storage_growth_gb": latest[2],
+                            "percent_complete": latest[3],
+                            "photos_progress": f"{latest[4]:,}/{latest[7]:,}",
+                            "videos_progress": f"{latest[5]:,}/{latest[8]:,}",
+                            "size_progress": f"{latest[2]:.1f}/{latest[9]:.1f} GB",
+                            "baseline_gb": latest[10],
+                            "last_updated": latest[6]
+                        }
+                    else:
+                        result = {"status": "no_snapshots", "message": "No storage snapshots recorded yet"}
             
         else:
             result = {"error": f"Unknown tool: {name}"}

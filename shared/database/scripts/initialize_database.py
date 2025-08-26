@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 """
-Database Initialization Script for iOS to Android Migration
+Database Initialization Script for iOS to Android Migration v2.0
 
-This script initializes the DuckDB database with the V2 schema designed for the 7-day
-iOS to Android migration demo flow. It creates all necessary tables, indexes, and views
-required by the migration-state MCP server and web-automation tools.
+This script initializes the DuckDB database with the enhanced schema supporting
+video transfers and storage-based progress tracking for the 7-day migration demo.
 
 Key Features:
-- Creates 7 tables WITHOUT foreign key constraints (DuckDB UPDATE workaround)
-- Creates 7 performance indexes
-- Creates 3 convenience views for querying
+- Creates 8 tables including new storage_snapshots for Google One tracking
+- Enhanced media_transfer table (formerly photo_transfer) with video support
+- Storage baseline tracking in migration_status
+- Creates 8 performance indexes
+- Creates 4 views including daily_progress_summary
 - Backs up existing database before recreation
 - Validates schema after creation
 
-Schema Design:
-- Simplified from V1 (17 tables) to V2 (7 tables)
-- No schema prefixes (direct table names)
-- Email-based family coordination
-- Day-aware logic (photos visible Day 4, Venmo cards Day 5)
+Schema Changes in v2.0:
+- photo_transfer → media_transfer with separate photo/video tracking
+- Added storage_snapshots table for Google One progress monitoring
+- Enhanced migration_status with iCloud and Google storage baselines
+- Added video-specific fields throughout
 
 Database Location: ~/.ios_android_migration/migration.db
 
@@ -28,7 +29,7 @@ This should be run once during initial setup or when resetting the database.
 The migration-state MCP server will use this database for all operations.
 
 Author: iOS2Android Migration Team
-Version: 2.0 (Phase 2 Complete)
+Version: 2.0 (Video & Storage Support)
 """
 
 import sys
@@ -43,38 +44,36 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 def initialize_database():
     """
-    Initialize the DuckDB database with V2 schema.
+    Initialize the DuckDB database with v2.0 schema from migration_schema.sql.
     
     This function performs the following operations:
     1. Creates database directory if it doesn't exist
     2. Backs up existing database (if present) with timestamp
     3. Removes old database file
-    4. Creates fresh database with all tables, indexes, and views
+    4. Applies the complete schema from migration_schema.sql
     5. Validates the schema was created correctly
     
-    Tables Created (7):
-    - migration_status: Core migration tracking
-    - family_members: Family member details (NO FK to migration_status)
-    - photo_transfer: Photo/video transfer progress (NO FK)
-    - app_setup: App installation tracking (NO FK)
-    - family_app_adoption: Per-member app status (NO FK)
-    - daily_progress: Day-by-day snapshots (NO FK)
-    - venmo_setup: Teen card tracking (NO FK)
+    Tables Created (8):
+    - migration_status: Core migration tracking with storage baselines
+    - family_members: Family member details
+    - media_transfer: Photo AND video transfer progress (was photo_transfer)
+    - app_setup: App installation tracking
+    - family_app_adoption: Per-member app status
+    - daily_progress: Day-by-day snapshots with video metrics
+    - venmo_setup: Teen card tracking
+    - storage_snapshots: NEW - Google One storage tracking
     
-    Indexes Created (7):
-    - One index per table on the most commonly queried field
+    Indexes Created (8):
+    - One index per table on the most commonly queried fields
     
-    Views Created (3):
-    - migration_summary: Overall migration status with joins
+    Views Created (4):
+    - migration_summary: Overall migration status with video support
     - family_app_status: Family app adoption matrix
-    - active_migration: Current active migration with details
+    - active_migration: Current active migration with storage tracking
+    - daily_progress_summary: NEW - Day-specific status messages
     
     Returns:
         bool: True if initialization successful, False otherwise
-        
-    Note:
-        Foreign keys are intentionally NOT created due to DuckDB UPDATE limitation.
-        Referential integrity is enforced at the application layer instead.
     """
     
     # Database path
@@ -90,297 +89,157 @@ def initialize_database():
         db_path.unlink()
     
     print(f"🔗 Creating fresh database: {db_path}")
+    
+    # Read the schema file
+    schema_file = Path(__file__).parent.parent / 'schemas' / 'migration_schema.sql'
+    if not schema_file.exists():
+        print(f"❌ Schema file not found: {schema_file}")
+        return False
+        
+    print(f"📄 Reading schema from: {schema_file}")
+    with open(schema_file, 'r') as f:
+        schema_sql = f.read()
+    
+    # Connect to database
     conn = duckdb.connect(str(db_path))
     
     try:
-        print("🔨 Creating database tables...")
+        print("🔨 Applying migration_schema.sql v2.0...")
         
-        # Note: DuckDB doesn't need schemas for our use case
-        # We'll use table prefixes instead
+        # Split the schema into individual statements
+        # DuckDB can handle multiple statements but let's be explicit
+        statements = []
+        current_statement = []
         
-        # 1. Core migration tracking table
-        conn.execute("""
-            CREATE TABLE migration_status (
-                id TEXT PRIMARY KEY DEFAULT ('MIG-' || strftime(CURRENT_TIMESTAMP, '%Y%m%d-%H%M%S')),
-                user_name TEXT NOT NULL,
-                source_device TEXT DEFAULT 'iPhone',
-                target_device TEXT DEFAULT 'Galaxy Z Fold 7',
-                years_on_ios INTEGER,
-                photo_count INTEGER,
-                video_count INTEGER,
-                storage_gb DECIMAL(10,2),
-                family_size INTEGER,
-                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                current_phase TEXT DEFAULT 'initialization',
-                overall_progress INTEGER DEFAULT 0,
-                completed_at TIMESTAMP,
-                CONSTRAINT valid_progress CHECK (overall_progress BETWEEN 0 AND 100),
-                CONSTRAINT valid_phase CHECK (current_phase IN ('initialization', 'photo_transfer', 'family_setup', 'validation', 'completed'))
-            )
-        """)
-        print("  ✅ Created table: migration_status")
+        for line in schema_sql.split('\n'):
+            # Skip comments and empty lines
+            if line.strip().startswith('--') or not line.strip():
+                continue
+            
+            current_statement.append(line)
+            
+            # If line ends with semicolon, we have a complete statement
+            if line.strip().endswith(';'):
+                statement = '\n'.join(current_statement)
+                if statement.strip():
+                    statements.append(statement)
+                current_statement = []
         
-        # 2. Family members table
-        conn.execute("""
-            CREATE TABLE family_members (
-                id INTEGER PRIMARY KEY,
-                migration_id TEXT NOT NULL,
-                name TEXT NOT NULL,
-                role TEXT,
-                age INTEGER,
-                email TEXT NOT NULL,
-                staying_on_ios BOOLEAN DEFAULT true,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT valid_role CHECK (role IN ('spouse', 'child'))
-            )
-        """)
-        print("  ✅ Created table: family_members")
+        # Execute each statement
+        tables_created = 0
+        indexes_created = 0
+        views_created = 0
         
-        # 3. Photo transfer tracking
-        conn.execute("""
-            CREATE TABLE photo_transfer (
-                transfer_id TEXT PRIMARY KEY DEFAULT ('TRF-' || strftime(CURRENT_TIMESTAMP, '%Y%m%d-%H%M%S')),
-                migration_id TEXT NOT NULL,
-                total_photos INTEGER,
-                total_videos INTEGER,
-                total_size_gb DECIMAL(10,2),
-                transferred_photos INTEGER DEFAULT 0,
-                transferred_videos INTEGER DEFAULT 0,
-                transferred_size_gb DECIMAL(10,2) DEFAULT 0,
-                status TEXT DEFAULT 'pending',
-                apple_transfer_initiated TIMESTAMP,
-                apple_confirmation_email_received TIMESTAMP,
-                photos_visible_day INTEGER,
-                estimated_completion_day INTEGER DEFAULT 7,
-                daily_transfer_rate INTEGER,
-                last_checked_at TIMESTAMP,
-                CONSTRAINT valid_status CHECK (status IN ('pending', 'initiated', 'in_progress', 'completed'))
-            )
-        """)
-        print("  ✅ Created table: photo_transfer")
+        for statement in statements:
+            try:
+                conn.execute(statement)
+                
+                # Track what was created
+                statement_upper = statement.upper()
+                if 'CREATE TABLE' in statement_upper:
+                    # Extract table name
+                    if 'migration_status' in statement:
+                        print("  ✅ Created table: migration_status (with storage baselines)")
+                    elif 'media_transfer' in statement:
+                        print("  ✅ Created table: media_transfer (with video support)")
+                    elif 'storage_snapshots' in statement:
+                        print("  ✅ Created table: storage_snapshots (NEW)")
+                    elif 'daily_progress' in statement:
+                        print("  ✅ Created table: daily_progress (enhanced)")
+                    elif 'family_members' in statement:
+                        print("  ✅ Created table: family_members")
+                    elif 'app_setup' in statement:
+                        print("  ✅ Created table: app_setup")
+                    elif 'family_app_adoption' in statement:
+                        print("  ✅ Created table: family_app_adoption")
+                    elif 'venmo_setup' in statement:
+                        print("  ✅ Created table: venmo_setup")
+                    tables_created += 1
+                elif 'CREATE INDEX' in statement_upper:
+                    indexes_created += 1
+                elif 'CREATE VIEW' in statement_upper:
+                    if 'daily_progress_summary' in statement:
+                        print("  ✅ Created view: daily_progress_summary (NEW)")
+                    elif 'migration_summary' in statement:
+                        print("  ✅ Created view: migration_summary (video support)")
+                    elif 'active_migration' in statement:
+                        print("  ✅ Created view: active_migration (storage tracking)")
+                    elif 'family_app_status' in statement:
+                        print("  ✅ Created view: family_app_status")
+                    views_created += 1
+            except Exception as e:
+                # Ignore DROP statements that might fail
+                if not statement.upper().startswith('DROP'):
+                    print(f"  ⚠️ Warning executing statement: {e}")
         
-        # 4. App setup tracking
-        conn.execute("""
-            CREATE TABLE app_setup (
-                id INTEGER PRIMARY KEY,
-                migration_id TEXT NOT NULL,
-                app_name TEXT NOT NULL,
-                category TEXT,
-                setup_status TEXT DEFAULT 'pending',
-                group_created BOOLEAN DEFAULT false,
-                invitations_sent INTEGER DEFAULT 0,
-                family_members_connected INTEGER DEFAULT 0,
-                started_at TIMESTAMP,
-                completed_at TIMESTAMP,
-                notes TEXT,
-                UNIQUE(migration_id, app_name),
-                CONSTRAINT valid_app CHECK (app_name IN ('WhatsApp', 'Google Maps', 'Venmo')),
-                CONSTRAINT valid_category CHECK (category IN ('messaging', 'location', 'payment')),
-                CONSTRAINT valid_status CHECK (setup_status IN ('pending', 'in_progress', 'completed'))
-            )
-        """)
-        print("  ✅ Created table: app_setup")
+        print(f"\n📊 Created {tables_created} tables")
+        print(f"📈 Created {indexes_created} indexes")
+        print(f"👁️  Created {views_created} views")
         
-        # 5. Family member app adoption
-        conn.execute("""
-            CREATE TABLE family_app_adoption (
-                id INTEGER PRIMARY KEY,
-                family_member_id INTEGER NOT NULL,
-                app_name TEXT,
-                status TEXT DEFAULT 'not_started',
-                invitation_sent_at TIMESTAMP,
-                invitation_method TEXT DEFAULT 'email',
-                installed_at TIMESTAMP,
-                configured_at TIMESTAMP,
-                UNIQUE(family_member_id, app_name),
-                CONSTRAINT valid_app CHECK (app_name IN ('WhatsApp', 'Google Maps', 'Venmo')),
-                CONSTRAINT valid_status CHECK (status IN ('not_started', 'invited', 'installed', 'configured'))
-            )
-        """)
-        print("  ✅ Created table: family_app_adoption")
-        
-        # 6. Daily progress snapshots
-        conn.execute("""
-            CREATE TABLE daily_progress (
-                id INTEGER PRIMARY KEY,
-                migration_id TEXT NOT NULL,
-                day_number INTEGER NOT NULL,
-                date DATE DEFAULT CURRENT_DATE,
-                photos_transferred INTEGER,
-                videos_transferred INTEGER,
-                size_transferred_gb DECIMAL(10,2),
-                whatsapp_members_connected INTEGER,
-                maps_members_sharing INTEGER,
-                venmo_members_active INTEGER,
-                key_milestone TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(migration_id, day_number)
-            )
-        """)
-        print("  ✅ Created table: daily_progress")
-        
-        # 7. Venmo teen account setup
-        conn.execute("""
-            CREATE TABLE venmo_setup (
-                id INTEGER PRIMARY KEY,
-                migration_id TEXT NOT NULL,
-                family_member_id INTEGER NOT NULL,
-                needs_teen_account BOOLEAN DEFAULT false,
-                account_created_at TIMESTAMP,
-                card_ordered_at TIMESTAMP,
-                card_arrived_at TIMESTAMP,
-                card_activated_at TIMESTAMP,
-                card_last_four TEXT,
-                setup_complete BOOLEAN DEFAULT false,
-                UNIQUE(family_member_id)
-            )
-        """)
-        print("  ✅ Created table: venmo_setup")
-        
-        print("\n📊 Creating indexes for performance...")
-        
-        # Create indexes
-        indexes = [
-            "CREATE INDEX idx_migration_status_phase ON migration_status(current_phase)",
-            "CREATE INDEX idx_family_members_migration ON family_members(migration_id)",
-            "CREATE INDEX idx_photo_transfer_migration ON photo_transfer(migration_id)",
-            "CREATE INDEX idx_app_setup_migration ON app_setup(migration_id)",
-            "CREATE INDEX idx_family_adoption_member ON family_app_adoption(family_member_id)",
-            "CREATE INDEX idx_daily_progress_migration ON daily_progress(migration_id, day_number)",
-            "CREATE INDEX idx_venmo_setup_migration ON venmo_setup(migration_id)"
-        ]
-        
-        for idx_sql in indexes:
-            conn.execute(idx_sql)
-        print(f"  ✅ Created {len(indexes)} indexes")
-        
-        print("\n👁️  Creating views for easy querying...")
-        
-        # Create views
-        conn.execute("""
-            CREATE VIEW migration_summary AS
-            SELECT 
-                m.id,
-                m.user_name,
-                m.current_phase,
-                m.overall_progress,
-                pt.status as photo_status,
-                CASE 
-                    WHEN pt.total_photos > 0 
-                    THEN pt.transferred_photos || '/' || pt.total_photos 
-                    ELSE '0/0' 
-                END as photo_progress,
-                COUNT(DISTINCT fm.id) as family_members,
-                COUNT(DISTINCT CASE WHEN faa.status = 'configured' THEN faa.family_member_id END) as members_configured
-            FROM migration_status m
-            LEFT JOIN photo_transfer pt ON m.id = pt.migration_id
-            LEFT JOIN family_members fm ON m.id = fm.migration_id
-            LEFT JOIN family_app_adoption faa ON fm.id = faa.family_member_id
-            GROUP BY m.id, m.user_name, m.current_phase, m.overall_progress, pt.status, pt.transferred_photos, pt.total_photos
-        """)
-        print("  ✅ Created view: migration_summary")
-        
-        conn.execute("""
-            CREATE VIEW family_app_status AS
-            SELECT 
-                fm.name,
-                fm.email,
-                MAX(CASE WHEN faa.app_name = 'WhatsApp' THEN faa.status END) as whatsapp,
-                MAX(CASE WHEN faa.app_name = 'Google Maps' THEN faa.status END) as maps,
-                MAX(CASE WHEN faa.app_name = 'Venmo' THEN faa.status END) as venmo
-            FROM family_members fm
-            LEFT JOIN family_app_adoption faa ON fm.id = faa.family_member_id
-            GROUP BY fm.id, fm.name, fm.email
-        """)
-        print("  ✅ Created view: family_app_status")
-        
-        conn.execute("""
-            CREATE VIEW active_migration AS
-            SELECT 
-                m.*,
-                pt.status as photo_transfer_status,
-                pt.transferred_photos,
-                pt.total_photos,
-                COUNT(DISTINCT fm.id) as total_family_members
-            FROM migration_status m
-            LEFT JOIN photo_transfer pt ON m.id = pt.migration_id
-            LEFT JOIN family_members fm ON m.id = fm.migration_id
-            WHERE m.completed_at IS NULL
-            GROUP BY m.id, m.user_name, m.source_device, m.target_device, m.years_on_ios, 
-                     m.photo_count, m.video_count, m.storage_gb, m.family_size, m.started_at,
-                     m.current_phase, m.overall_progress, m.completed_at,
-                     pt.status, pt.transferred_photos, pt.total_photos
-            ORDER BY m.started_at DESC
-            LIMIT 1
-        """)
-        print("  ✅ Created view: active_migration")
-        
+        # Verify the schema
         print("\n🔍 Verifying database structure...")
         
-        # Verify tables
-        tables_result = conn.execute("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_type = 'BASE TABLE'
-            AND table_schema = 'main'
+        # Check tables
+        tables = conn.execute("""
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
             ORDER BY table_name
         """).fetchall()
         
-        tables = [t[0] for t in tables_result]
-        print(f"\n📊 Created {len(tables)} tables:")
-        for table in tables:
-            print(f"  • {table}")
-        
-        # Verify views
-        views_result = conn.execute("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_type = 'VIEW'
-            AND table_schema = 'main'
-            ORDER BY table_name
-        """).fetchall()
-        
-        views = [v[0] for v in views_result]
-        print(f"\n👁️  Created {len(views)} views:")
-        for view in views:
-            print(f"  • {view}")
-        
-        # Verify expected tables exist
         expected_tables = [
-            'migration_status',
-            'family_members', 
-            'photo_transfer',
-            'app_setup',
-            'family_app_adoption',
-            'daily_progress',
-            'venmo_setup'
+            'app_setup', 'daily_progress', 'family_app_adoption', 
+            'family_members', 'media_transfer', 'migration_status', 
+            'storage_snapshots', 'venmo_setup'
         ]
         
-        missing_tables = [t for t in expected_tables if t not in tables]
+        actual_tables = [t[0] for t in tables]
         
-        if missing_tables:
-            print(f"\n⚠️  Warning: Missing expected tables: {missing_tables}")
+        print(f"\n📊 Created {len(actual_tables)} tables:")
+        for table in actual_tables:
+            marker = "✅" if table in expected_tables else "❓"
+            special = ""
+            if table == 'media_transfer':
+                special = " (formerly photo_transfer)"
+            elif table == 'storage_snapshots':
+                special = " (NEW in v2.0)"
+            print(f"  {marker} {table}{special}")
+        
+        # Check views
+        views = conn.execute("""
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'main' AND table_type = 'VIEW'
+            ORDER BY table_name
+        """).fetchall()
+        
+        print(f"\n👁️  Created {len(views)} views:")
+        for view in views:
+            special = ""
+            if view[0] == 'daily_progress_summary':
+                special = " (NEW in v2.0)"
+            print(f"  • {view[0]}{special}")
+        
+        # Check if all expected tables exist
+        missing = [t for t in expected_tables if t not in actual_tables]
+        if missing:
+            print(f"\n❌ Missing tables: {missing}")
             return False
         
         print("\n✅ All expected tables created successfully!")
+        print("✅ Database is ready for video and storage tracking!")
         
-        # Test with a simple query
-        conn.execute("SELECT * FROM migration_status WHERE 1=0")
-        print("✅ Database is ready for use!")
-        
+        conn.close()
         return True
         
     except Exception as e:
         print(f"\n❌ Error initializing database: {e}")
         import traceback
         traceback.print_exc()
-        return False
-        
-    finally:
         conn.close()
+        return False
 
-if __name__ == "__main__":
-    print("🚀 iOS to Android Migration Database Initialization")
+def main():
+    """Main entry point for the script"""
+    print("🚀 iOS to Android Migration Database Initialization v2.0")
     print("=" * 60)
     
     success = initialize_database()
@@ -389,7 +248,17 @@ if __name__ == "__main__":
         print("\n🎉 Database initialization complete!")
         print("\nNext steps:")
         print("1. Run the test script: python3 shared/database/tests/test_database.py")
-        print("2. Implement MCP tools: Update mcp-tools/migration-state/server.py")
+        print("2. The database now supports:")
+        print("   • Separate photo and video transfer tracking")
+        print("   • Google One storage-based progress monitoring")
+        print("   • Enhanced daily progress with video metrics")
+        print("   • Storage baselines for accurate calculations")
     else:
         print("\n❌ Database initialization failed!")
-        sys.exit(1)
+        print("Please check the error messages above and try again.")
+        return 1
+    
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
