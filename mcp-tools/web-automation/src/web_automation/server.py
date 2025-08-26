@@ -24,7 +24,6 @@ from typing import Any, Dict
 from pathlib import Path
 from dotenv import load_dotenv
 from mcp.server import Server, NotificationOptions
-from mcp.server.models import InitializationOptions
 import mcp.server.stdio
 import mcp.types as types
 
@@ -449,10 +448,7 @@ async def main():
         await server.run(
             read_stream,
             write_stream,
-            InitializationOptions(
-                server_name="web-automation",
-                server_version="0.1.0"
-            )
+            server.create_initialization_options()
         )
 
 if __name__ == "__main__":
