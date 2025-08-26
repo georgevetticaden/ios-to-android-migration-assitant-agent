@@ -6,13 +6,13 @@ The Web Automation MCP server provides 5 comprehensive browser automation tools 
 
 ## Key Features
 
-- **5 MCP Tools**: Complete photo migration lifecycle from initiation to verification
+- **5 MCP Tools**: Complete media migration lifecycle from initiation to verification
 - **Session Persistence**: 7-day browser session validity avoiding repeated 2FA
 - **Visual Browser Automation**: See exactly what's happening during transfers
-- **Progress Monitoring**: Track photo appearance in Google Photos with day-aware logic
+- **Progress Monitoring**: Track transfer progress using Google One storage metrics
 - **Email Verification**: Gmail API integration for Apple completion notifications
-- **Database Integration**: All transfers tracked in DuckDB with progress snapshots
-- **Production Ready**: Currently processing 383GB real migration
+- **Database Integration**: All transfers tracked in DuckDB with storage snapshots
+- **Production Ready**: Currently processing 383GB real migration with photos and videos
 
 ## Technical Architecture
 
@@ -46,7 +46,7 @@ Sessions remain valid for ~7 days, enabling:
 ### Database Schema Integration
 ```
 ~/.ios_android_migration/migration.db
-└── photo_transfer table
+└── media_transfer table
     ├── transfer_id (PK)         # TRF-YYYYMMDD-HHMMSS
     ├── migration_id (FK)        # Links to migration_status
     ├── total_photos             # From iCloud check
@@ -54,10 +54,21 @@ Sessions remain valid for ~7 days, enabling:
     ├── total_size_gb            # Storage size
     ├── transferred_photos       # Current progress
     ├── transferred_videos       # Current progress
-    ├── status                   # pending/initiated/in_progress/completed
+    ├── photo_status             # pending/initiated/in_progress/completed
+    ├── video_status             # pending/initiated/in_progress/completed
+    ├── overall_status           # Combined status
     ├── apple_transfer_initiated # Timestamp
     ├── photos_visible_day       # Day 4
     └── estimated_completion_day # Day 7
+
+└── storage_snapshots table
+    ├── migration_id             # Links to migration
+    ├── day_number               # 1-7
+    ├── google_photos_gb         # Current Google Photos storage
+    ├── storage_growth_gb        # Growth since baseline
+    ├── estimated_photos_transferred  # Calculated estimate
+    ├── estimated_videos_transferred  # Calculated estimate
+    └── snapshot_time            # When measured
 ```
 
 ## Complete Tool Documentation
@@ -68,7 +79,7 @@ Sessions remain valid for ~7 days, enabling:
 
 #### 1. `check_icloud_status`
 
-**Purpose**: Retrieve comprehensive iCloud photo library statistics before migration  
+**Purpose**: Retrieve comprehensive iCloud photo and video library statistics before migration  
 **When to Use**: Day 1, as the very first step before any migration planning  
 **Day**: DAY 1 TOOL  
 **MCP Category**: Information gathering
@@ -105,7 +116,7 @@ Sessions remain valid for ~7 days, enabling:
    - Saves session for future use
 4. Navigates to Data & Privacy section
 5. Clicks "Transfer a copy of your data"
-6. Extracts photo/video counts from the page
+6. Extracts photo and video counts from the page
 7. Checks transfer history if available
 8. Returns structured data
 
@@ -124,7 +135,7 @@ Sessions remain valid for ~7 days, enabling:
 **Agent Integration**:
 ```
 User: "I want to migrate from iPhone to Android"
-Agent: "Let me check your iCloud photo library first..."
+Agent: "Let me check your iCloud photo and video library first..."
 → web-automation.check_icloud_status()
 → Use returned counts for migration-state.initialize_migration()
 ```
@@ -192,7 +203,7 @@ Agent: "Let me check your iCloud photo library first..."
 2. Navigates to "Transfer a copy of your data"
 3. Selects "Google Photos" as destination
 4. Reviews data to be transferred:
-   - Photos and videos
+   - Photos and videos (both selected)
    - Albums and metadata
    - Original quality preserved
 5. Clicks "Continue"
@@ -217,15 +228,15 @@ Agent: "Let me check your iCloud photo library first..."
 **Database Operations**:
 ```sql
 -- Creates new transfer record
-INSERT INTO photo_transfer (
+INSERT INTO media_transfer (
   transfer_id, migration_id, total_photos, total_videos,
-  total_size_gb, status, apple_transfer_initiated,
-  photos_visible_day, estimated_completion_day
-) VALUES (?, ?, ?, ?, ?, 'initiated', CURRENT_TIMESTAMP, 4, 7)
+  total_size_gb, photo_status, video_status, overall_status,
+  apple_transfer_initiated, photos_visible_day, estimated_completion_day
+) VALUES (?, ?, ?, ?, ?, 'initiated', 'initiated', 'initiated', CURRENT_TIMESTAMP, 4, 7)
 
 -- Updates migration phase
 UPDATE migration_status 
-SET current_phase = 'photo_transfer'
+SET current_phase = 'media_transfer'
 WHERE id = ?
 ```
 
@@ -266,97 +277,100 @@ Agent: "I'll now start the photo transfer to Google Photos..."
 
 #### 3. `check_photo_transfer_progress`
 
-**Purpose**: Monitor ongoing transfer by comparing current Google Photos count against baseline  
-**When to Use**: Daily from Day 3 onwards (photos not visible before Day 3)  
-**Day**: DAYS 3-7 TOOL  
+**Purpose**: Monitor ongoing transfer using Google One storage metrics to calculate real progress  
+**When to Use**: Daily from Day 1 onwards (shows processing status even before photos visible)  
+**Day**: DAYS 1-7 TOOL  
 **MCP Category**: Progress monitoring
 
 **Parameters**:
 - `transfer_id` (required, string)
   - Format: TRF-YYYYMMDD-HHMMSS
   - Obtained from start_photo_transfer
-  - Used to retrieve baseline and source counts from database
+- `day_number` (optional, int)
+  - Current day number (1-7)
+  - If not provided, calculates from start date
 
 **Returns**: Dictionary containing:
 ```json
 {
   "status": "in_progress",
   "transfer_id": "TRF-20250826-143022",
+  "day_number": 4,
+  "storage": {
+    "baseline_gb": 1.05,
+    "current_gb": 108.05,
+    "growth_gb": 107.0,
+    "remaining_gb": 276.0
+  },
+  "estimates": {
+    "photos_transferred": 11988,
+    "videos_transferred": 245,
+    "total_items": 12233
+  },
   "progress": {
-    "percent_complete": 28.5,
-    "transfer_rate_per_hour": 357,
-    "transfer_rate_per_day": 8568
+    "percent_complete": 27.9,
+    "transfer_rate_gb_per_day": 25.5,
+    "days_remaining": 10.8
   },
-  "counts": {
-    "source_total": 62656,
-    "baseline_google": 1547,
-    "current_google": 19412,
-    "transferred_items": 17865,
-    "remaining_items": 44791
-  },
-  "timeline": {
-    "days_elapsed": 4.2,
-    "estimated_days_remaining": 5.2,
-    "estimated_completion": "2025-08-31"
-  },
-  "last_checked": "2025-08-30T10:15:00Z"
+  "message": "Photos should start appearing soon in Google Photos."
 }
 ```
 
-**Browser Automation Process**:
-1. Retrieves transfer record from database
-2. Opens photos.google.com in new browser
-3. Authenticates if needed (uses saved session)
-4. Waits for photo library to fully load
-5. Extracts current total photo count
-6. Calculates items transferred (current - baseline)
-7. Computes percentage based on source total
-8. Estimates completion based on transfer rate
+**Storage-Based Automation Process**:
+1. Retrieves transfer record and baseline from database
+2. Opens one.google.com/storage in new browser
+3. Authenticates with Google if needed (uses saved session)
+4. Extracts storage breakdown:
+   - Google Photos current storage
+   - Google Drive storage
+   - Gmail storage  
+   - Device backup storage
+5. Calculates storage growth since baseline
+6. Estimates photos/videos transferred using 70%/30% ratio
+7. Saves snapshot to storage_snapshots table
+8. Updates daily_progress with calculated metrics
+9. Returns day-specific milestone messages
 
 **Progress Calculation Logic**:
 ```python
-transferred = current_google_count - baseline_count
-percent = (transferred / source_total) * 100
-rate_per_hour = transferred / hours_elapsed
-days_remaining = remaining_items / (rate_per_hour * 24)
+growth_gb = current_storage - baseline_storage
+percent_complete = (growth_gb / total_expected_gb) * 100
+photos_est = (growth_gb * 0.7 * 1024) / 6.5  # 70% photos, 6.5MB avg
+videos_est = (growth_gb * 0.3 * 1024) / 150  # 30% videos, 150MB avg
 ```
 
-**Day-Aware Progress Expectations**:
-- **Days 1-3**: Returns 0% (photos not yet visible)
-  - Message: "Transfer processing, photos not visible yet"
-  - This is NORMAL and expected
-- **Day 4**: ~28% visible (first appearance)
-  - Celebration moment! Photos appearing
-  - Update migration-state with progress
-- **Day 5**: ~57% visible
-  - Steady progress confirmation
-  - Family apps should be configured
-- **Day 6**: ~85% visible
-  - Nearly complete
-  - Start preparing for verification
-- **Day 7**: 100% complete
-  - Ready for final verification
-  - Check for Apple email
+**Day-Specific Progress Messages**:
+- **Day 1**: "Transfer initiated. Apple is processing your request."
+  - Storage may show minimal growth as processing begins
+- **Day 4**: "Photos should start appearing soon in Google Photos."
+  - Storage growth accelerates, ~28% complete
+- **Day 7**: "Transfer continuing. X% complete."
+  - Final progress based on actual storage metrics
+  - Completion percentage varies by transfer size
 
 **Database Operations**:
 ```sql
 -- Updates transfer progress
-UPDATE photo_transfer
+UPDATE media_transfer
 SET transferred_photos = ?,
     transferred_videos = ?,
     transferred_size_gb = ?,
-    status = CASE 
-      WHEN ? >= 100 THEN 'completed'
-      ELSE 'in_progress'
-    END,
-    last_checked_at = CURRENT_TIMESTAMP
+    photo_status = CASE WHEN ? >= 100 THEN 'completed' ELSE 'in_progress' END,
+    video_status = CASE WHEN ? >= 100 THEN 'completed' ELSE 'in_progress' END,
+    last_progress_check = CURRENT_TIMESTAMP
 WHERE transfer_id = ?
 
--- Creates progress snapshot
+-- Creates storage snapshot
+INSERT INTO storage_snapshots (
+  migration_id, day_number, google_photos_gb, storage_growth_gb,
+  estimated_photos_transferred, estimated_videos_transferred, snapshot_time
+) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+
+-- Updates daily progress
 INSERT INTO daily_progress (
-  migration_id, day_number, photos_transferred,
-  videos_transferred, size_transferred_gb
-) VALUES (?, ?, ?, ?, ?)
+  migration_id, day_number, photos_transferred, videos_transferred,
+  size_transferred_gb, storage_percent_complete, key_milestone
+) VALUES (?, ?, ?, ?, ?, ?, ?)
 ```
 
 **Handling Zero Progress (Days 1-3)**:
@@ -374,24 +388,49 @@ INSERT INTO daily_progress (
 **Agent Integration**:
 ```
 Day 4:
-Agent: "Let me check if your photos have started appearing..."
+Agent: "Let me check transfer progress using storage metrics..."
 → web-automation.check_photo_transfer_progress(transfer_id)
-→ If > 0%: "Great news! Your photos are appearing!"
+→ If growth > 0: "Great news! Storage is growing - transfer in progress!"
+→ Display storage metrics and estimated items transferred
 → Update visualization with progress bar
 → migration-state.update_photo_progress(progress_percent=28)
 ```
 
 **Performance Notes**:
-- Google Photos page can be slow with many items
-- Allow up to 60 seconds for full page load
+- Google One storage page loads faster than photo counting
+- Allow up to 30 seconds for storage metrics to appear
 - Cache results for 1 hour to avoid excessive checks
 - Best checked once or twice daily, not hourly
+
+### Google One Storage Integration
+
+The tool uses Google One storage metrics instead of photo counts for accurate progress tracking:
+
+**Storage Page Navigation**:
+1. Opens one.google.com/storage
+2. Waits for storage breakdown to load
+3. Extracts service-specific storage:
+   - Google Photos: X.XX GB
+   - Google Drive: XX.XX GB  
+   - Gmail: XX.XX GB
+   - Device backup: X.XX GB
+
+**Baseline Establishment**:
+- Captures Google Photos storage before transfer starts
+- Stores as baseline in migration_status table
+- Used for all subsequent progress calculations
+
+**Progress Accuracy**:
+- Real storage growth vs. photo count estimates
+- Works even when photos not yet visible
+- Handles Google processing delays
+- Accounts for compression and optimization
 
 ---
 
 #### 4. `verify_photo_transfer_complete`
 
-**Purpose**: Comprehensive verification that the entire photo transfer completed successfully  
+**Purpose**: Comprehensive verification that the entire photo and video transfer completed successfully  
 **When to Use**: Day 7, after receiving Apple's completion email or seeing 100% progress  
 **Day**: DAY 7 TOOL  
 **MCP Category**: Validation and certification
@@ -490,9 +529,12 @@ Generates completion certificate based on:
 **Database Operations**:
 ```sql
 -- Update transfer as completed
-UPDATE photo_transfer
-SET status = 'completed',
-    apple_confirmation_email_received = ?,
+UPDATE media_transfer
+SET overall_status = 'completed',
+    photo_status = 'completed',
+    video_status = 'completed',
+    photo_complete_email_received = ?,
+    video_complete_email_received = ?,
     transferred_photos = ?,
     transferred_videos = ?,
     completed_at = CURRENT_TIMESTAMP
@@ -538,7 +580,7 @@ Agent: "Time to verify your transfer is complete!"
 
 #### 5. `check_photo_transfer_email`
 
-**Purpose**: Check Gmail for Apple's official transfer completion notification  
+**Purpose**: Check Gmail for Apple's official photo and video transfer completion notification  
 **When to Use**: Days 6-7, when transfer is nearing completion  
 **Day**: DAYS 6-7 TOOL  
 **MCP Category**: Email verification
@@ -628,14 +670,15 @@ If GMAIL_CREDENTIALS_PATH not set:
 **Database Operations**:
 ```sql
 -- Record email confirmation
-UPDATE photo_transfer
-SET apple_confirmation_email_received = CURRENT_TIMESTAMP
+UPDATE media_transfer
+SET photo_complete_email_received = CURRENT_TIMESTAMP,
+    video_complete_email_received = CURRENT_TIMESTAMP
 WHERE transfer_id = ?
 
 -- Log email check
-INSERT INTO migration_events (
-  migration_id, event_type, description, metadata
-) VALUES (?, 'email_check', ?, ?)
+INSERT INTO daily_progress (
+  migration_id, day_number, key_milestone
+) VALUES (?, ?, 'Apple completion email received')
 ```
 
 **Error Scenarios**:
@@ -700,27 +743,27 @@ Agent: "Let me check if Apple has sent the completion email..."
 - Worry about lack of visibility
 - Restart or cancel transfer
 
-### Day 4: First Visibility 🎉
+### Day 4: Storage Growth Detected 🎉
 **Morning Check**
-- `check_photo_transfer_progress()` - Should show ~28%
-- First photos appearing in Google Photos!
-- Celebration moment with user
+- `check_photo_transfer_progress()` - Should show ~28% based on storage growth
+- Storage snapshots show Google Photos growing
+- First photos may start appearing in Google Photos
 
 **Verification**:
-- Open Google Photos app
-- See photos from various years
-- Confirm quality preserved
+- Check Google One storage metrics
+- Confirm storage increase from baseline
+- Photos may be processing but storage shows progress
 
 **Update Status**:
-- Create progress visualization
+- Create progress visualization with storage metrics
 - Update family on timeline
 - Continue family app adoption
 
 ### Day 5: Steady Progress
 **Progress Check**
-- `check_photo_transfer_progress()` - Should show ~57%
-- Transfer rate established
-- ETA becoming accurate
+- `check_photo_transfer_progress()` - Should show ~57% based on storage
+- Storage growth rate established
+- ETA calculated from storage transfer rate
 
 **Other Activities**:
 - Venmo teen cards arrive
@@ -729,7 +772,7 @@ Agent: "Let me check if Apple has sent the completion email..."
 
 ### Day 6: Near Completion
 **Morning**
-- `check_photo_transfer_progress()` - Should show ~85%
+- `check_photo_transfer_progress()` - Should show ~85% via storage metrics
 - `check_photo_transfer_email()` - Email might arrive
 
 **Preparation**:
@@ -740,14 +783,14 @@ Agent: "Let me check if Apple has sent the completion email..."
 ### Day 7: Verification & Celebration
 **Final Steps**
 1. `check_photo_transfer_email()` - Confirm email received
-2. `check_photo_transfer_progress()` - Should show 100%
+2. `check_photo_transfer_progress()` - Should show near 100% via storage
 3. `verify_photo_transfer_complete()` - Generate certificate
 
 **Celebration Dashboard**:
-- Display completion certificate
-- Show all achievements
+- Display completion certificate with storage metrics
+- Show all achievements including final storage totals
 - Confirm family ecosystem active
-- Generate final report
+- Generate final report with storage verification
 
 ---
 
@@ -902,7 +945,10 @@ print(f"Session age: {client.get_session_age_days()} days")
 ```sql
 -- Check transfer records
 sqlite3 ~/.ios_android_migration/migration.db
-SELECT * FROM photo_transfer ORDER BY created_at DESC;
+SELECT * FROM media_transfer ORDER BY transfer_id DESC;
+
+-- View storage snapshots
+SELECT * FROM storage_snapshots WHERE migration_id = 'MIG-XXX';
 
 -- View progress history
 SELECT * FROM daily_progress WHERE migration_id = 'MIG-XXX';
@@ -918,13 +964,14 @@ SELECT * FROM daily_progress WHERE migration_id = 'MIG-XXX';
 3. Ensure reuse_session=true
 4. Check session age (expires after ~7 days)
 
-#### Issue: Photos Show 0% on Day 4
-**Cause**: Google Photos slow to update  
+#### Issue: Storage Shows No Growth on Day 4
+**Cause**: Transfer still processing or Google One delay  
 **Solution**:
 1. Wait a few hours and check again
-2. Manually check photos.google.com
+2. Manually check one.google.com/storage
 3. Clear Google browser cache
 4. Try incognito mode
+5. Check if photos are appearing even without storage update
 
 #### Issue: Gmail API Not Working
 **Cause**: Credentials not configured  
@@ -968,8 +1015,8 @@ web-automation → migration-state → Database
 2. migration-state.initialize_migration() → Store details
 3. web-automation.start_transfer() → Begin process
 4. migration-state.start_photo_transfer() → Update phase
-5. Daily: web-automation.check_progress() → Track
-6. Daily: migration-state.update_photo_progress() → Record
+5. Daily: web-automation.check_progress() → Track via storage
+6. Daily: migration-state.update_photo_progress() → Record storage metrics
 
 ### With mobile-mcp Server
 
@@ -979,7 +1026,7 @@ web-automation → migration-state → Database
 - **migration-state**: All state management
 
 #### Parallel Operations
-While web-automation handles photo transfer:
+While web-automation handles media transfer:
 - mobile-mcp sets up WhatsApp groups
 - mobile-mcp configures location sharing
 - mobile-mcp activates Venmo cards
@@ -1072,11 +1119,12 @@ migration_state.generate_report()
 ## Success Metrics
 
 ### Transfer Success Criteria
-- ✅ 98%+ photos transferred (Grade A or A+)
+- ✅ 98%+ photos and videos transferred (Grade A or A+)
 - ✅ Completion email received
-- ✅ Important photos verified
+- ✅ Important photos and videos verified
 - ✅ Transfer completed within 7 days
 - ✅ No data loss or corruption
+- ✅ Storage metrics match expected totals
 
 ### Operational Metrics
 - Session reuse rate: >95%
