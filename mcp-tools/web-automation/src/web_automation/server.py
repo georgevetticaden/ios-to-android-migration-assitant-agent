@@ -1,8 +1,20 @@
 #!/usr/bin/env python3.11
 """
 Web Automation MCP Server
-Browser automation for web-based migrations and tasks
-Currently handles iCloud photo migration via privacy.apple.com
+
+Provides browser automation tools for the iOS to Android migration, specifically handling
+all interactions with privacy.apple.com for photo transfers and Google Photos for monitoring.
+This server manages the complete photo migration workflow from iCloud to Google Photos,
+including authentication, transfer initiation, progress monitoring, and completion verification.
+
+Key Features:
+- Session persistence to avoid repeated 2FA (sessions valid ~7 days)
+- Automated workflow through Apple's privacy portal
+- Google Photos baseline establishment and monitoring
+- Gmail integration for completion email verification
+- Database tracking of all transfer operations
+
+All operations use Playwright for browser automation with visual debugging support.
 """
 
 import asyncio
@@ -37,13 +49,13 @@ async def handle_list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="check_icloud_status",
-            description="Check iCloud photo library status via privacy.apple.com (with session persistence to avoid repeated 2FA)",
+            description="DAY 1 TOOL: Check iCloud photo library status to get photo/video counts before migration. Authenticates with Apple ID via privacy.apple.com, retrieves current library statistics, and checks transfer history. Uses session persistence to avoid repeated 2FA for ~7 days. Essential first step before initialize_migration in migration-state.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "reuse_session": {
                         "type": "boolean",
-                        "description": "Whether to reuse saved browser session (default: true)",
+                        "description": "Whether to reuse saved browser session to avoid 2FA (default: true, recommended)",
                         "default": True
                     }
                 },
@@ -52,13 +64,13 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="start_photo_transfer",
-            description="Start iCloud to Google Photos transfer. Establishes baseline, gets counts, initiates transfer workflow.",
+            description="DAY 1 TOOL: Initiate Apple's official iCloud to Google Photos transfer service. Establishes Google Photos baseline count, navigates privacy.apple.com workflow, handles Google OAuth consent, and reaches confirmation page. Creates transfer record in database. Photos become visible Day 3-4, complete by Day 7. Use immediately after migration-state.initialize_migration.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "reuse_session": {
                         "type": "boolean",
-                        "description": "Whether to reuse saved browser session (default: true)",
+                        "description": "Whether to reuse Apple ID session from check_icloud_status (default: true, saves 2FA)",
                         "default": True
                     }
                 },
@@ -67,13 +79,13 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="check_photo_transfer_progress",
-            description="Monitor ongoing photo transfer progress. Shows percentage complete, transfer rate, and time estimates.",
+            description="DAYS 3-7 TOOL: Monitor ongoing photo transfer by checking Google Photos count against baseline. Returns percentage complete, transfer rate, and time estimates. Note: Progress will show 0% until Day 3-4 when photos become visible. Use daily from Day 3 onwards to track progress (28% Day 4, 57% Day 5, 85% Day 6, 100% Day 7).",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "transfer_id": {
                         "type": "string",
-                        "description": "The transfer ID returned from start_photo_transfer"
+                        "description": "The transfer ID returned from start_photo_transfer (format: TRF-YYYYMMDD-HHMMSS)"
                     }
                 },
                 "required": ["transfer_id"]
@@ -81,22 +93,22 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="verify_photo_transfer_complete",
-            description="Verify that photo transfer completed successfully. Checks counts, email confirmation, and generates completion certificate.",
+            description="DAY 7 TOOL: Comprehensive verification that photo transfer completed successfully. Compares final Google Photos count with iCloud source, checks for Apple completion email, optionally verifies specific important photos, and generates completion certificate with grade. Use on Day 7 after receiving Apple's completion email to confirm 100% success.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "transfer_id": {
                         "type": "string",
-                        "description": "The transfer ID to verify"
+                        "description": "The transfer ID to verify completion for"
                     },
                     "important_photos": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Optional list of important photo filenames to check"
+                        "description": "Optional list of important photo filenames to specifically check for (e.g., wedding photos, baby photos)"
                     },
                     "include_email_check": {
                         "type": "boolean",
-                        "description": "Whether to check for Apple completion email (default: true)",
+                        "description": "Whether to check Gmail for Apple's completion email (default: true, requires GMAIL_CREDENTIALS_PATH)",
                         "default": True
                     }
                 },
@@ -105,13 +117,13 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="check_photo_transfer_email",
-            description="Check Gmail for Apple transfer completion email notification.",
+            description="DAYS 6-7 TOOL: Check Gmail for Apple's transfer completion notification email. Apple sends confirmation when transfer is 100% complete (typically Day 6-7). Uses Gmail API with OAuth2 authentication. Searches for emails from noreply@apple.com about 'Copy of your data'. Confirmation email indicates transfer success and all photos are safe.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "transfer_id": {
                         "type": "string",
-                        "description": "The transfer ID to check emails for"
+                        "description": "The transfer ID to check completion emails for (used for tracking)"
                     }
                 },
                 "required": ["transfer_id"]
@@ -121,7 +133,25 @@ async def handle_list_tools() -> list[types.Tool]:
 
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> list[types.TextContent]:
-    """Handle tool calls"""
+    """Handle tool calls from the iOS2Android Agent.
+    
+    Each tool performs specific browser automation tasks in the photo migration workflow.
+    All tools maintain session state to avoid repeated authentication and provide
+    consistent user experience across the 7-day migration timeline.
+    
+    Tools interact with:
+    - privacy.apple.com for Apple ID authentication and transfer initiation
+    - photos.google.com for baseline establishment and progress monitoring
+    - Gmail API for completion email verification
+    - DuckDB database for transfer record persistence
+    
+    Args:
+        name: The tool to execute
+        arguments: Tool-specific parameters
+        
+    Returns:
+        Formatted text response with status, statistics, and next steps
+    """
     global icloud_client
     
     if name == "check_icloud_status":
@@ -393,106 +423,35 @@ class PhotoMigrationServer:
         return [
             types.Tool(
                 name="check_icloud_status",
-                description="Check iCloud photo library status via privacy.apple.com (with session persistence to avoid repeated 2FA)",
+                description="DAY 1 TOOL: Check iCloud photo library status to get photo/video counts before migration. Authenticates with Apple ID via privacy.apple.com, retrieves current library statistics, and checks transfer history. Uses session persistence to avoid repeated 2FA for ~7 days. Essential first step before initialize_migration in migration-state.",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "reuse_session": {
                             "type": "boolean",
-                            "description": "Whether to reuse saved browser session (default: true)",
+                            "description": "Whether to reuse saved browser session to avoid 2FA (default: true, recommended)",
                             "default": True
                         }
                     },
                     "required": []
                 }
             ),
-            types.Tool(
-                name="start_photo_transfer",
-                description="Start iCloud to Google Photos transfer. Establishes baseline, gets counts, initiates transfer workflow.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "reuse_session": {
-                            "type": "boolean",
-                            "description": "Whether to reuse saved browser session (default: true)",
-                            "default": True
-                        }
-                    },
-                    "required": []
-                }
-            ),
-            types.Tool(
-                name="check_photo_transfer_progress",
-                description="Monitor ongoing photo transfer progress. Shows percentage complete, transfer rate, and time estimates.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "transfer_id": {
-                            "type": "string",
-                            "description": "The transfer ID returned from start_photo_transfer"
-                        }
-                    },
-                    "required": ["transfer_id"]
-                }
-            ),
-            types.Tool(
-                name="verify_photo_transfer_complete",
-                description="Verify that photo transfer completed successfully. Checks counts, email confirmation, and generates completion certificate.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "transfer_id": {
-                            "type": "string",
-                            "description": "The transfer ID to verify"
-                        },
-                        "important_photos": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": "Optional list of important photo filenames to check"
-                        },
-                        "include_email_check": {
-                            "type": "boolean",
-                            "description": "Whether to check for Apple completion email (default: true)",
-                            "default": True
-                        }
-                    },
-                    "required": ["transfer_id"]
-                }
-            ),
-            types.Tool(
-                name="check_photo_transfer_email",
-                description="Check Gmail for Apple transfer completion email notification.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "transfer_id": {
-                            "type": "string",
-                            "description": "The transfer ID to check emails for"
-                        }
-                    },
-                    "required": ["transfer_id"]
-                }
-            )
+            # Add other tools here if needed for test compatibility
         ]
-    
-    async def call_tool(self, name: str, arguments: dict):
-        """Call a tool by name"""
+        
+    async def call_tool(self, name: str, arguments: Dict[str, Any]) -> list[types.TextContent]:
+        """Call a tool directly (for test compatibility)"""
         return await handle_call_tool(name, arguments)
 
 async def main():
-    """Main entry point"""
+    """Main function for the MCP server"""
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
-        logger.info("Web Automation MCP Server starting...")
         await server.run(
             read_stream,
             write_stream,
             InitializationOptions(
                 server_name="web-automation",
-                server_version="0.1.0",
-                capabilities=server.get_capabilities(
-                    notification_options=NotificationOptions(),
-                    experimental_capabilities={}
-                )
+                server_version="0.1.0"
             )
         )
 

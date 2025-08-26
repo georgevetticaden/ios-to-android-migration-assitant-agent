@@ -2,26 +2,32 @@
 """
 Migration State MCP Server
 
-A comprehensive MCP server that provides 16 tools for managing iOS to Android migration state.
+A comprehensive MCP server providing 16 tools aligned with the 7-day iOS to Android migration workflow.
 This server acts as a thin wrapper around the migration_db.py module, exposing database 
-operations as MCP tools that can be called from Claude Desktop.
+operations as MCP tools optimized for the iOS2Android Agent orchestration patterns.
 
-The server manages:
-- Migration lifecycle (initialization, progress tracking, completion)
-- Family member management and app adoption tracking
-- Photo/video transfer progress monitoring
-- Daily summaries and reporting
-- Event logging and statistics
+7-Day Workflow Tool Usage:
+- Day 1: initialize_migration, add_family_member, start_photo_transfer
+- Days 2-3: update_family_member_apps (WhatsApp adoption), get_daily_summary
+- Day 4: update_photo_progress (photos become visible)
+- Day 5: activate_venmo_card (teen cards arrive)
+- Days 6-7: get_migration_overview, generate_migration_report
 
-All tools return raw JSON for easy visualization and processing by Claude.
+Tool Categories:
+- Setup Tools: initialize_migration, add_family_member, start_photo_transfer
+- Progress Tools: update_photo_progress, update_family_member_apps
+- Monitoring Tools: get_daily_summary, get_migration_overview, get_statistics
+- Completion Tools: activate_venmo_card, generate_migration_report
+- Utility Tools: log_migration_event, create_action_item
+
+All tools return raw JSON optimized for React visualization and Claude processing.
 
 Database: DuckDB at ~/.ios_android_migration/migration.db
 Tables: 7 (migration_status, family_members, photo_transfer, app_setup, 
         family_app_adoption, daily_progress, venmo_setup)
-Foreign Keys: None (removed to work around DuckDB UPDATE limitations)
 
 Author: iOS2Android Migration Team
-Version: 2.0 (Phase 2 Complete)
+Version: 2.1 (Enhanced Tool Descriptions for 7-Day Workflow)
 """
 
 import sys
@@ -49,73 +55,73 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="get_migration_status",
-            description="Get current migration status and all details",
+            description="Get current active migration status with comprehensive details. Use this to check progress at any time during the 7-day migration. Returns migration state, photo progress, family app adoption status, and current phase. Essential for daily check-ins and status updates.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "migration_id": {"type": "string", "description": "Optional specific migration ID"}
+                    "migration_id": {"type": "string", "description": "Optional specific migration ID to query (defaults to active migration)"}
                 }
             }
         ),
         Tool(
             name="update_migration_progress",
-            description="Update migration progress metrics",
+            description="Update overall migration status and phase progression. Use this to advance through phases: initialization → photo_transfer → family_setup → validation → completed. Updates database state when major milestones are reached (e.g., photo transfer started, family apps configured, migration completed).",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "migration_id": {"type": "string"},
-                    "status": {"type": "string", "enum": ["initialization", "photo_transfer", "family_setup", "validation", "completed"]},
-                    "photos_transferred": {"type": "integer"},
-                    "videos_transferred": {"type": "integer"},
-                    "total_size_gb": {"type": "number"}
+                    "migration_id": {"type": "string", "description": "Migration ID to update"},
+                    "status": {"type": "string", "enum": ["initialization", "photo_transfer", "family_setup", "validation", "completed"], "description": "New migration phase"},
+                    "photos_transferred": {"type": "integer", "description": "Optional: Number of photos transferred so far"},
+                    "videos_transferred": {"type": "integer", "description": "Optional: Number of videos transferred so far"},
+                    "total_size_gb": {"type": "number", "description": "Optional: Total size transferred in GB"}
                 },
                 "required": ["migration_id", "status"]
             }
         ),
         Tool(
             name="get_pending_items",
-            description="Get items still to be migrated",
+            description="Get list of migration tasks or family member setups still pending completion. Use this to identify what needs attention during daily check-ins (Days 2-6). Shows which family members haven't installed apps, which setups are incomplete, etc.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "category": {"type": "string", "enum": ["photos", "contacts", "apps", "messages", "all"]}
+                    "category": {"type": "string", "enum": ["photos", "contacts", "apps", "messages", "all"], "description": "Category of pending items to check (use 'apps' for family app adoption status)"}
                 },
                 "required": ["category"]
             }
         ),
         Tool(
             name="mark_item_complete",
-            description="Mark individual migration items as complete",
+            description="Mark specific migration tasks as completed. Use when individual items are verified as done (e.g., app installations verified, cards activated). Updates database to reflect completion status.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "item_type": {"type": "string"},
-                    "item_id": {"type": "string"},
-                    "details": {"type": "object"}
+                    "item_type": {"type": "string", "description": "Type of item being marked complete (e.g., 'app_install', 'card_activation')"},
+                    "item_id": {"type": "string", "description": "Unique identifier for the item"},
+                    "details": {"type": "object", "description": "Optional additional details about the completion"}
                 },
                 "required": ["item_type", "item_id"]
             }
         ),
         Tool(
             name="get_statistics",
-            description="Get migration statistics as JSON",
+            description="Get comprehensive migration statistics for visualization. Use this to create React progress charts and dashboards. Returns raw JSON with photo counts, transfer rates, family app adoption metrics, and completion percentages. Perfect for daily status visualizations.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "include_history": {"type": "boolean", "description": "Include historical migrations"}
+                    "include_history": {"type": "boolean", "description": "Include data from previous migrations (default: false)"}
                 }
             }
         ),
         Tool(
             name="log_migration_event",
-            description="Log a migration event",
+            description="Record significant migration events for audit trail and troubleshooting. Use when important milestones occur (transfer started, group created, cards activated). Creates timestamped log entries for the migration history.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "event_type": {"type": "string"},
-                    "component": {"type": "string"},
-                    "description": {"type": "string"},
-                    "metadata": {"type": "object"}
+                    "event_type": {"type": "string", "description": "Category of event (e.g., 'milestone', 'error', 'user_action')"},
+                    "component": {"type": "string", "description": "Which part of the system (e.g., 'photo_transfer', 'whatsapp', 'venmo')"},
+                    "description": {"type": "string", "description": "Human-readable description of what happened"},
+                    "metadata": {"type": "object", "description": "Optional additional data (counts, IDs, etc.)"}
                 },
                 "required": ["event_type", "component", "description"]
             }
@@ -123,122 +129,123 @@ async def list_tools() -> list[Tool]:
         # New V2 Tools
         Tool(
             name="initialize_migration",
-            description="Start a new migration with user details and photo counts from iCloud check",
+            description="DAY 1 TOOL: Start a new 7-day migration after getting photo counts from web-automation.check_icloud_status. This creates the migration record, initializes database tables, and sets up app tracking. Use immediately after confirming user wants to proceed with migration. Returns migration_id for tracking.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "user_name": {"type": "string"},
-                    "years_on_ios": {"type": "integer", "default": 18},
-                    "photo_count": {"type": "integer"},
-                    "video_count": {"type": "integer"},
-                    "storage_gb": {"type": "number"}
+                    "user_name": {"type": "string", "description": "User's name for the migration"},
+                    "years_on_ios": {"type": "integer", "default": 18, "description": "How long user has been on iOS (for celebration message)"},
+                    "photo_count": {"type": "integer", "description": "Total photos in iCloud (from web-automation check)"},
+                    "video_count": {"type": "integer", "description": "Total videos in iCloud"},
+                    "storage_gb": {"type": "number", "description": "Total storage size in GB (from iCloud check)"}
                 },
                 "required": ["user_name", "photo_count", "storage_gb"]
             }
         ),
         Tool(
             name="add_family_member",
-            description="Add a family member with their email for sending app invitations",
+            description="DAY 1 TOOL: Add family members who will receive app invitations and be included in cross-platform groups. Use after initialize_migration when user provides family member details. Ages 13-17 automatically create Venmo teen account records. This sets up tracking for WhatsApp, Google Maps, and Venmo adoption.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "name": {"type": "string"},
-                    "email": {"type": "string"},
-                    "role": {"type": "string", "enum": ["spouse", "child"]},
-                    "age": {"type": "integer", "description": "Optional, used for Venmo teen accounts"}
+                    "name": {"type": "string", "description": "Family member's name"},
+                    "email": {"type": "string", "description": "Email address for sending app invitations"},
+                    "role": {"type": "string", "enum": ["spouse", "child"], "description": "Relationship to user"},
+                    "age": {"type": "integer", "description": "Age (required for Venmo teen accounts if 13-17)"}
                 },
                 "required": ["name", "email"]
             }
         ),
         Tool(
             name="start_photo_transfer",
-            description="Record that Apple photo transfer has been initiated",
+            description="DAY 1 TOOL: Record that Apple's official photo transfer to Google Photos has been initiated via web-automation. Updates migration phase to 'photo_transfer' and sets expectations (photos visible Day 3-4, completion Day 7). Use after web-automation.start_photo_transfer succeeds.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "transfer_initiated": {"type": "boolean", "default": True}
+                    "transfer_initiated": {"type": "boolean", "default": True, "description": "Confirmation that transfer started successfully"}
                 }
             }
         ),
         Tool(
             name="update_family_member_apps",
-            description="Update which apps a family member has installed/configured",
+            description="DAYS 1-6 TOOL: Track family member progress through app adoption workflow. Use when: sending invitations (→'invited'), detecting installations (→'installed'), or adding to groups (→'configured'). Status progression: not_started → invited → installed → configured. Critical for tracking WhatsApp group completion.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "family_member_name": {"type": "string"},
-                    "app_name": {"type": "string", "enum": ["WhatsApp", "Google Maps", "Venmo"]},
-                    "status": {"type": "string", "enum": ["not_started", "invited", "installed", "configured"]}
+                    "family_member_name": {"type": "string", "description": "Name of family member (must match add_family_member name)"},
+                    "app_name": {"type": "string", "enum": ["WhatsApp", "Google Maps", "Venmo"], "description": "Which app status is being updated"},
+                    "status": {"type": "string", "enum": ["not_started", "invited", "installed", "configured"], "description": "New status (invited=email sent, installed=app detected, configured=added to group)"}
                 },
                 "required": ["family_member_name", "app_name", "status"]
             }
         ),
         Tool(
             name="update_photo_progress",
-            description="Update photo transfer progress metrics",
+            description="DAYS 4-7 TOOL: Update photo transfer progress when photos become visible in Google Photos. Day 4: ~28% visible, Day 6: ~85%, Day 7: 100%. Calculates transfer rates and ETAs. Use when mobile-mcp shows new photo counts in Google Photos app. Photos are NOT visible until Day 4.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "progress_percent": {"type": "number"},
-                    "photos_transferred": {"type": "integer"},
-                    "videos_transferred": {"type": "integer"},
-                    "size_transferred_gb": {"type": "number"}
+                    "progress_percent": {"type": "number", "description": "Percentage of photos transferred (0-100)"},
+                    "photos_transferred": {"type": "integer", "description": "Optional: Actual count if available (calculated from % if not provided)"},
+                    "videos_transferred": {"type": "integer", "description": "Optional: Video count transferred"},
+                    "size_transferred_gb": {"type": "number", "description": "Optional: GB transferred (calculated if not provided)"}
                 },
                 "required": ["progress_percent"]
             }
         ),
         Tool(
             name="activate_venmo_card",
-            description="Record Venmo teen card activation",
+            description="DAY 5 TOOL: Record when Venmo teen debit cards arrive and are activated. Cards arrive 3-5 days after account creation (typically Day 5). Use after mobile-mcp helps activate card through Venmo app. Updates both venmo_setup and family app adoption status to 'configured'.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "family_member_name": {"type": "string"},
-                    "card_last_four": {"type": "string"},
-                    "card_activated": {"type": "boolean", "default": True}
+                    "family_member_name": {"type": "string", "description": "Teen family member's name (must have age 13-17)"},
+                    "card_last_four": {"type": "string", "description": "Last 4 digits of activated card (for records)"},
+                    "card_activated": {"type": "boolean", "default": True, "description": "Confirmation that activation succeeded"}
                 },
                 "required": ["family_member_name"]
             }
         ),
         Tool(
             name="get_daily_summary",
-            description="Get migration status summary for a specific day",
+            description="DAILY CHECK-IN TOOL: Get day-specific migration status with appropriate expectations. Day 1: Setup complete, Day 3: WhatsApp adoption, Day 4: Photos appear!, Day 5: Cards arrive, Day 7: Completion. Returns day-aware progress (e.g., photos shown as 0% until Day 4). Use for daily status updates.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "day_number": {"type": "integer", "minimum": 1, "maximum": 7}
+                    "day_number": {"type": "integer", "minimum": 1, "maximum": 7, "description": "Which day of the 7-day migration timeline"}
                 },
                 "required": ["day_number"]
             }
         ),
         Tool(
             name="get_migration_overview",
-            description="Get current overall migration status",
+            description="ANYTIME TOOL: Get comprehensive current migration status including phase, progress, family connections, and time elapsed. Use for detailed status checks, React dashboard data, or when user asks 'how are things going?'. Returns complete picture of migration state.",
             inputSchema={
                 "type": "object",
-                "properties": {}
+                "properties": {},
+                "description": "No parameters needed - returns active migration overview"
             }
         ),
         Tool(
             name="create_action_item",
-            description="Create a follow-up task (like sending email invites)",
+            description="COORDINATION TOOL: Create reminder for follow-up actions that mobile-mcp will handle directly (like sending email invitations). Use when family members need to be contacted or reminded. Note: Actual email sending is done via mobile-mcp natural language commands.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "action_type": {"type": "string"},
-                    "description": {"type": "string"},
-                    "target_member": {"type": "string"}
+                    "action_type": {"type": "string", "description": "Type of action needed (e.g., 'email_invite', 'reminder')"},
+                    "description": {"type": "string", "description": "Description of what needs to be done"},
+                    "target_member": {"type": "string", "description": "Which family member this action concerns"}
                 },
                 "required": ["action_type", "description"]
             }
         ),
         Tool(
             name="generate_migration_report",
-            description="Generate final migration completion report",
+            description="DAY 7 COMPLETION TOOL: Generate celebratory final report when migration is 100% complete. Use after Apple sends completion email and all photos are verified in Google Photos. Returns formatted celebration data perfect for React visualization with achievements, statistics, and success confirmation.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "format": {"type": "string", "enum": ["summary", "detailed"], "default": "summary"}
+                    "format": {"type": "string", "enum": ["summary", "detailed"], "default": "summary", "description": "Level of detail in the report"}
                 }
             }
         )
@@ -249,8 +256,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     """
     Execute database operations based on tool name and return JSON results.
     
-    This is the main handler for all 16 MCP tools. Each tool performs specific
-    database operations and returns structured JSON data for Claude to process.
+    This is the main handler for all 16 MCP tools aligned with the 7-day migration workflow.
+    Each tool performs specific database operations and returns structured JSON data for 
+    Claude to process and visualize.
     
     Args:
         name (str): The name of the tool to execute. Must be one of the 16 registered tools.
@@ -259,13 +267,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     Returns:
         list[TextContent]: A list containing a single TextContent object with the JSON result.
     
-    Tool Categories:
-        - Status Tools: get_migration_status, get_migration_overview, get_daily_summary
-        - Update Tools: update_migration_progress, update_photo_progress, update_family_member_apps
-        - Management Tools: initialize_migration, add_family_member, start_photo_transfer
-        - Tracking Tools: activate_venmo_card, create_action_item
-        - Reporting Tools: generate_migration_report, get_statistics
-        - Utility Tools: get_pending_items, mark_item_complete, log_migration_event
+    7-Day Workflow Tool Categories:
+        - Setup (Day 1): initialize_migration, add_family_member, start_photo_transfer
+        - Progress (Days 1-7): update_photo_progress, update_family_member_apps, update_migration_progress
+        - Monitoring (Daily): get_daily_summary, get_migration_overview, get_migration_status
+        - Completion (Days 5-7): activate_venmo_card, generate_migration_report
+        - Support (Anytime): get_statistics, log_migration_event, create_action_item
+        - Utility (Anytime): get_pending_items, mark_item_complete
     
     Raises:
         Exception: Any database or processing errors are caught and returned as error JSON.
