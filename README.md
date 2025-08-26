@@ -27,11 +27,12 @@ This project provides MCP tools that assist with the complete migration journey 
 - ✅ 383 GB storage usage
 - ✅ Previous transfer history
 
-## 📋 Current Status - V2 Implementation
+## 📋 Current Status - V2.0 Implementation
 
-### ✅ Phase 1: Database V2 Implementation - COMPLETE (Aug 25, 2025)
-- **Simplified Schema**: Reduced from 17 to 7 tables
-- **No Schema Prefixes**: Direct table names (no migration. prefix)
+### ✅ Phase 1: Database V2.0 Implementation - COMPLETE (Aug 26, 2025)
+- **Enhanced Schema**: 8 tables with video and storage support
+- **Media Transfer**: Separate photo and video tracking (formerly photo_transfer)
+- **Storage Snapshots**: NEW table for Google One progress tracking
 - **Day-Aware Logic**: Photos visible Day 4, Venmo cards Day 5
 - **Email-Based Coordination**: Family members use emails for invitations
 - **Full Test Coverage**: All database and compatibility tests passing
@@ -54,8 +55,8 @@ This project provides MCP tools that assist with the complete migration journey 
 - **Error Recovery**: Robust retry logic and error handling
 - **MCP Servers**: 3 operational servers (web-automation, mobile-mcp, migration-state)
 
-### ✅ Phase 2: MCP Tools Implementation - COMPLETE (Aug 25, 2025)
-**16 Tools Now Operational in migration-state server**:
+### ✅ Phase 2: MCP Tools Implementation - COMPLETE (Aug 26, 2025)
+**18 Tools Now Operational in migration-state server**:
 
 **Original 6 Tools:**
 1. `get_migration_status` - Get current migration state
@@ -65,7 +66,7 @@ This project provides MCP tools that assist with the complete migration journey 
 5. `mark_item_complete` - Mark items as done
 6. `get_migration_statistics` - Get stats as JSON
 
-**New 10 Tools:**
+**New 12 Tools:**
 1. `initialize_migration` - Enhanced with full user details
 2. `add_family_member` - Add family member with email
 3. `start_photo_transfer` - Record Apple transfer initiation
@@ -76,11 +77,15 @@ This project provides MCP tools that assist with the complete migration journey 
 8. `get_migration_overview` - Complete migration status
 9. `create_action_item` - Placeholder for mobile-mcp actions
 10. `generate_migration_report` - Final migration summary
+11. `record_storage_snapshot` - NEW: Track Google One storage growth
+12. `get_storage_progress` - NEW: Calculate progress from storage
 
-**Key Changes:**
-- **Database**: 7 tables WITHOUT foreign keys (DuckDB limitation workaround)
-- **Testing**: All 17 tests passing
-- **UPDATE Support**: Full UPDATE operations now working
+**Key Changes v2.0:**
+- **Database**: 8 tables (added storage_snapshots)
+- **Media Support**: Separate photo and video tracking
+- **Storage Tracking**: Progress based on actual Google One metrics
+- **Testing**: All tests passing (10 database, 17 MCP)
+- **UPDATE Support**: Full UPDATE operations working
 
 ### 📅 Next Phase
 - **iOS2Android Agent**: Create and test the agent using `agent/instructions/ios2android-agent-instructions.md`

@@ -2,32 +2,36 @@
 
 ## Overview
 
-The Migration State MCP server provides 16 comprehensive tools for managing the complete iOS to Android migration journey. It serves as the central state management system, tracking photos, family members, app adoption, and progress through a realistic 7-day migration timeline. All tools return raw JSON for easy visualization in Claude's React environment.
+The Migration State MCP server provides 18 comprehensive tools for managing the complete iOS to Android migration journey. It serves as the central state management system, tracking photos AND videos separately, family members, app adoption, and progress through storage-based metrics over a realistic 7-day migration timeline. All tools return raw JSON for easy visualization in Claude's React environment.
 
 ## Key Features
 
-- **16 MCP Tools**: Complete lifecycle management from initialization to celebration
+- **18 MCP Tools**: Complete lifecycle management from initialization to celebration
 - **DuckDB Backend**: Persistent storage in `~/.ios_android_migration/migration.db`
+- **Video Support**: Separate tracking for photos and videos with independent status
+- **Storage-Based Progress**: Accurate progress calculation using Google One metrics
 - **7-Day Timeline**: Day-aware logic matching real-world migration timelines
 - **Family Coordination**: Track multi-member app adoption and cross-platform connectivity
 - **No Foreign Keys**: Optimized for DuckDB's UPDATE operations
 - **JSON Responses**: Direct data for React dashboards and visualizations
 
-## Database Architecture
+## Database Architecture (v2.0)
 
-### Tables (7)
-- **migration_status**: Core migration tracking with phases and progress
+### Tables (8)
+- **migration_status**: Core migration tracking with storage baselines for progress
 - **family_members**: Family details with email-based coordination
-- **photo_transfer**: Apple to Google Photos transfer progress
+- **media_transfer**: Photo AND video transfer with separate status (formerly photo_transfer)
+- **storage_snapshots**: NEW - Google One storage metrics for accurate progress calculation
 - **app_setup**: WhatsApp, Maps, Venmo configuration tracking
 - **family_app_adoption**: Per-member app installation status
-- **daily_progress**: Day-by-day milestone snapshots
+- **daily_progress**: Day-by-day milestone snapshots with video metrics
 - **venmo_setup**: Teen debit card activation tracking
 
-### Views (3)
-- **migration_summary**: Comprehensive status with joins
+### Views (4)
+- **migration_summary**: Comprehensive status with video support
 - **family_app_status**: Family member × app adoption matrix
-- **active_migration**: Current migration with all details
+- **active_migration**: Current migration with storage tracking
+- **daily_progress_summary**: NEW - Day-specific messages with celebrations
 
 ### Design Decision: No Foreign Keys
 Foreign key constraints were intentionally removed to work around a DuckDB limitation where UPDATE operations fail on tables with foreign key references. Referential integrity is enforced at the application layer through the migration_db.py module.
@@ -313,12 +317,44 @@ Foreign key constraints were intentionally removed to work around a DuckDB limit
 **State Impact**: Read-only (generates report)
 **Agent Usage**: Final celebration visualization
 
+---
+
+### 📊 Storage Tracking Tools (NEW in v2.0)
+
+#### 17. `record_storage_snapshot`
+**Purpose**: Record Google One storage metrics for progress tracking  
+**When to Use**: When checking Google One storage page (Days 1,4,5,6,7)  
+**Day**: Days 1-7 (baseline on Day 1, progress on Days 4-7)  
+**Parameters**:
+- `google_photos_gb` (required): Current Google Photos storage in GB
+- `google_drive_gb` (optional): Current Google Drive storage
+- `gmail_gb` (optional): Current Gmail storage  
+- `day_number` (required): Which day of migration (1-7)
+- `is_baseline` (optional): True if this is the initial baseline
+
+**Returns**: Snapshot recorded with calculated growth and percentage
+**State Impact**: Creates storage_snapshots record
+**Agent Usage**: Called after checking Google One dashboard
+
+---
+
+#### 18. `get_storage_progress`
+**Purpose**: Calculate transfer progress based on storage growth  
+**When to Use**: To get accurate progress percentage from storage metrics  
+**Day**: Days 4-7 (after photos start appearing)  
+**Parameters**: None
+
+**Returns**: Current storage metrics, growth, and calculated progress
+**State Impact**: Read-only calculation from latest snapshot
+**Agent Usage**: More accurate than Apple's estimates
+
 ## 7-Day Migration Timeline
 
 ### Day 1: Foundation
 - `initialize_migration` - Start the journey
 - `add_family_member` - Register all family members
 - `start_photo_transfer` - Begin Apple transfer
+- `record_storage_snapshot` - Baseline (13.88GB)
 - `update_family_member_apps` - Send WhatsApp invitations
 
 ### Day 2-3: Family Adoption
@@ -327,22 +363,26 @@ Foreign key constraints were intentionally removed to work around a DuckDB limit
 - Continue invitations and app setup
 
 ### Day 4: Photos Appear! 🎉
-- `update_photo_progress` - First photo visibility (~28%)
+- `record_storage_snapshot` - 120.88GB (28% complete)
+- `update_photo_progress` - First photo visibility (~16,387 photos)
 - `get_daily_summary` - Celebration milestone
 - `update_family_member_apps` - Complete WhatsApp group
 
 ### Day 5: Venmo Cards
 - `activate_venmo_card` - Teen cards arrive
-- `update_photo_progress` - ~57% complete
+- `record_storage_snapshot` - 220.88GB (57% complete)
+- `update_photo_progress` - ~34,356 photos visible
 - Location sharing setup via Maps
 
 ### Day 6: Near Completion
-- `update_photo_progress` - ~85% complete
+- `record_storage_snapshot` - 340.88GB (88% complete)
+- `update_photo_progress` - ~53,010 photos visible
 - Final app configurations
 - Prepare for completion
 
 ### Day 7: Celebration! 🎊
-- `update_photo_progress` - 100% complete
+- `record_storage_snapshot` - 396.88GB (100% complete)
+- `update_photo_progress` - 60,238 photos, 2,418 videos complete
 - `update_migration_progress` - Set to "completed"
 - `generate_migration_report` - Final celebration
 
@@ -498,7 +538,7 @@ web-automation (Mac) → migration-state (Database) ← mobile-mcp (Android)
 5. Update this README
 
 ### Key Files
-- `server.py` - MCP server implementation (16 tools)
+- `server.py` - MCP server implementation (18 tools)
 - `migration_db.py` - Database operations (singleton)
 - `initialize_database.py` - Schema creation
 - `test_migration_state.py` - Comprehensive tests
@@ -521,7 +561,7 @@ A successful migration means:
 
 ## Next Steps
 
-With Phase 2 complete and all 16 tools operational:
+With Phase 2 complete and all 18 tools operational:
 1. Use iOS2Android agent instructions for orchestration
 2. Test complete 7-day flow with real data
 3. Monitor actual photo transfer progress
@@ -530,4 +570,4 @@ With Phase 2 complete and all 16 tools operational:
 ---
 
 *Version 2.0 - Phase 2 Complete (August 2025)*  
-*16 Tools Operational - Ready for iOS2Android Agent Integration*
+*18 Tools Operational with Video & Storage Support - Ready for iOS2Android Agent Integration*

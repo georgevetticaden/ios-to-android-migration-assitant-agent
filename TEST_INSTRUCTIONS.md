@@ -1,7 +1,7 @@
-# Test Instructions for iOS to Android Migration Assistant (V2)
+# Test Instructions for iOS to Android Migration Assistant (v2.0)
 
 ## Overview
-This document provides comprehensive testing instructions for the iOS to Android migration assistant with Phase 2 complete (16 MCP tools operational).
+This document provides comprehensive testing instructions for the iOS to Android migration assistant with v2.0 schema supporting video transfers and storage-based progress tracking (18 MCP tools operational).
 
 ## Prerequisites
 - Python 3.11+ installed
@@ -22,19 +22,25 @@ All tests are organized in `tests/` subdirectories within their respective modul
 
 ### Phase 1: Database Tests
 
-#### Step 1: Reinitialize Database (IMPORTANT - Updated Schema)
+#### Step 1: Reset Database
 ```bash
 # From project root
 cd /Users/aju/Dropbox/Development/Git/08-14-2025-ios-to-android-migration-agent-take-2/ios-to-android-migration-assitant-agent
 
-# Reinitialize with updated schema (no foreign keys)
+# Complete reset
+python3 shared/database/scripts/reset_database.py
+```
+
+#### Step 2: Initialize Database (v2.0 Schema)
+```bash
+# Initialize with video and storage support
 python3 shared/database/scripts/initialize_database.py
 ```
 Expected: 
 - Database backed up (if exists)
-- 7 tables created (WITHOUT foreign key constraints - by design to avoid DuckDB UPDATE limitations)
-- 7 indexes created
-- 3 views created
+- 8 tables created (including media_transfer and storage_snapshots)
+- 8 indexes created
+- 4 views created (including daily_progress_summary)
 - All expected tables verified
 - Foreign key count: 0 (removed to fix DuckDB bug)
 
@@ -42,14 +48,17 @@ Expected:
 ```bash
 python3 shared/database/tests/test_database.py
 ```
-Expected: All 9 tests should pass
-- Table existence tests
-- Migration operations
+Expected: All 10 tests should pass
+- Table existence tests (8 tables)
+- Migration initialization
 - Family member management
-- Photo transfer tracking
+- Media transfer tracking (photos + videos)
+- Storage snapshots tracking (NEW)
 - App setup tracking
-- View functionality
-- Constraint enforcement
+- Family app adoption
+- Venmo teen setup
+- View functionality (4 views)
+- Constraint enforcement (foreign keys disabled)
 
 ### Phase 2: MCP Tools Compatibility Tests
 
@@ -82,20 +91,31 @@ duckdb ~/.ios_android_migration/migration.db
 
 ### Validation Queries
 ```sql
--- 1. Check tables exist (should show 7 tables)
+-- 1. Check tables exist (should show 8 tables)
 SELECT table_name FROM information_schema.tables 
 WHERE table_type = 'BASE TABLE' 
 ORDER BY table_name;
+-- Expected: app_setup, daily_progress, family_app_adoption, 
+-- family_members, media_transfer, migration_status, 
+-- storage_snapshots, venmo_setup
 
 -- 2. Verify NO foreign key constraints (should return 0)
 SELECT COUNT(*) as foreign_key_count
 FROM duckdb_constraints()
 WHERE constraint_type = 'FOREIGN KEY';
 
--- 3. Check views exist (should show 3 views)
+-- 3. Check views exist (should show 4 views)
 SELECT table_name FROM information_schema.tables 
 WHERE table_type = 'VIEW'
 ORDER BY table_name;
+-- Expected: active_migration, daily_progress_summary,
+-- family_app_status, migration_summary
+
+-- 4. Verify media_transfer has video columns
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'media_transfer' 
+AND column_name LIKE '%video%';
+-- Expected: video_status, transferred_videos, total_videos
 
 -- 4. Test UPDATE works on migration_status
 -- (This would fail with foreign keys, should work now)
@@ -143,19 +163,22 @@ python3 mcp-tools/migration-state/tests/test_migration_state.py
 After running all tests, verify:
 
 1. **Database Structure** ✓
-   - [ ] 7 tables exist (not 17)
+   - [ ] 8 tables exist (including media_transfer and storage_snapshots)
    - [ ] No schema prefixes (no `migration.` prefix)
-   - [ ] Views work correctly
+   - [ ] 4 views work correctly
+   - [ ] Video columns in media_transfer
+   - [ ] Storage tracking functional
 
 2. **Migration State Server** ✓
+   - [ ] 18 tools available (not 16)
    - [ ] Can create migrations
-   - [ ] Can update progress
-   - [ ] Can query status
+   - [ ] Can record storage snapshots
+   - [ ] Can track videos separately
    - [ ] Returns JSON properly
 
 3. **Web Automation** ✓
-   - [ ] Uses new `photo_transfer` table
-   - [ ] No references to old schemas
+   - [ ] Uses new `media_transfer` table
+   - [ ] No references to old photo_transfer
    - [ ] Methods use migration_db helpers
 
 ## Troubleshooting
