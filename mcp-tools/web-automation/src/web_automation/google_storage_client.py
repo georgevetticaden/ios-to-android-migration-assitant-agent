@@ -487,11 +487,9 @@ class GoogleStorageClient:
                 "error": str(e)
             }
         finally:
-            # Clean up
-            if self.browser:
-                await self.browser.close()
-            if self.playwright:
-                await self.playwright.stop()
+            # Don't close browser - keep it open for reuse
+            # Browser will be closed in cleanup() method when done
+            pass
     
     async def cleanup(self):
         """Clean up browser resources"""

@@ -19,6 +19,7 @@ This module is used internally by ICloudClient.start_transfer().
 import os
 import logging
 import asyncio
+from datetime import datetime
 from typing import Dict, Any, Optional
 from datetime import datetime
 
@@ -62,11 +63,11 @@ class TransferWorkflow:
         self.context = context
         self.popup_page = None
         
-    async def execute_complete_workflow(self, google_email: str = None, google_password: str = None) -> Dict[str, Any]:
+    async def execute_complete_workflow(self, google_email: str = None, google_password: str = None, confirm_transfer: bool = False) -> Dict[str, Any]:
         """Execute the complete 8-step transfer initiation workflow.
         
         Navigates through Apple's Data & Privacy portal to set up
-        an iCloud Photos to Google Photos transfer. Stops at the
+        an iCloud Photos to Google Photos transfer. By default stops at the
         final confirmation page without clicking "Confirm Transfer".
         
         **Detailed Flow**:
@@ -78,10 +79,13 @@ class TransferWorkflow:
         6. **Apple Permissions**: Navigate Apple's data sharing consent
         7. **Google Permissions**: Grant Google Photos access
         8. **Confirmation**: Reach final page with transfer summary
+        9. **Optional Final Step**: Click "Confirm Transfers" if confirm_transfer=True
         
         Args:
             google_email: Google account email. If None, uses GOOGLE_EMAIL env var.
             google_password: Google account password. If None, uses GOOGLE_PASSWORD env var.
+            confirm_transfer: Whether to click the final "Confirm Transfers" button.
+                            Defaults to False (stops at confirmation page for safety).
         
         Returns:
             Dict containing:
@@ -155,7 +159,110 @@ class TransferWorkflow:
             confirmation_details = await self._extract_confirmation_details()
             
             logger.info(f"✅ Transfer workflow completed successfully! Transfer ID: {transfer_id}")
-            logger.info("⚠️  IMPORTANT: Review the confirmation page before clicking 'Confirm Transfer'")
+            
+            # Check if we should confirm the transfer
+            if confirm_transfer:
+                logger.info("🚀 Looking for 'Confirm Transfers' button to initiate actual transfer...")
+                try:
+                    # Wait longer for the confirmation page to fully load and button to appear
+                    logger.info("Waiting for confirmation page to fully load (15-20 seconds)...")
+                    await self.page.wait_for_timeout(5000)  # Initial wait
+                    
+                    # Try to wait for the button to appear (up to 20 seconds total)
+                    try:
+                        await self.page.wait_for_selector(
+                            'button:has-text("Confirm Transfers")',
+                            timeout=15000,  # 15 more seconds
+                            state='visible'
+                        )
+                        logger.info("✅ Confirm Transfers button is now visible")
+                    except:
+                        logger.warning("Button not visible after 20 seconds, but will try clicking anyway...")
+                    
+                    # Take screenshot before attempting click
+                    screenshot_before = f"/tmp/before_confirm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                    await self.page.screenshot(path=screenshot_before)
+                    logger.info(f"Screenshot before click: {screenshot_before}")
+                    
+                    # Use page.click() directly to avoid stale element issues
+                    clicked = False
+                    selectors = [
+                        'button:has-text("Confirm Transfers")',  # Most general selector
+                        'button.button-primary:has-text("Confirm Transfers")',  # With class
+                        'button[type="submit"]:has-text("Confirm Transfers")',  # With type
+                        '//button[contains(text(), "Confirm Transfers")]',  # XPath alternative
+                    ]
+                    
+                    for selector in selectors:
+                        try:
+                            logger.info(f"Attempting to click with selector: {selector}")
+                            
+                            # First check if element exists
+                            if selector.startswith('//'):
+                                element = await self.page.query_selector(f'xpath={selector}')
+                            else:
+                                element = await self.page.query_selector(selector)
+                            
+                            if element:
+                                logger.info(f"Element found with selector: {selector}")
+                                # Get element info before clicking
+                                is_visible = await element.is_visible()
+                                is_enabled = await element.is_enabled()
+                                logger.info(f"Element state - Visible: {is_visible}, Enabled: {is_enabled}")
+                                
+                                if is_visible and is_enabled:
+                                    # Use page.click() directly - this handles retries internally
+                                    await self.page.click(selector, timeout=5000)
+                                    logger.info("✅ Successfully clicked Confirm Transfers button!")
+                                    clicked = True
+                                    break
+                                else:
+                                    logger.warning(f"Element not ready - Visible: {is_visible}, Enabled: {is_enabled}")
+                        except Exception as e:
+                            logger.warning(f"Failed with selector {selector}: {str(e)[:100]}")
+                            continue
+                    
+                    if clicked:
+                        logger.info("✅ Transfer confirmed and initiated with Apple!")
+                        
+                        # Wait for page response after clicking
+                        await self.page.wait_for_timeout(5000)
+                        
+                        # Take screenshot after click
+                        screenshot_after = f"/tmp/after_confirm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                        await self.page.screenshot(path=screenshot_after)
+                        logger.info(f"Screenshot after click: {screenshot_after}")
+                        
+                        return {
+                            "status": "initiated",
+                            "transfer_id": transfer_id,
+                            "confirmation_details": confirmation_details,
+                            "message": "Transfer has been confirmed and initiated. Apple will process the transfer over 3-7 days.",
+                            "transfer_confirmed": True,
+                            "initiated_at": datetime.now().isoformat()
+                        }
+                    else:
+                        logger.warning("Could not click Confirm Transfers button with any selector")
+                        # Get page content for debugging
+                        buttons = await self.page.query_selector_all('button')
+                        logger.info(f"Found {len(buttons)} buttons on page")
+                        for i, btn in enumerate(buttons[:5]):  # Check first 5 buttons
+                            text = await btn.inner_text()
+                            logger.info(f"Button {i}: {text}")
+                        
+                except Exception as e:
+                    logger.error(f"Error during confirm transfer: {e}")
+                    # Take a screenshot for debugging
+                    try:
+                        screenshot_path = f"/tmp/confirm_error_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                        await self.page.screenshot(path=screenshot_path)
+                        logger.info(f"Error screenshot saved to: {screenshot_path}")
+                    except:
+                        pass
+                    # Fall through to return ready_for_confirmation status
+            else:
+                logger.info("⚠️  IMPORTANT: Review the confirmation page before clicking 'Confirm Transfer'")
+            
             logger.info(f"📊 Transfer details: {confirmation_details}")
             
             return {
@@ -430,30 +537,48 @@ class TransferWorkflow:
     async def _wait_for_confirmation_page(self):
         """Wait for return to main window with confirmation page"""
         try:
-            # The popup should close and focus returns to main window
-            await asyncio.sleep(2)
+            # Wait for popup to close (up to 15 seconds)
+            logger.info("Waiting for Google OAuth popup to close...")
+            for i in range(15):
+                await asyncio.sleep(1)
+                
+                # Check if popup closed
+                if self.popup_page:
+                    try:
+                        # Check if popup is still open
+                        await self.popup_page.title()
+                        if i % 3 == 0:
+                            logger.info(f"Still waiting for popup to close... ({i} seconds)")
+                    except:
+                        logger.info("✅ Popup closed, returned to main window")
+                        self.popup_page = None
+                        break
+                        
+                # Check if we're back on main page with confirmation
+                if len(self.context.pages) > 0:
+                    main_page = self.context.pages[0]
+                    current_url = main_page.url
+                    if 'callback' in current_url or 'confirm' in current_url.lower():
+                        self.page = main_page
+                        logger.info(f"✅ On confirmation page: {current_url[:80]}...")
+                        break
             
-            # Check if popup closed
-            if self.popup_page:
-                try:
-                    # Check if popup is still open
-                    await self.popup_page.title()
-                except:
-                    logger.info("✅ Popup closed, returned to main window")
-                    self.popup_page = None
-            
-            # Switch back to main page
+            # Ensure we're on the main page
             if len(self.context.pages) > 0:
                 self.page = self.context.pages[0]
-                logger.info(f"Main window URL: {self.page.url[:60]}...")
+                logger.info(f"Current page URL: {self.page.url[:80]}...")
                 
-                # Should be on confirmation page now
-                if 'callback' in self.page.url or 'confirm' in self.page.url.lower():
-                    logger.info("✅ On confirmation page - ready for final confirmation")
+                # Wait for page to load completely - increase timeout
+                logger.info("Waiting for page to reach network idle state...")
+                await self.page.wait_for_load_state('networkidle', timeout=20000)
+                logger.info("Page reached network idle state")
+                
+                # Don't wait here - let the confirm_transfer logic handle waiting for the button
+                logger.info("Page ready for confirmation")
                     
         except Exception as e:
             logger.error(f"Failed to return to confirmation page: {e}")
-            raise
+            # Don't raise, let the workflow continue and handle the error later
     
     async def _extract_confirmation_details(self):
         """Extract details from the confirmation page"""

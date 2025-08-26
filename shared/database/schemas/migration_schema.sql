@@ -146,8 +146,8 @@ CREATE TABLE daily_progress (
     gmail_checks_performed TEXT,  -- JSON array of email checks
     mobile_actions_performed TEXT,  -- JSON array of mobile actions
     
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(migration_id, day_number)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -- Removed UNIQUE constraint to allow multiple progress updates per day
 );
 
 -- 5. Family members (unchanged)

@@ -71,6 +71,11 @@ async def handle_list_tools() -> list[types.Tool]:
                         "type": "boolean",
                         "description": "Whether to reuse Apple ID session from check_icloud_status (default: true, saves 2FA)",
                         "default": True
+                    },
+                    "confirm_transfer": {
+                        "type": "boolean",
+                        "description": "Whether to click 'Confirm Transfers' button to actually start the transfer (default: false for safety)",
+                        "default": False
                     }
                 },
                 "required": []
@@ -216,8 +221,9 @@ Transfer History:
                 await icloud_client.initialize_apis()
             
             reuse_session = arguments.get("reuse_session", True)
+            confirm_transfer = arguments.get("confirm_transfer", False)
             
-            result = await icloud_client.start_transfer(reuse_session=reuse_session)
+            result = await icloud_client.start_transfer(reuse_session=reuse_session, confirm_transfer=confirm_transfer)
             
             if result.get('status') == 'initiated':
                 response = f"""✅ Photo Transfer Initiated Successfully!
@@ -232,7 +238,9 @@ Started: {result['started_at']}
 • Size: {result['source_counts']['size_gb']} GB
 
 📊 Baseline Established:
-• Existing Google Photos: {result['baseline_established']['pre_transfer_count']:,}
+• Google Photos baseline: {result['baseline_established']['google_photos_baseline_gb']:.2f} GB
+• Total storage: {result['baseline_established']['total_storage_gb']:.0f} GB
+• Available storage: {result['baseline_established']['available_storage_gb']:.2f} GB
 • Baseline captured at: {result['baseline_established']['baseline_timestamp']}
 
 ⏱️ Estimated Completion: {result['estimated_completion_days']} days
@@ -262,33 +270,43 @@ Started: {result['started_at']}
             if not transfer_id:
                 return [types.TextContent(type="text", text="Error: transfer_id is required")]
             
-            result = await icloud_client.check_transfer_progress(transfer_id)
+            day_number = arguments.get("day_number")  # Optional parameter
+            result = await icloud_client.check_transfer_progress(transfer_id, day_number)
             
             if result.get('status') != 'error':
                 progress_bar_length = 20
-                filled = int(progress_bar_length * result['progress']['percent_complete'] / 100)
+                filled = int(progress_bar_length * result.get('progress', {}).get('percent_complete', 0) / 100)
                 bar = '█' * filled + '░' * (progress_bar_length - filled)
                 
-                response = f"""📊 Transfer Progress Report
+                day_num = result.get('day_number', 1)
+                percent = result.get('progress', {}).get('percent_complete', 0)
+                
+                response = f"""📊 Transfer Progress Report - Day {day_num}
 
 Transfer ID: {result['transfer_id']}
 Status: {result['status'].upper()}
 
-Progress: [{bar}] {result['progress']['percent_complete']}%
+Progress: [{bar}] {percent}%
 
-📈 Statistics:
-• Transferred: {result['counts']['transferred_items']:,} items
-• Remaining: {result['counts']['remaining_items']:,} items
-• Transfer rate: {result['progress']['transfer_rate_per_hour']:,} items/hour
+📦 Storage Metrics:
+• Baseline: {result.get('storage', {}).get('baseline_gb', 0)} GB
+• Current: {result.get('storage', {}).get('current_gb', 0)} GB
+• Growth: {result.get('storage', {}).get('growth_gb', 0)} GB
+• Remaining: {result.get('storage', {}).get('remaining_gb', 0)} GB
 
-⏱️ Timeline:
-• Days elapsed: {result['timeline']['days_elapsed']}
-• Estimated completion: {result['timeline']['estimated_completion']}
+📈 Estimated Transfer:
+• Photos: {result.get('estimates', {}).get('photos_transferred', 0):,}
+• Videos: {result.get('estimates', {}).get('videos_transferred', 0):,}
+• Total items: {result.get('estimates', {}).get('total_items', 0):,}
 
-📷 Counts:
-• Source total: {result['counts']['source_total']:,}
-• Google baseline: {result['counts']['baseline_google']:,}
-• Current Google total: {result['counts']['current_google']:,}"""
+⏱️ Transfer Rate:
+• Speed: {result.get('progress', {}).get('transfer_rate_gb_per_day', 0)} GB/day
+• Days remaining: {result.get('progress', {}).get('days_remaining', 0)}
+
+💬 {result.get('message', 'Transfer in progress')}"""
+                
+                if result.get('snapshot_saved'):
+                    response += "\n\n✅ Progress snapshot saved to database"
             else:
                 response = f"❌ Progress check failed: {result.get('error')}"
             
@@ -400,47 +418,26 @@ Apple typically sends completion emails within 24 hours of transfer completion."
     
     return [types.TextContent(type="text", text=f"Unknown tool: {name}")]
 
-class PhotoMigrationServer:
-    """Wrapper class for test compatibility"""
-    def __init__(self):
-        self.server = server
-        self.icloud_client = None
-        
-    async def run(self):
-        """Initialize the internal client"""
-        global icloud_client
-        if not icloud_client:
-            session_dir = os.path.expanduser("~/.icloud_session")
-            icloud_client = ICloudClientWithSession(session_dir=session_dir)
-            await icloud_client.initialize()
-            await icloud_client.initialize_apis()
-        self.icloud_client = icloud_client
-        
-    def list_tools(self):
-        """Return list of available tools"""
-        # Return the tools directly (same as handle_list_tools but synchronously)
-        return [
-            types.Tool(
-                name="check_icloud_status",
-                description="DAY 1 TOOL: Check iCloud photo library status to get photo/video counts before migration. Authenticates with Apple ID via privacy.apple.com, retrieves current library statistics, and checks transfer history. Uses session persistence to avoid repeated 2FA for ~7 days. Essential first step before initialize_migration in migration-state.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "reuse_session": {
-                            "type": "boolean",
-                            "description": "Whether to reuse saved browser session to avoid 2FA (default: true, recommended)",
-                            "default": True
-                        }
-                    },
-                    "required": []
-                }
-            ),
-            # Add other tools here if needed for test compatibility
-        ]
-        
-    async def call_tool(self, name: str, arguments: Dict[str, Any]) -> list[types.TextContent]:
-        """Call a tool directly (for test compatibility)"""
-        return await handle_call_tool(name, arguments)
+# For test compatibility - expose functions directly
+async def initialize_server():
+    """Initialize the server for testing"""
+    global icloud_client
+    if not icloud_client:
+        session_dir = os.path.expanduser("~/.icloud_session")
+        icloud_client = ICloudClientWithSession(session_dir=session_dir)
+        await icloud_client.initialize()
+        await icloud_client.initialize_apis()
+    return icloud_client
+
+# Export the actual tool functions for testing
+async def get_tools():
+    """Get list of tools for testing"""
+    return await handle_list_tools()
+
+# Direct access to tool handler for testing
+async def call_tool(name: str, arguments: Dict[str, Any]) -> list[types.TextContent]:
+    """Call a tool directly for testing"""
+    return await handle_call_tool(name, arguments)
 
 async def main():
     """Main function for the MCP server"""

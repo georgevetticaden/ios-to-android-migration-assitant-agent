@@ -84,12 +84,19 @@ Implement storage-based progress tracking using Google One metrics for accurate 
 - Corrected JOIN clause to use proper migration_id
 - Updated result indexing for additional video_status column
 
-#### Task 3.4: New MCP Tools 🔜
-**File**: `mcp-tools/web-automation/src/web_automation/server.py`
-**Status**: Not Started
-**New Tools**:
-- `capture_storage_baseline()` - Get Google One baseline
-- `check_storage_progress()` - Calculate progress from storage
+#### Task 3.4: Transform check_transfer_progress ✅ COMPLETE
+**Files Modified**: 
+- `mcp-tools/web-automation/src/web_automation/icloud_client.py`
+- `mcp-tools/web-automation/src/web_automation/server.py`
+**Status**: Completed - August 26, 2025
+**Changes Made**:
+- Transformed `check_transfer_progress()` from email-based to storage-based
+- Now captures Google One storage and calculates real progress
+- Saves snapshots to `storage_snapshots` table when checking
+- Updates `daily_progress` table with calculated metrics
+- Added day-specific milestone messages
+- Estimates photos/videos based on storage growth (65%/35% ratio)
+- Returns storage metrics, progress percentage, and human-readable messages
 
 ---
 
