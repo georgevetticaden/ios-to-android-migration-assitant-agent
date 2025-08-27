@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Migration State MCP server provides 18 comprehensive tools for managing the complete iOS to Android migration journey. It serves as the central state management system, tracking photos AND videos separately, family members, app adoption, and progress through storage-based metrics over a realistic 7-day migration timeline.
+The Migration State MCP server provides 10 essential tools for managing the complete iOS to Android migration journey. It serves as the central state management system, tracking photos AND videos separately, family members, app adoption, and progress through storage-based metrics over a realistic 7-day migration timeline.
 
 ## Key Features
 
-- **18 MCP Tools**: Complete lifecycle management from initialization to celebration
+- **10 Essential Tools**: Streamlined for demo flow efficiency (removed 8 redundant tools)
 - **DuckDB Backend**: Persistent storage in `~/.ios_android_migration/migration.db`
 - **Dual Media Support**: Separate tracking for photos and videos
 - **Storage-Based Progress**: Accurate calculation using Google One metrics
@@ -86,7 +86,7 @@ Record Apple transfer initiation
 
 ### 📈 Progress Update Tools
 
-#### 8. `update_migration_progress`
+#### 6. `update_migration_progress`
 Advance through migration phases  
 **Parameters**:
 - `migration_id` (required)
