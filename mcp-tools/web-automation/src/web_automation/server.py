@@ -324,9 +324,11 @@ Transfer ID: {result['transfer_id']}
 Status: {result['status'].upper()}
 
 ✅ Verification Results:
-• Source photos: {result['verification']['source_photos']:,}
-• Destination photos: {result['verification']['destination_photos']:,}
-• Match rate: {result['verification']['match_rate']}%
+• Source photos: {result['verification'].get('source_photos', 0):,}
+• Source videos: {result['verification'].get('source_videos', 0):,}
+• Estimated photos transferred: {result['verification'].get('estimated_photos', 0):,}
+• Estimated videos transferred: {result['verification'].get('estimated_videos', 0):,}
+• Match rate: {result['verification'].get('match_rate', 0)}%
 
 🏆 Completion Certificate:
 • Grade: {result['certificate']['grade']}

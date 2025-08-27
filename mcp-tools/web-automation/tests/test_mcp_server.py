@@ -2,16 +2,16 @@
 """
 MCP Server Integration Test
 
-This test script validates all 5 MCP (Model Context Protocol) tools provided by
+This test script validates all 4 MCP (Model Context Protocol) tools provided by
 the photo migration server. It simulates how Claude Desktop interacts with these
 tools through the MCP protocol, ensuring proper functionality and integration.
 
-MCP Tools Tested:
+MCP Tools Tested (4 Tools):
 1. check_icloud_status - Retrieves photo/video counts from iCloud
 2. start_photo_transfer - Initiates Apple to Google photo transfer
 3. check_transfer_progress - Monitors ongoing transfer status
 4. verify_transfer_complete - Validates transfer completion
-5. check_completion_email - Checks for Apple confirmation emails
+(Note: check_photo_transfer_email removed in Phase 6 - use mobile-mcp for Gmail)
 
 Test Features:
 - Interactive menu for testing individual tools
@@ -328,38 +328,18 @@ class MCPServerTester:
             return False
     
     async def test_check_email(self, transfer_id: str):
-        """Test check_completion_email tool"""
+        """Test check_completion_email tool - REMOVED"""
         print("\n" + "="*60)
-        print("TEST: check_completion_email")
+        print("TEST: check_completion_email (REMOVED)")
         print("="*60)
         
-        args = {"transfer_id": transfer_id}
+        print(f"Note: check_photo_transfer_email tool has been removed")
+        print("Email checking is now handled via mobile-mcp Gmail commands")
+        print("Use mobile-mcp to search for 'Your videos have been copied to Google Photos'")
         
-        print(f"Checking email for transfer: {transfer_id}")
-        
-        try:
-            result = await self.server.call_tool("check_photo_transfer_email", args)
-            
-            if result and len(result) > 0:
-                content = result[0].text if hasattr(result[0], 'text') else str(result[0])
-                
-                print("\n✅ Email check executed!")
-                print(content)
-                
-                # Check response content
-                if "Email Found" in content:
-                    print("\n✅ Completion email detected")
-                elif "No email found" in content or "not found" in content.lower():
-                    print("\n📧 No email found yet (expected if transfer not complete)")
-                
-                return True
-            else:
-                print("❌ No result returned")
-                return False
-                
-        except Exception as e:
-            print(f"❌ Tool execution failed: {e}")
-            return False
+        # Return without error to allow test to continue
+        print("\n✅ Test skipped - tool removed in Phase 6")
+        return True
     
     async def run_full_test(self):
         """Run complete test sequence"""
@@ -423,15 +403,14 @@ class MCPServerTester:
             print("5. Test check_transfer_progress (specific day)")
             print("6. Test storage timeline (7-day simulation)")
             print("7. Test verify_transfer_complete")
-            print("8. Test check_completion_email")
-            print("9. Run full test sequence")
+            print("8. Run full test sequence")
             print("0. Exit")
             print("="*60)
             
             if transfer_id:
                 print(f"Current transfer ID: {transfer_id}")
             
-            choice = input("\nSelect option (0-9): ").strip()
+            choice = input("\nSelect option (0-8): ").strip()
             
             if choice == '1':
                 await self.list_tools()
@@ -466,11 +445,7 @@ class MCPServerTester:
                 if transfer_id:
                     await self.test_verify_complete(transfer_id)
             elif choice == '8':
-                if not transfer_id:
-                    transfer_id = input("Enter transfer ID: ").strip()
-                if transfer_id:
-                    await self.test_check_email(transfer_id)
-            elif choice == '9':
+                # Run full test sequence
                 await self.run_full_test()
             elif choice == '0':
                 print("Exiting...")
