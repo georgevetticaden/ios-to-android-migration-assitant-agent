@@ -4,22 +4,22 @@
 Implement storage-based progress tracking using Google One metrics for accurate transfer monitoring, with full video support and realistic 7-day demo flow.
 
 ## 📅 Created: August 26, 2025
-## 🔄 Last Updated: August 27, 2025 (Phase 5 Complete, Phase 6&7 Planned)
+## 🔄 Last Updated: August 27, 2025 (Phase 6 COMPLETE, Phase 7 Ready)
 
 ---
 
 ## 📦 Current Status Summary
 
-### Completed Phases (5 of 7)
+### Completed Phases (6 of 7)
 - ✅ **Phase 1**: Database Schema - 8 tables with storage tracking
 - ✅ **Phase 2**: Migration-State MCP - 18 operational tools
 - ✅ **Phase 3**: Web-Automation - Storage-based progress via Google One
 - ✅ **Phase 4**: Mobile-MCP Integration - Gmail verification commands
 - ✅ **Phase 5**: Progress Calculation - Centralized with Day 7 = 100%
+- ✅ **Phase 6**: Demo Script - Complete overhaul with compelling narrative (August 27, 2025)
 
-### Remaining Phases (2 of 7) - Simplified
-- 📋 **Phase 6**: Demo Script - Update existing script with current implementation
-- 📋 **Phase 7**: Agent Instructions - Add demo optimizations (no React templates)
+### Remaining Phase (1 of 7)
+- 📋 **Phase 7**: Agent Instructions - Add demo optimizations and natural flow patterns
 
 ### Key Achievement
 **Day 7 Success Guarantee Implemented**: The system now consistently returns 100% completion on Day 7 regardless of actual storage, ensuring demo confidence while handling the 98% photo transfer reality gracefully.
@@ -227,41 +227,78 @@ async def calculate_storage_progress(
 
 ---
 
-### Phase 6: Demo Script Updates - 📋 TODO
+### Phase 6: Demo Script Updates - ✅ COMPLETE (August 27, 2025)
 
-#### Task 6.1: Update Existing Demo Script
-**File**: `docs/demo/demo-script-complete-final.md`
-**Status**: Not Started
-**Current State**: Excellent 10-minute video script exists, needs updates
+#### Task 6.1: Complete Demo Script Overhaul - ✅ DONE
+**Files**: 
+- `docs/demo/demo-script-complete-final.md` - Basic updates applied
+- `docs/demo/demo-script-complete-final-v2.md` - Complete rewrite with all enhancements
 
-**Required Updates**:
-1. **Fix MCP Tool Names**:
-   - Change `photo-migration-mcp` → `web-automation`
-   - Update tool call syntax to match current implementation
-   - ✅ DONE: Removed deprecated `check_photo_transfer_email()` tool
+**Status**: Completed - August 27, 2025
 
-2. **Add Storage-Based Progress**:
-   - Day 1: Capture baseline storage (13.88GB)
-   - Day 4: Show 28% based on storage growth (120.88GB)
-   - Day 5: Show 57% progress (220.88GB)
-   - Day 6: Show 88% progress (340.88GB)
-   - Day 7: Force 100% completion (396.88GB)
+**Completed Updates**:
 
-3. **Update Day 7 Success Flow**:
-   - Use `check_photo_transfer_progress(day_number=7)` → Always 100%
-   - Mobile-MCP: Search Gmail for "Your videos have been copied" ONLY
-   - Never search for photo completion emails
-   - Emphasize all 60,238 photos and 2,418 videos transferred
+1. **✅ Fixed All MCP Tool Names**:
+   - Changed `photo-migration-mcp` → `web-automation` throughout
+   - Changed `shared-state-mcp` → `migration-state` throughout  
+   - Removed `check_photo_transfer_email()` tool from web-automation
+   - Updated server.py to have 4 tools instead of 5
+   - Fixed all documentation references
 
-4. **Add Quick Demo Section**:
-   - New section at top for 15-minute version
-   - Focus on Day 1 → Day 4 → Day 7 checkpoints
-   - Skip intermediate days for time-constrained demos
+2. **✅ Added Storage-Based Progress Throughout**:
+   - Day 1: Shows baseline capture (13.88GB) with tool returns
+   - Day 4: Shows 28% progress (120.88GB) with celebration
+   - Day 5: Shows 57% progress (220.88GB) with acceleration
+   - Day 6: Shows 88% progress (340.88GB) near completion
+   - Day 7: Forces 100% completion (396.88GB) with success
+   - Every tool call shows expected JSON returns
 
-5. **Show Expected Tool Returns**:
-   - Document what data each tool returns
-   - Let agent decide visualization based on instructions
-   - Don't prescribe specific React components
+3. **✅ Enhanced Day 7 Success Flow**:
+   - Uses `check_photo_transfer_progress(day_number=7)` for guaranteed 100%
+   - Mobile-MCP searches only for "Your videos have been copied"
+   - Completely avoids photo failure emails
+   - Shows all 60,238 photos and 2,418 videos as successfully transferred
+   - Victory dashboard with complete metrics
+
+4. **✅ Added Quick Demo Option**:
+   - New section at top for 15-minute demos
+   - Focuses on Day 1 → Day 4 → Day 7 only
+   - Skips intermediate family setup steps
+   - Perfect for time-constrained presentations
+
+5. **✅ Enhanced Opening Hook** (User Request):
+   - Split shot: iPhone 16 Pro Max (left) vs Galaxy Z Fold 7 (right)
+   - Clear narrative about NOT upgrading to iPhone 17
+   - Visual captions: "My former phone" and "My new phone"
+   - More powerful emotional connection
+
+6. **✅ Improved Photo Transfer Initiation** (User Request):
+   - Added Gmail confirmation showing Apple's transfer email
+   - Claude explains why Apple doesn't provide progress updates  
+   - Natural transition to family connectivity setup
+
+7. **✅ Better WhatsApp Family Setup** (User Request):
+   - Agent explains exactly what happens on Galaxy screen
+   - Single group email to all non-members (more efficient)
+   - Clear installation tracking with status updates
+
+8. **✅ Enhanced Location Sharing** (User Request):
+   - Progress tracking throughout all days
+   - Shows reciprocal sharing status
+   - Celebrates "FULL LOCATION VISIBILITY" achievement
+
+9. **✅ Restructured Days 3-7** (User Request):
+   - Each day starts with: "What's our overall migration status?"
+   - Comprehensive dashboards showing ALL systems
+   - Progressive achievements celebrated each day
+   - Family milestones tracked and highlighted
+   - Natural narrative flow with emotional moments
+
+10. **✅ Complete Tool Return Documentation**:
+    - Every tool call shows expected JSON returns
+    - Agent creates visualizations from data
+    - No prescribed React components
+    - Data-driven narrative
 
 ---
 
@@ -515,26 +552,27 @@ python3 tests/test_migration_flow.py --phase 1
   - Centralized `calculate_storage_progress()` method created
   - All MCP servers using shared calculation
   - Day 7 = 100% rule enforced consistently
-- 📋 Phase 6: Demo Script Updates - TODO
-- 📋 Phase 7: Agent Instructions Update - TODO (foundation in Phase 4)
+- ✅ Phase 6: Demo Script Updates - COMPLETE (August 27, 2025)
+- 📋 Phase 7: Agent Instructions Update - TODO (foundation ready from Phase 4)
 
-**Next Implementation Steps (Phase 6 & 7)**:
-1. 🔧 Clean up web-automation MCP tools (remove email redundancy)
-2. 📝 Update existing demo-script-complete-final.md with:
-   - Correct MCP tool names
-   - Storage-based progress data
-   - Quick demo section
-   - Expected tool return values (not visualizations)
-3. 📝 Update agent instructions with:
-   - Visualization guidelines (what feelings/insights to convey)
-   - Conversation triggers
-   - Let agent create appropriate React artifacts from data
-4. 🧪 Test complete flow with Day 7 = 100% success
+**Phase 6 Completion Summary (August 27, 2025)**:
+1. ✅ Cleaned up web-automation MCP tools (removed email redundancy)
+2. ✅ Created demo-script-complete-final-v2.md with complete overhaul
+3. ✅ Fixed all MCP tool names across documentation
+4. ✅ Added storage-based progress for all days
+5. ✅ Enhanced family connectivity tracking
+6. ✅ Documented all tool return values
+7. ✅ Created compelling narrative structure
 
-**Completed in Current Session**:
-1. ✅ Phase 5: Centralized progress calculation with Day 7 override
-2. ✅ MCP tool analysis and recommendations
-3. ✅ Phase 6 & 7 detailed implementation plan
+**Next Implementation Step (Phase 7 Only)**:
+1. 📝 Update agent instructions with:
+   - Natural conversation flow patterns
+   - Day-specific behaviors and responses
+   - Visualization guidelines (feelings/insights, not templates)
+   - Demo trigger mappings
+   - Critical Day 7 success protocol
+2. 🧪 Test complete 7-day journey
+3. 📋 Document best conversation patterns
 
 **Current Branch**: main
 **Session Handoff Date**: August 27, 2025
@@ -547,7 +585,7 @@ python3 tests/test_migration_flow.py --phase 1
 5. **mcp-tools/migration-state/README.md** - 18 tools
 6. **mcp-tools/web-automation/README.md** - 4 tools
 7. **agent/instructions/ios2android-agent-instructions.md** - Orchestration
-8. **docs/demo/demo-script-complete-final.md** - Needs updates
+8. **docs/demo/demo-script-complete-final-v2.md** - ✅ COMPLETE (enhanced version)
 
 **Completed in Previous Session**:
 - ✅ Phases 1-5 complete
@@ -556,9 +594,9 @@ python3 tests/test_migration_flow.py --phase 1
 - ✅ Storage-based progress working
 
 **To Do in Next Session**:
-- Phase 6: Update demo script
-- Phase 7: Update agent instructions
-- Remove redundant email tools
+- Phase 7: Update agent instructions for natural demo flow
+- Test complete 7-day journey with new script
+- Validate Day 7 = 100% guarantee works
 
 ---
 
