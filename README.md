@@ -39,12 +39,11 @@ This project provides MCP tools that assist with the complete migration journey 
 - No foreign keys (DuckDB workaround) with app-layer integrity
 - 4 comprehensive views for data aggregation
 
-**Web Automation (5 MCP Tools)**
+**Web Automation (4 MCP Tools)**
 1. `check_icloud_status` - Get photo/video counts from privacy.apple.com
 2. `start_photo_transfer` - Initiate transfer with baseline storage capture
 3. `check_photo_transfer_progress` - Monitor via Google One (Day 7 = 100%)
 4. `verify_photo_transfer_complete` - Final verification and grading
-5. `check_photo_transfer_email` - Gmail monitoring for completion
 
 **Migration State (18 MCP Tools)**
 - Core migration tracking and status updates
@@ -209,7 +208,7 @@ ios-to-android-migration-assistant-agent/
 ├── agent/                      # Agent orchestration
 │   └── instructions/          # Natural language instructions
 ├── mcp-tools/                 # MCP server implementations
-│   ├── web-automation/        # Browser automation (5 tools)
+│   ├── web-automation/        # Browser automation (4 tools)
 │   │   ├── src/web_automation/
 │   │   │   ├── icloud_client.py
 │   │   │   ├── google_storage_client.py

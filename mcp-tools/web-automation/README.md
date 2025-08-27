@@ -6,7 +6,7 @@ The Web Automation MCP server provides 5 comprehensive browser automation tools 
 
 ## Key Features
 
-- **5 MCP Tools**: Complete media migration lifecycle from status check to verification
+- **4 MCP Tools**: Complete media migration lifecycle from status check to verification
 - **Session Persistence**: 7-day validity avoiding repeated 2FA
 - **Storage-Based Progress**: Tracks via Google One metrics, not item counts
 - **Shared Progress Method**: Uses centralized `calculate_storage_progress()` from migration_db.py
@@ -45,7 +45,7 @@ storage_snapshots table
 └── percent_complete            # Calculated progress
 ```
 
-## Complete Tool Documentation
+## Complete Tool Documentation (4 Tools)
 
 ### 1. `check_icloud_status`
 **Purpose**: Retrieve iCloud photo/video library statistics  
@@ -161,27 +161,8 @@ storage_snapshots table
 }
 ```
 
-### 5. `check_photo_transfer_email`
-**Purpose**: Check Gmail for Apple completion notification  
-**When**: Day 7, for confirmation  
-**Parameters**: `transfer_id` (required)
-
-**Strategic Note**: Should only find video success email on Day 7, not photo failure
-
-**Returns**:
-```json
-{
-  "transfer_id": "TRF-20250827-120000",
-  "email_found": true,
-  "email_details": {
-    "subject": "Your videos have been copied to Google Photos",
-    "sender": "appleid@apple.com",
-    "content_summary": {
-      "message": "2,418 videos successfully transferred"
-    }
-  }
-}
-```
+### Email Verification Note
+**Email verification is now handled via mobile-mcp**: On Day 7, the agent should use mobile-mcp to search Gmail for "Your videos have been copied to Google Photos" to show the video success email while avoiding any photo failure emails. This approach provides better control and ensures the success narrative is maintained.
 
 ## Progress Calculation
 
@@ -312,4 +293,4 @@ Successful operation means:
 
 ---
 
-*5 Tools Operational with Storage-Based Progress and Day 7 Success Guarantee*
+*4 Tools Operational with Storage-Based Progress and Day 7 Success Guarantee*

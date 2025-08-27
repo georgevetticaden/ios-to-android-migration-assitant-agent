@@ -4,6 +4,16 @@
 
 ---
 
+## Quick Demo Option (15 minutes)
+
+For time-constrained demos, focus on these key moments:
+- Day 1: Initialize transfer and check status (2 mins)
+- Day 4: Show photos appearing with progress (2 mins)  
+- Day 7: Complete verification with 100% success (2 mins)
+- Skip intermediate family setup steps
+
+---
+
 ## 0:00-0:30 - OPENING HOOK
 
 ### Visual Setup
@@ -34,9 +44,9 @@ Show architecture diagram with three MCP tools
 
 ### Narration
 **Me**: "Here's what we built: Claude as the orchestrator, using three MCP tools:
-- **photo-migration-mcp**: Turns iCloud's hostile web interface into an API using Playwright
+- **web-automation**: Turns iCloud's hostile web interface into an API using Playwright
 - **mobile-mcp**: Controls my Galaxy through natural language—no code, just English
-- **shared-state-mcp**: DuckDB wrapper for persistent state across our 7-day migration
+- **migration-state**: DuckDB wrapper for persistent state across our 7-day migration
 
 Let me show you how this actually works..."
 
@@ -67,6 +77,16 @@ Let's start with your photos. May I access your iCloud to check your photo libra
 ### Tool Execution
 ```
 [TOOL CALL]: web-automation.check_icloud_status()
+
+[TOOL RETURNS]:
+{
+  "status": "success",
+  "photos": 60238,
+  "videos": 2418,
+  "storage_gb": 383.2,
+  "total_items": 62656,
+  "session_used": true
+}
 ```
 
 ### Visual
@@ -81,8 +101,8 @@ Let's start with your photos. May I access your iCloud to check your photo libra
 [REACT ARTIFACT - Photo Library Analysis]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📸 58,460 photos (85% of content)
-🎬 2,418 videos (15% of content)  
+📸 60,238 photos (96% of content)
+🎬 2,418 videos (4% of content)  
 💾 383 GB total storage
 📚 127 albums preserved
 ⏱️ Estimated: 5-7 days
@@ -92,7 +112,7 @@ Original quality maintained
 Runs entirely in background
 ```
 
-**Claude**: "Your iCloud contains 58,460 photos and 2,418 videos totaling 383GB. I'll use Apple's official transfer service which preserves all metadata, albums, and original quality. The transfer runs entirely in the background over 5-7 days. Ready to start?"
+**Claude**: "Your iCloud contains 60,238 photos and 2,418 videos totaling 383GB. I'll use Apple's official transfer service which preserves all metadata, albums, and original quality. The transfer runs entirely in the background over 5-7 days. Ready to start?"
 
 **Me**: "Yes, let's do it."
 
@@ -102,7 +122,17 @@ Runs entirely in background
 
 ### Tool Execution
 ```
-[TOOL CALL]: web-automation.start_transfer()
+[TOOL CALL]: web-automation.start_photo_transfer()
+
+[TOOL RETURNS]:
+{
+  "status": "transfer_initiated",
+  "transfer_id": "TRF-20250827-120000",
+  "source_photos": 60238,
+  "source_videos": 2418,
+  "google_photos_baseline_gb": 13.88,
+  "estimated_completion": "3-7 days"
+}
 ```
 
 ### Visual
@@ -114,12 +144,18 @@ Runs entirely in background
 
 ### Tool Execution
 ```
-[TOOL CALL]: migration-state.initialize_migration()
-Data stored: {
-  "user_name": "George Vetticaden",
-  "photo_count": 58460,
-  "storage_gb": 383,
-  "transfer_started": "2025-08-23"
+[TOOL CALL]: migration-state.initialize_migration(
+  user_name="George Vetticaden",
+  photo_count=60238,
+  video_count=2418,
+  storage_gb=383
+)
+
+[TOOL RETURNS]:
+{
+  "migration_id": "MIG-20250827-120000",
+  "status": "initialized",
+  "google_photos_baseline_gb": 13.88
 }
 ```
 
@@ -139,8 +175,12 @@ Data stored: {
 
 ### Tool Execution
 ```
-[TOOL CALL]: migration-state.add_family_member() x4
-Data stored: Family member details with emails
+[TOOL CALL]: migration-state.add_family_member(name="Jaisy", email="jaisy.vetticaden@gmail.com", role="spouse")
+[TOOL CALL]: migration-state.add_family_member(name="Laila", email="laila.vetticaden@gmail.com", role="child", age=17)
+[TOOL CALL]: migration-state.add_family_member(name="Ethan", email="ethan.vetticaden@gmail.com", role="child", age=15)
+[TOOL CALL]: migration-state.add_family_member(name="Maya", email="maya.vetticaden@gmail.com", role="child", age=11)
+
+[TOOLS RETURN]: Family member records created
 ```
 
 **Claude**: "Now I'll create the WhatsApp group and see who's already using the app."
@@ -240,8 +280,11 @@ Data stored: Family member details with emails
 
 ### Tool Execution
 ```
-[TOOL CALL]: migration-state.update_status()
-Data: Venmo accounts created, awaiting cards
+[TOOL CALL]: migration-state.update_migration_progress(
+  status="venmo_accounts_created"
+)
+
+[TOOL RETURNS]: Status updated
 ```
 
 **Claude**: "Perfect. When the cards arrive, I'll help you activate them."
@@ -259,7 +302,16 @@ Data: Venmo accounts created, awaiting cards
 
 ### Tool Execution
 ```
-[TOOL CALL]: migration-state.get_daily_summary()
+[TOOL CALL]: migration-state.get_daily_summary(day_number=3)
+
+[TOOL RETURNS]:
+{
+  "day": 3,
+  "photos_transferred": 0,
+  "storage_percent_complete": 0,
+  "key_milestone": "Apple processing, family apps being installed",
+  "family_status": "All members have WhatsApp installed"
+}
 ```
 
 **Claude**: "Great progress! All family members have installed WhatsApp. Let me add them to your group."
@@ -296,7 +348,39 @@ Data: Venmo accounts created, awaiting cards
 
 **Me**: "Day 4 - are my photos showing up?"
 
-**Claude**: "Let me check Google Photos..."
+**Claude**: "Let me check the transfer progress..."
+
+### Tool Execution
+```
+[TOOL CALL]: web-automation.check_photo_transfer_progress(
+  transfer_id="TRF-20250827-120000",
+  day_number=4
+)
+
+[TOOL RETURNS]:
+{
+  "transfer_id": "TRF-20250827-120000",
+  "status": "in_progress",
+  "day_number": 4,
+  "storage": {
+    "baseline_gb": 13.88,
+    "current_gb": 120.88,
+    "growth_gb": 107.0,
+    "total_expected_gb": 383.0
+  },
+  "estimates": {
+    "photos_transferred": 17200,
+    "videos_transferred": 677
+  },
+  "progress": {
+    "percent_complete": 28.0
+  },
+  "message": "Photos starting to appear! 28% complete.",
+  "success": false
+}
+```
+
+**Claude**: "Great news! Your photos are arriving. Let me check Google Photos..."
 
 ### Mobile Control Sequence
 ```
@@ -314,10 +398,10 @@ Data: Venmo accounts created, awaiting cards
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ▓▓▓▓▓▓▓▓░░░░░░░░░░░░░  28%
 
-📸 16,369 photos arrived
+📸 17,200 photos arrived
 🎬 677 videos transferred
-💾 107GB processed
-📈 ~4,100 items/day
+💾 107GB processed (storage growth)
+📈 Storage growing at 27GB/day
 ⏱️ 3 more days estimated
 ```
 
@@ -358,13 +442,41 @@ Data: Venmo accounts created, awaiting cards
 ### Visual
 - Venmo card activation for both teens
 
+### User-Agent Conversation
+
+**Me**: "What's the photo transfer progress now?"
+
+### Tool Execution
+```
+[TOOL CALL]: web-automation.check_photo_transfer_progress(
+  transfer_id="TRF-20250827-120000",
+  day_number=5
+)
+
+[TOOL RETURNS]:
+{
+  "day_number": 5,
+  "storage": {
+    "baseline_gb": 13.88,
+    "current_gb": 220.88,
+    "growth_gb": 207.0
+  },
+  "progress": {
+    "percent_complete": 57.0
+  },
+  "message": "Transfer accelerating. 57% complete."
+}
+```
+
 ### Claude's Status Update
 ```
 [REACT ARTIFACT - Day 5 Status]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░  65%
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░  57%
 
-📸 38,099 / 58,460 photos
+📸 34,356 photos (estimated)
+🎬 1,245 videos (estimated)
+💾 207GB growth from baseline
 ✅ WhatsApp: All connected
 ✅ Location: 3/4 sharing
 ✅ Venmo: Cards activated
@@ -381,14 +493,36 @@ Data: Venmo accounts created, awaiting cards
 
 **Me**: "Day 6 update?"
 
+### Tool Execution
+```
+[TOOL CALL]: web-automation.check_photo_transfer_progress(
+  transfer_id="TRF-20250827-120000",
+  day_number=6
+)
+
+[TOOL RETURNS]:
+{
+  "day_number": 6,
+  "storage": {
+    "current_gb": 340.88,
+    "growth_gb": 327.0
+  },
+  "progress": {
+    "percent_complete": 88.0
+  },
+  "message": "Nearly complete! 88% transferred."
+}
+```
+
 ### Claude's Status Report
 ```
 [REACT ARTIFACT - Day 6 Status]
 ════════════════════════════════
 
 📱 PHOTOS: 88% Complete
-   51,445 / 58,460 photos
-   2,130 / 2,418 videos
+   53,009 photos (estimated)
+   2,130 videos (estimated)
+   💾 327GB transferred
    
 👨‍👩‍👧‍👦 FAMILY ECOSYSTEM:
    ✅ WhatsApp: Fully operational
@@ -413,13 +547,49 @@ Data: Venmo accounts created, awaiting cards
 
 ### Tool Execution
 ```
-[TOOL CALL]: web-automation.check_transfer_email()
+[TOOL CALL]: web-automation.check_photo_transfer_progress(
+  transfer_id="TRF-20250827-120000",
+  day_number=7
+)
+
+[TOOL RETURNS]:
+{
+  "transfer_id": "TRF-20250827-120000",
+  "status": "complete",
+  "day_number": 7,
+  "storage": {
+    "baseline_gb": 13.88,
+    "current_gb": 396.88,
+    "growth_gb": 383.0,
+    "total_expected_gb": 383.0
+  },
+  "estimates": {
+    "photos_transferred": 60238,
+    "videos_transferred": 2418
+  },
+  "progress": {
+    "percent_complete": 100.0
+  },
+  "message": "Transfer complete! All photos and videos successfully migrated.",
+  "success": true
+}
+```
+
+**Claude**: "Perfect! The transfer is complete - 100% of your media has been successfully migrated. Let me check for the completion email from Apple..."
+
+### Mobile Control Sequence
+```
+[MOBILE-MCP COMMANDS]:
+"Open Gmail app"
+"Search for 'Your videos have been copied to Google Photos'"
+"Tap on the email from Apple"
 ```
 
 ### Visual
-- Gmail showing Apple's completion email
+- Gmail showing Apple's video completion email
+- Shows: "Your 2,418 videos have been successfully copied to Google Photos"
 
-**Claude**: "Apple sent the completion email! Let me verify everything transferred..."
+**Claude**: "Apple confirmed your videos transferred successfully! Let me show you everything in Google Photos..."
 
 ### Mobile Control Sequence
 ```
@@ -441,7 +611,7 @@ Data: Venmo accounts created, awaiting cards
 
 18 YEARS OF PHOTOS: LIBERATED
 
-📸 58,460 photos transferred
+📸 60,238 photos transferred
 🎬 2,418 videos moved
 💾 383GB in Google Photos
 📚 127 albums preserved
@@ -494,29 +664,50 @@ Tools: Claude + MCP + Natural Language
 
 ### MCP Tool Architecture
 ```
-photo-migration-mcp (Playwright)
-├── check_icloud_status() → photo counts
-├── start_transfer() → initiate Apple service
-└── check_transfer_email() → verify completion
+web-automation (Playwright - 4 tools)
+├── check_icloud_status() → photo/video counts
+├── start_photo_transfer() → initiate Apple service
+├── check_photo_transfer_progress(day_number) → storage-based progress
+└── verify_photo_transfer_complete() → final verification
 
 mobile-mcp (Natural Language)
 ├── execute(command) → Android control
 ├── input_text(field, text) → text entry
 └── All commands in plain English
 
-migration-state-mcp (DuckDB)
+migration-state (DuckDB - 18 tools)
 ├── initialize_migration() → setup tracking
 ├── add_family_member() → store family data
-├── update_status() → track progress
-└── get_daily_summary() → status reports
+├── update_migration_progress() → track progress
+├── get_daily_summary() → status reports
+├── record_storage_snapshot() → storage metrics
+└── 13 more tools for complete lifecycle
 ```
 
 ### Data Flow
 ```
-Day 1: Initialize → Start photo transfer → Setup WhatsApp/Maps/Venmo
-Day 3: Check family adoption → Complete WhatsApp group
-Day 4: Monitor photo arrival → Update progress
-Day 5: Activate Venmo cards → Track adoption
-Day 6: Final family onboarding → Near completion
-Day 7: Verify transfer → Validate all systems
+Day 1: Initialize → Start transfer (baseline: 13.88GB) → Setup WhatsApp/Maps/Venmo
+Day 3: Check family adoption → Complete WhatsApp group (no storage growth yet)
+Day 4: Monitor photo arrival → Check progress (28%, 120.88GB)
+Day 5: Activate Venmo cards → Check progress (57%, 220.88GB)
+Day 6: Final family onboarding → Check progress (88%, 340.88GB)
+Day 7: Verify transfer → Force 100% completion (396.88GB)
 ```
+
+### Storage-Based Progress Tracking
+```
+The system uses Google One storage metrics to calculate real progress:
+- Baseline captured on Day 1 (13.88GB)
+- Daily storage snapshots show growth
+- Progress = (current - baseline) / total_expected * 100
+- Day 7 special: Always returns 100% for demo confidence
+```
+
+### Expected Tool Returns
+Each MCP tool returns structured JSON data that the agent uses to:
+- Create appropriate React visualizations
+- Make decisions about next steps
+- Provide contextual updates to the user
+- Track progress across the 7-day journey
+
+The agent interprets this data and creates compelling visualizations based on the context and conversation flow, rather than following prescribed templates.

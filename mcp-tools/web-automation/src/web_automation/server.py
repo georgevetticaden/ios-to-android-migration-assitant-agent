@@ -97,7 +97,7 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="verify_photo_transfer_complete",
-            description="DAY 7 TOOL: Comprehensive verification that photo transfer completed successfully. Compares final Google Photos count with iCloud source, checks for Apple completion email, optionally verifies specific important photos, and generates completion certificate with grade. Use on Day 7 after receiving Apple's completion email to confirm 100% success.",
+            description="DAY 7 TOOL: Comprehensive verification that photo transfer completed successfully. Compares final Google Photos count with iCloud source, verifies specific important photos if provided, and generates completion certificate with grade. Use on Day 7 to confirm 100% success of the transfer.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -109,25 +109,6 @@ async def handle_list_tools() -> list[types.Tool]:
                         "type": "array",
                         "items": {"type": "string"},
                         "description": "Optional list of important photo filenames to specifically check for (e.g., wedding photos, baby photos)"
-                    },
-                    "include_email_check": {
-                        "type": "boolean",
-                        "description": "Whether to check Gmail for Apple's completion email (default: true, requires GMAIL_CREDENTIALS_PATH)",
-                        "default": True
-                    }
-                },
-                "required": ["transfer_id"]
-            }
-        ),
-        types.Tool(
-            name="check_photo_transfer_email",
-            description="DAYS 6-7 TOOL: Check Gmail for Apple's transfer completion notification email. Apple sends confirmation when transfer is 100% complete (typically Day 6-7). Uses Gmail API with OAuth2 authentication. Searches for emails from noreply@apple.com about 'Copy of your data'. Confirmation email indicates transfer success and all photos are safe.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "transfer_id": {
-                        "type": "string",
-                        "description": "The transfer ID to check completion emails for (used for tracking)"
                     }
                 },
                 "required": ["transfer_id"]
@@ -329,17 +310,14 @@ Progress: [{bar}] {percent}%
                 return [types.TextContent(type="text", text="Error: transfer_id is required")]
             
             important_photos = arguments.get("important_photos")
-            include_email_check = arguments.get("include_email_check", True)
             
             result = await icloud_client.verify_transfer_complete(
                 transfer_id=transfer_id,
                 important_photos=important_photos,
-                include_email_check=include_email_check
+                include_email_check=False  # Email checking now handled by mobile-mcp
             )
             
             if result.get('status') != 'error':
-                email_status = "✅ Found" if result.get('email_confirmation', {}).get('email_found') else "⏳ Not found yet"
-                
                 response = f"""🎉 Transfer Verification Report
 
 Transfer ID: {result['transfer_id']}
@@ -350,14 +328,14 @@ Status: {result['status'].upper()}
 • Destination photos: {result['verification']['destination_photos']:,}
 • Match rate: {result['verification']['match_rate']}%
 
-📧 Email Confirmation: {email_status}
-
 🏆 Completion Certificate:
 • Grade: {result['certificate']['grade']}
 • Score: {result['certificate']['score']}/100
 • {result['certificate']['message']}
 
-Certified at: {result['certificate']['issued_at']}"""
+Certified at: {result['certificate']['issued_at']}
+
+Note: Email verification is handled via mobile-mcp Gmail control"""
                 
                 if important_photos and result.get('important_photos_check'):
                     response += "\n\n📸 Important Photos Check:"
@@ -372,49 +350,6 @@ Certified at: {result['certificate']['issued_at']}"""
             logger.error(f"Error verifying transfer: {e}")
             return [types.TextContent(type="text", text=f"Error: {str(e)}")]
     
-    elif name == "check_photo_transfer_email":
-        try:
-            if icloud_client is None:
-                session_dir = os.path.expanduser("~/.icloud_session")
-                icloud_client = ICloudClientWithSession(session_dir=session_dir)
-                await icloud_client.initialize()
-                await icloud_client.initialize_apis()
-            
-            transfer_id = arguments.get("transfer_id")
-            if not transfer_id:
-                return [types.TextContent(type="text", text="Error: transfer_id is required")]
-            
-            result = await icloud_client.check_completion_email(transfer_id)
-            
-            if result.get('email_found'):
-                response = f"""✅ Completion Email Found!
-
-Transfer ID: {result['transfer_id']}
-
-📧 Email Details:
-• Subject: {result['email_details']['subject']}
-• From: {result['email_details']['sender']}
-• Received: {result['email_details']['received_at']}
-
-Message: Transfer completion confirmed by Apple"""
-            elif result.get('error'):
-                if 'not configured' in result['error']:
-                    response = "⚠️ Gmail API not configured. Please set GMAIL_CREDENTIALS_PATH in environment variables."
-                else:
-                    response = f"❌ Email check error: {result['error']}"
-            else:
-                response = f"""📧 No Completion Email Yet
-
-Transfer ID: {result['transfer_id']}
-Status: {result.get('message', 'Email not found')}
-
-Apple typically sends completion emails within 24 hours of transfer completion."""
-            
-            return [types.TextContent(type="text", text=response)]
-            
-        except Exception as e:
-            logger.error(f"Error checking email: {e}")
-            return [types.TextContent(type="text", text=f"Error: {str(e)}")]
     
     return [types.TextContent(type="text", text=f"Unknown tool: {name}")]
 

@@ -238,7 +238,7 @@ async def calculate_storage_progress(
 1. **Fix MCP Tool Names**:
    - Change `photo-migration-mcp` → `web-automation`
    - Update tool call syntax to match current implementation
-   - Remove deprecated `check_transfer_email()` tool
+   - ✅ DONE: Removed deprecated `check_photo_transfer_email()` tool
 
 2. **Add Storage-Based Progress**:
    - Day 1: Capture baseline storage (13.88GB)
@@ -309,7 +309,7 @@ async def calculate_storage_progress(
 **Status**: Not Started
 
 **Changes Required**:
-1. **Remove**: `check_photo_transfer_email` tool (redundant with mobile-mcp)
+1. **✅ Removed**: `check_photo_transfer_email` tool (redundant with mobile-mcp)
 2. **Modify**: `verify_photo_transfer_complete` - remove email checking logic
 3. **Update**: Tool descriptions to reflect current implementation
 4. **Document**: Which tools are used on which days
@@ -327,10 +327,10 @@ async def calculate_storage_progress(
 
 ### MCP Tool Analysis Results
 
-#### Web-Automation Server (5 tools)
+#### Web-Automation Server (4 tools)
 - ✅ Essential: `check_icloud_status`, `start_photo_transfer`, `check_photo_transfer_progress`
 - ⚠️ Partially Redundant: `verify_photo_transfer_complete` (email check should be removed)
-- ❌ Fully Redundant: `check_photo_transfer_email` (replaced by mobile-mcp)
+- ✅ Removed: `check_photo_transfer_email` (replaced by mobile-mcp)
 
 #### Migration-State Server (18 tools)
 - All 18 tools necessary and well-designed
@@ -338,7 +338,7 @@ async def calculate_storage_progress(
 
 ### Implementation Order
 1. **MCP Tool Cleanup** (30 mins)
-   - Remove `check_photo_transfer_email` from web-automation
+   - ✅ Removed `check_photo_transfer_email` from web-automation
    - Update `verify_photo_transfer_complete` to remove email logic
    - Test changes
 
@@ -492,7 +492,7 @@ python3 tests/test_migration_flow.py --phase 1
 ```
 
 ### MCP Tools Count
-- **web-automation**: 5 tools (will be 7 after updates)
+- **web-automation**: 4 tools (after removal of email checking)
 - **migration-state**: 18 tools ✅
 - **mobile-mcp**: Natural language interface
 
@@ -545,7 +545,7 @@ python3 tests/test_migration_flow.py --phase 1
 3. **README.md** - System overview
 4. **shared/database/README.md** - Database schema
 5. **mcp-tools/migration-state/README.md** - 18 tools
-6. **mcp-tools/web-automation/README.md** - 5 tools
+6. **mcp-tools/web-automation/README.md** - 4 tools
 7. **agent/instructions/ios2android-agent-instructions.md** - Orchestration
 8. **docs/demo/demo-script-complete-final.md** - Needs updates
 
