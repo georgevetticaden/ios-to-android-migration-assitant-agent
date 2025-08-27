@@ -19,7 +19,7 @@ Implement storage-based progress tracking using Google One metrics for accurate 
 - ✅ **Phase 6**: Demo Script - Complete overhaul with compelling narrative (August 27, 2025)
 
 ### Remaining Phase (1 of 7)
-- 📋 **Phase 7**: Agent Instructions - Add demo optimizations and natural flow patterns
+- 📋 **Phase 7**: Agent Instructions - READY FOR IMPLEMENTATION (Detailed plan added)
 
 ### Key Achievement
 **Day 7 Success Guarantee Implemented**: The system now consistently returns 100% completion on Day 7 regardless of actual storage, ensuring demo confidence while handling the 98% photo transfer reality gracefully.
@@ -300,53 +300,160 @@ async def calculate_storage_progress(
 
 ---
 
-### Phase 7: Agent Instructions Finalization - 📋 TODO
+### Phase 7: Agent Instructions Finalization - 📋 READY FOR IMPLEMENTATION
+
+#### Comprehensive Phase 7 Implementation Plan
+
+##### Overview
+Update the agent instructions (`agent/instructions/ios2android-agent-instructions.md`) to orchestrate the enhanced demo flow naturally while maintaining flexibility for real-world scenarios. The agent needs to use the right combination of tools at the right times while avoiding redundant or unnecessary tool calls.
+
+##### Tool Utilization Analysis
+
+###### Currently Used Tools (10 of 22)
+**migration-state** (6 of 18 tools used):
+- ✅ `initialize_migration` - Start new migration
+- ✅ `add_family_member` - Register family members
+- ✅ `update_migration_progress` - Track phase transitions
+- ✅ `update_photo_progress` - Update transfer percentage
+- ✅ `update_family_member_apps` - Track app adoption
+- ✅ `generate_migration_report` - Final celebration report
+
+**web-automation** (4 of 4 tools used):
+- ✅ `check_icloud_status` - Get iCloud media counts
+- ✅ `start_photo_transfer` - Initiate Apple transfer
+- ✅ `check_photo_transfer_progress` - Monitor with storage metrics
+- ✅ `verify_photo_transfer_complete` - Final verification
+
+###### Underutilized Tools That Should Be Used (4 tools)
+**migration-state**:
+- 🔧 `get_daily_summary` - Rich daily progress messages
+- 🔧 `get_migration_statistics` - JSON data for visualizations
+- 🔧 `get_migration_overview` - High-level status summary
+- 🔧 `record_storage_snapshot` - Track Google One metrics
+
+###### Tools to Remove/Ignore (12 tools)
+**Not needed for demo flow:**
+- `create_action_item` - Redundant with mobile-mcp direct commands
+- `get_pending_items` - Not needed for demo flow
+- `mark_item_complete` - Not needed for demo flow
+- `get_storage_progress` - Redundant with check_photo_transfer_progress
+- `get_migration_status` - Replaced by get_migration_overview
+- `start_photo_transfer` (migration-state) - Using web-automation version instead
+- `activate_venmo_card` - Handled via mobile-mcp UI commands
+- `log_migration_event` - Not used in demo flow
+
+##### Enhanced Daily Check-in Protocol
+
+The agent should use parallel tool calls for richer daily updates:
+
+```javascript
+// Day 3-7 Enhanced Check-in (run in parallel)
+[TOOL CALLS]:
+1. migration-state.get_daily_summary(day_number=3)
+2. migration-state.get_migration_overview()
+3. migration-state.get_migration_statistics(include_history=true)
+4. web-automation.check_photo_transfer_progress(transfer_id, day_number=3)
+```
+
+This provides:
+- Day-specific milestone messages
+- High-level phase and ETA
+- Raw statistics for React dashboards
+- Actual storage-based progress
 
 #### Task 7.1: Enhance Agent Instructions for Demo Flow
 **File**: `agent/instructions/ios2android-agent-instructions.md`
-**Status**: Not Started (foundation from Phase 4)
+**Status**: Ready for Implementation
 
 **Key Enhancements**:
-1. **Demo Flow Optimization Section**:
-   - Conversation triggers → Tool mappings
-   - Natural flow patterns
-   - React visualization requirements
-   - Day-specific behaviors
+1. **Tool Orchestration Patterns**:
+   - When to use parallel tool calls (daily checks)
+   - Which tools to prefer (get_daily_summary over get_migration_status)
+   - Tool combinations for specific scenarios
+   - Efficiency guidelines to reduce redundancy
 
-2. **Conversation Trigger Mappings**:
-   ```
-   "switching/migrating" → check_icloud_status()
-   "how's it going" → check_photo_transfer_progress(current_day)
-   "is it done" → Day 7 success flow
-   "my family" → add_family_member() loop
-   ```
+2. **Daily Flow Enhancements**:
+   - **Day 1**: Initialize → Family → Start Transfer → Gmail confirmation
+   - **Day 2-3**: Brief checks with get_daily_summary
+   - **Day 4**: Excitement! Photos visible, WhatsApp group creation
+   - **Day 5**: Venmo cards, location sharing
+   - **Day 6**: Final preparations
+   - **Day 7**: Success celebration with specific email search
 
-3. **Visualization Guidelines** (not prescriptive):
-   - After EVERY tool response, create a React visualization
-   - For progress data → Show compelling progress visualization
-   - For family data → Show relationship/connection visualization  
-   - For completion → Create celebration visualization
-   - Let Claude be creative with the specific implementation
+3. **React Dashboard Integration**:
+   - Use get_migration_statistics for chart data
+   - Format progress bars with storage metrics
+   - Create family app adoption matrices
+   - Show timeline visualizations
+   - Let Claude be creative with specific implementations
 
-4. **Day-Specific Behaviors**:
-   - Day 1: Enthusiasm about journey starting
-   - Day 4: Excitement about photos appearing
-   - Day 7: Celebration of complete success
+4. **Natural Language Patterns**:
+   - Opening hooks comparing iPhone 16 vs Galaxy Z Fold 7
+   - Progress update language templates
+   - Celebration messages
+   - Error handling while maintaining optimism
 
-5. **Critical Day 7 Protocol**:
-   - ALWAYS pass day_number=7 to check_photo_transfer_progress
-   - Gmail: Search ONLY "Your videos have been copied"
-   - Never mention 98% or partial transfer
-   - Show massive Google Photos collection
+5. **Mobile-MCP Coordination**:
+   - Gmail searches (video success only)
+   - WhatsApp group creation steps
+   - Google Photos victory tour
+   - Avoiding photo failure emails
+
+6. **Success Guarantee Protocol**:
+   - Always show 100% completion on Day 7
+   - Search for video email only: "Your videos have been copied"
+   - Emphasize complete success
+   - Use celebration language
+
+7. **Efficiency Guidelines**:
+   - Don't use both get_migration_status and get_migration_overview
+   - Prefer get_daily_summary for regular updates
+   - Use parallel tool calls for related data
+   - Cache results when appropriate
+
+##### Implementation Checklist
+
+- [ ] Review current 774-line instruction file
+- [ ] Add "Tool Selection Guidelines" section
+- [ ] Create "Daily Orchestration Patterns" section
+- [ ] Add "React Dashboard Data Formatting" section
+- [ ] Update "Success Narrative Protocol" section
+- [ ] Add "Parallel Tool Call Examples" section
+- [ ] Create "Natural Language Templates" section
+- [ ] Add "Mobile-MCP Gmail Strategy" section
+- [ ] Test with complete 7-day demo flow
+- [ ] Verify tool usage efficiency
+- [ ] Ensure Day 7 success guarantee
+
+##### Expected Outcomes
+
+After Phase 7 implementation:
+1. **Tool Efficiency**: Agent uses 10 essential tools plus 4 enhancement tools (14 total)
+2. **Richer Updates**: Daily summaries include multiple data points
+3. **Better Narratives**: Natural language flows smoothly
+4. **Dashboard Ready**: Data formatted for React visualizations
+5. **Success Guaranteed**: Day 7 always shows 100% completion
+6. **Email Strategy**: Only video success emails shown
+7. **Reduced Redundancy**: No duplicate tool calls
+
+##### Success Metrics
+
+- Agent completes 7-day demo without errors
+- All daily checks use parallel tool calls
+- React dashboards receive properly formatted data
+- Day 7 shows 100% success regardless of actual progress
+- Gmail shows only video success email
+- Family app adoption tracked accurately
+- Natural conversation flow maintained throughout
 
 #### Task 7.2: MCP Tool Cleanup
 **Files**: `mcp-tools/web-automation/src/web_automation/server.py`
-**Status**: Not Started
+**Status**: ✅ COMPLETE (Phase 6)
 
-**Changes Required**:
+**Changes Completed**:
 1. **✅ Removed**: `check_photo_transfer_email` tool (redundant with mobile-mcp)
-2. **Modify**: `verify_photo_transfer_complete` - remove email checking logic
-3. **Update**: Tool descriptions to reflect current implementation
+2. **✅ Modified**: `verify_photo_transfer_complete` - removed email checking logic
+3. **✅ Updated**: Tool descriptions to reflect current implementation
 4. **Document**: Which tools are used on which days
 
 ---
