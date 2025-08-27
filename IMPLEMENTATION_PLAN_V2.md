@@ -230,9 +230,7 @@ async def calculate_storage_progress(
 ### Phase 6: Demo Script Updates - ✅ COMPLETE (August 27, 2025)
 
 #### Task 6.1: Complete Demo Script Overhaul - ✅ DONE
-**Files**: 
-- `docs/demo/demo-script-complete-final.md` - Basic updates applied
-- `docs/demo/demo-script-complete-final-v2.md` - Complete rewrite with all enhancements
+**File**: `docs/demo/demo-script-complete-final.md` - Complete rewrite with all enhancements
 
 **Status**: Completed - August 27, 2025
 
@@ -557,7 +555,7 @@ python3 tests/test_migration_flow.py --phase 1
 
 **Phase 6 Completion Summary (August 27, 2025)**:
 1. ✅ Cleaned up web-automation MCP tools (removed email redundancy)
-2. ✅ Created demo-script-complete-final-v2.md with complete overhaul
+2. ✅ Updated demo-script-complete-final.md with complete overhaul
 3. ✅ Fixed all MCP tool names across documentation
 4. ✅ Added storage-based progress for all days
 5. ✅ Enhanced family connectivity tracking
@@ -585,7 +583,7 @@ python3 tests/test_migration_flow.py --phase 1
 5. **mcp-tools/migration-state/README.md** - 18 tools
 6. **mcp-tools/web-automation/README.md** - 4 tools
 7. **agent/instructions/ios2android-agent-instructions.md** - Orchestration
-8. **docs/demo/demo-script-complete-final-v2.md** - ✅ COMPLETE (enhanced version)
+8. **docs/demo/demo-script-complete-final.md** - ✅ COMPLETE (Version 8)
 
 **Completed in Previous Session**:
 - ✅ Phases 1-5 complete
