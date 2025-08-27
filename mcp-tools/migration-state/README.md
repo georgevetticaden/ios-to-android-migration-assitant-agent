@@ -11,7 +11,7 @@ The Migration State MCP server provides 10 essential tools for managing the comp
 - **Dual Media Support**: Separate tracking for photos and videos
 - **Storage-Based Progress**: Accurate calculation using Google One metrics
 - **Shared Progress Method**: Uses centralized `calculate_storage_progress()` from migration_db.py
-- **7-Day Timeline**: Day-aware logic with Day 7 success guarantee
+- **Day 7 Success Guarantee**: Always returns 100% completion on final day
 - **Family Coordination**: Multi-member app adoption and cross-platform connectivity
 - **JSON Responses**: Direct data for React dashboards and visualizations
 
@@ -36,33 +36,28 @@ The Migration State MCP server provides 10 essential tools for managing the comp
 ### No Foreign Keys
 Removed to work around DuckDB UPDATE limitations. Referential integrity enforced at application layer.
 
-## Complete Tool Documentation
+## Complete Tool Documentation (10 Essential Tools)
 
 ### 📊 Status & Monitoring Tools
 
-#### 1. `get_migration_status`
-Get comprehensive current migration state  
-**Parameters**: `migration_id` (optional)  
-**Returns**: Complete migration details  
-
-#### 2. `get_migration_overview`
+#### 1. `get_migration_overview`
 High-level migration summary with metrics  
 **Parameters**: None  
 **Returns**: Phase, elapsed days, progress, ETA  
 
-#### 3. `get_daily_summary`
+#### 2. `get_daily_summary`
 Day-specific progress with milestones  
 **Parameters**: `day_number` (1-7)  
 **Returns**: Day-aware progress and messages  
 
-#### 4. `get_migration_statistics`
+#### 3. `get_statistics`
 Raw statistics for visualization  
 **Parameters**: `include_history` (optional)  
-**Returns**: Counts and percentages  
+**Returns**: Counts and percentages for React dashboards
 
 ### 🚀 Initialization Tools (Day 1)
 
-#### 5. `initialize_migration`
+#### 4. `initialize_migration`
 Start a new 7-day migration journey  
 **Parameters**:
 - `user_name` (required)
@@ -72,17 +67,12 @@ Start a new 7-day migration journey
 
 **Returns**: New migration_id
 
-#### 6. `add_family_member`
+#### 5. `add_family_member`
 Register family members for coordination  
 **Parameters**:
 - `name`, `email` (required)
 - `role` (optional): spouse/child
 - `age` (optional): For teen accounts
-
-#### 7. `start_photo_transfer`
-Record Apple transfer initiation  
-**Parameters**: `transfer_initiated` (optional)  
-**Returns**: Confirmation with timeline  
 
 ### 📈 Progress Update Tools
 
@@ -93,7 +83,7 @@ Advance through migration phases
 - `status` (required): Phase name
 - `photos_transferred`, `videos_transferred` (optional)
 
-#### 9. `update_photo_progress`
+#### 7. `update_photo_progress`
 Track media visibility in Google Photos  
 **Parameters**:
 - `progress_percent` (required)
@@ -105,49 +95,16 @@ Track media visibility in Google Photos
 - Day 6: ~88% visible
 - Day 7: 100% complete (guaranteed)
 
-#### 10. `update_family_member_apps`
+#### 8. `update_family_member_apps`
 Track app adoption journey  
 **Parameters**:
 - `family_member_name` (required)
 - `app_name`: WhatsApp/Google Maps/Venmo
 - `status`: not_started/invited/installed/configured
 
-### 👨‍👩‍👧‍👦 Family Tools
+### 📦 Storage Tracking
 
-#### 11. `activate_venmo_card`
-Record teen debit card activation (Day 5)  
-**Parameters**:
-- `family_member_name` (required)
-- `card_last_four` (optional)
-
-### 📝 Utility Tools
-
-#### 12. `log_migration_event`
-Create audit trail  
-**Parameters**: `event_type`, `component`, `description`
-
-#### 13. `create_action_item`
-Coordinate with mobile-mcp  
-**Parameters**: `action_type`, `description`
-
-#### 14. `get_pending_items`
-Find incomplete tasks  
-**Parameters**: `category` (photos/apps/all)
-
-#### 15. `mark_item_complete`
-Mark tasks as done  
-**Parameters**: `item_type`, `item_id`
-
-### 🎉 Completion Tool
-
-#### 16. `generate_migration_report`
-Create celebratory final report (Day 7)  
-**Parameters**: `format` (summary/detailed)  
-**Returns**: Celebration data with achievements  
-
-### 📊 Storage Tracking Tools
-
-#### 17. `record_storage_snapshot`
+#### 9. `record_storage_snapshot`
 Record Google One storage metrics  
 **Parameters**:
 - `google_photos_gb` (required)
@@ -156,17 +113,19 @@ Record Google One storage metrics
 
 **Uses**: Calls shared `calculate_storage_progress()` method
 
-#### 18. `get_storage_progress`
-Calculate progress from storage growth  
-**Parameters**: None  
-**Returns**: Current metrics and percentage  
+### 🎉 Completion Tool
+
+#### 10. `generate_migration_report`
+Create celebratory final report (Day 7)  
+**Parameters**: `format` (summary/detailed)  
+**Returns**: Celebration data with achievements
 
 ## 7-Day Migration Timeline
 
 ### Day 1: Foundation
 - Initialize migration
 - Add family members  
-- Start transfer
+- Start transfer (via web-automation)
 - Record baseline (13.88GB)
 
 ### Days 2-3: Processing
@@ -181,7 +140,7 @@ Calculate progress from storage growth
 
 ### Day 5: Acceleration
 - Storage at 220.88GB (57%)
-- Venmo cards arrive
+- Venmo cards handled via mobile-mcp
 - Location sharing setup
 
 ### Day 6: Near Completion
@@ -229,7 +188,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```
 initialize_migration(user_name="George", photo_count=60238, video_count=2418, storage_gb=383)
 add_family_member(name="Jaisy", email="jaisy@example.com", role="spouse")
-start_photo_transfer(transfer_initiated=true)
+# Transfer started via web-automation.start_photo_transfer
 ```
 
 ### Daily Check-ins
@@ -257,13 +216,13 @@ generate_migration_report(format="detailed")
 
 ### With web-automation
 - Receives media counts from `check_icloud_status`
-- Records transfer initiation from `start_photo_transfer`
+- Transfer initiated via web-automation (not migration-state)
 - Tracks progress from `check_photo_transfer_progress`
 
 ### With mobile-mcp
 - Coordinates family app installations
 - Email invitations via Gmail control
-- Venmo card activation through app
+- Venmo card activation through app UI
 
 ## Key Implementation Details
 
@@ -299,9 +258,9 @@ A successful migration means:
 - ✅ All media transferred (100% by Day 7)
 - ✅ Family WhatsApp group complete
 - ✅ Location sharing active
-- ✅ Teen Venmo cards working
+- ✅ Teen payments handled via mobile-mcp
 - ✅ Celebration report generated
 
 ---
 
-*18 Tools Operational with Storage-Based Progress Tracking*
+*10 Essential Tools - Streamlined for Demo Efficiency*

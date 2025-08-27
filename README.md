@@ -18,7 +18,7 @@ This project provides MCP tools that assist with the complete migration journey 
 - 📊 **Storage-Based Tracking**: Progress calculated from Google One storage growth
 - 🎯 **Success Guarantee**: Day 7 always shows 100% completion for demo confidence
 - 📅 **7-Day Journey**: Realistic timeline matching Apple's processing
-- 🤖 **MCP Integration**: 18 database tools + 5 web automation tools
+- 🤖 **MCP Integration**: 10 essential database tools + 4 web automation tools
 - ✅ **Smart Verification**: Strategic email checking (videos only on Day 7)
 
 ### Current Capabilities
@@ -29,9 +29,15 @@ This project provides MCP tools that assist with the complete migration journey 
 - ✅ Coordinate family app adoption across platforms
 - ✅ Monitor location sharing reciprocity
 
-## 📋 Current Implementation Status
+## 🏗️ System Architecture
 
-### ✅ Complete Features
+### Three MCP Servers Working in Concert
+
+1. **web-automation** (4 tools) - Handles all iCloud.com and Google One interactions
+2. **migration-state** (10 tools) - Central state management and database operations  
+3. **mobile-mcp** - Natural language control of Android device via ADB
+
+### Production Features
 
 **Database Architecture**
 - 8 tables including new `storage_snapshots` for progress tracking
@@ -45,19 +51,30 @@ This project provides MCP tools that assist with the complete migration journey 
 3. `check_photo_transfer_progress` - Monitor via Google One (Day 7 = 100%)
 4. `verify_photo_transfer_complete` - Final verification and grading
 
-**Migration State (18 MCP Tools)**
+**Migration State (10 Essential MCP Tools)**
 - Core migration tracking and status updates
 - Family member management with email coordination
 - App adoption tracking per family member
 - Storage snapshot recording and progress calculation
 - Daily progress summaries with milestones
-- Venmo teen card activation tracking
+- Migration report generation with celebrations
 
 **Progress Calculation**
 - Centralized `calculate_storage_progress()` method in migration_db.py
 - Day 7 always returns 100% regardless of actual storage
 - Consistent messaging across all tools
 - Storage-based estimation: 65% photos (5.5MB avg), 35% videos (150MB avg)
+
+## 🎯 7-Day Migration Timeline
+
+| Day | Storage | Progress | Milestones |
+|-----|---------|----------|------------|
+| 1 | 13.88 GB | 0% | Initialize transfer, set up family apps |
+| 2-3 | 13.88 GB | 0% | Apple processing, no visible progress |
+| 4 | 120.88 GB | 28% | Photos appear! WhatsApp group complete |
+| 5 | 220.88 GB | 57% | Transfer accelerating, Venmo cards active |
+| 6 | 340.88 GB | 88% | Nearly complete, final preparations |
+| 7 | 396.88 GB | 100% | Success! All media transferred |
 
 ## 🔧 Prerequisites
 
@@ -68,6 +85,29 @@ This project provides MCP tools that assist with the complete migration journey 
 - Android device (Galaxy Z Fold 7 recommended)
 - Node.js 18+ (for mobile-mcp)
 - Claude Desktop application
+
+## 🚀 Quick Start Guide
+
+### Step 1: Run the Migration
+```bash
+# Start the MCP servers (configured in Claude Desktop)
+# Open Claude Desktop and say:
+"I'm switching from iPhone 16 Pro to Galaxy Z Fold 7. 
+I have 60,238 photos and my family needs to stay connected."
+
+# Claude will orchestrate the entire 7-day migration
+```
+
+### Step 2: Monitor Progress
+- **Day 1**: Transfer initiated, family apps set up
+- **Day 4**: Photos start appearing in Google Photos
+- **Day 7**: Complete success with celebration
+
+### Step 3: Verify Success
+- Check Google Photos for your complete collection
+- Confirm WhatsApp family group is active
+- Verify location sharing is working
+- Test Venmo payments
 
 ## 📦 Installation
 
@@ -214,7 +254,7 @@ ios-to-android-migration-assistant-agent/
 │   │   │   ├── google_storage_client.py
 │   │   │   └── server.py
 │   │   └── [README.md](mcp-tools/web-automation/README.md)
-│   ├── migration-state/       # Database operations (18 tools)
+│   ├── migration-state/       # Database operations (10 tools)
 │   │   ├── server.py
 │   │   └── [README.md](mcp-tools/migration-state/README.md)
 │   └── mobile-mcp/           # Android device control
@@ -275,10 +315,10 @@ For detailed testing instructions, see [TEST_INSTRUCTIONS.md](TEST_INSTRUCTIONS.
 ## 📚 Related Documentation
 
 - [Database Schema Documentation](shared/database/README.md) - Tables, views, and storage tracking
-- [Migration State MCP Server](mcp-tools/migration-state/README.md) - 18 database tools
+- [Migration State MCP Server](mcp-tools/migration-state/README.md) - 10 essential database tools
 - [Web Automation MCP Server](mcp-tools/web-automation/README.md) - Browser automation tools
-- [Implementation Plan](IMPLEMENTATION_PLAN_V2.md) - Development roadmap
-- [Claude Instructions](CLAUDE.md) - Project context for Claude
+- [Implementation Plan](IMPLEMENTATION_PLAN_V2.md) - Development roadmap (archived)
+- [Technical Reference](CLAUDE.md) - Implementation details and context
 
 ## 🐛 Troubleshooting
 
