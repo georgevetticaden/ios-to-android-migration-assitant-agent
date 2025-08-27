@@ -152,11 +152,11 @@ Implement storage-based progress tracking using Google One metrics for accurate 
 
 ---
 
-### Phase 5: Progress Calculation Enhancement - 📋 TODO
+### Phase 5: Progress Calculation Enhancement - ✅ COMPLETE
 
-#### Task 5.1: Extract Storage Calculation to Shared Method
+#### Task 5.1: Extract Storage Calculation to Shared Method ✅ COMPLETE
 **File**: `shared/database/migration_db.py`
-**Status**: Not Started
+**Status**: Completed - August 27, 2025
 **Current State**: Logic embedded in `check_transfer_progress()`
 **Target State**: Extracted to reusable method
 
@@ -198,10 +198,14 @@ async def calculate_storage_progress(
     }
 ```
 
-#### Task 5.2: Update check_transfer_progress to Use Shared Method
+#### Task 5.2: Update check_transfer_progress to Use Shared Method ✅ COMPLETE
 **File**: `mcp-tools/web-automation/src/web_automation/icloud_client.py`
-**Status**: Not Started
-**Changes**: Refactor to use `calculate_storage_progress()` from migration_db
+**Status**: Completed - August 27, 2025
+**Changes Made**:
+- Refactored to use shared `calculate_storage_progress()` method
+- Removed duplicate `_get_milestone_message()` method
+- Updated migration-state server to use shared method
+- Consistent Day 7 = 100% logic across all tools
 
 ---
 
@@ -435,16 +439,19 @@ python3 tests/test_migration_flow.py --phase 1
   - Gmail commands in agent instructions
   - React visualizations throughout
   - Location sharing tracking added
-- 📋 Phase 5: Progress Calculation Enhancement - TODO
+- ✅ Phase 5: Progress Calculation Enhancement - COMPLETE
+  - Centralized `calculate_storage_progress()` method created
+  - All MCP servers using shared calculation
+  - Day 7 = 100% rule enforced consistently
 - 📋 Phase 6: Demo Script Updates - TODO
-- 📋 Phase 7: Agent Instructions Update - IN PROGRESS (partially done in Phase 4)
+- 📋 Phase 7: Agent Instructions Update - TODO (foundation in Phase 4)
 
 **For Next Session**:
-1. Implement Phase 5: Extract `calculate_storage_progress()` to shared method
-2. Implement Phase 4: Gmail verification via mobile-mcp commands
-3. Update Phase 6: Demo scripts with success narrative
-4. Update Phase 7: Agent instructions for 98% scenario handling
-5. Key: Day 7 must show 100% success despite 98% photo reality
+1. ✅ Phase 5 COMPLETE: `calculate_storage_progress()` extracted and implemented
+2. ✅ Phase 4 COMPLETE: Gmail verification via mobile-mcp in agent instructions
+3. 📋 Phase 6 TODO: Demo scripts with success narrative
+4. 📋 Phase 7 TODO: Finalize agent instructions for demo flow
+5. ✅ Key: Day 7 successfully shows 100% completion (implemented)
 
 **Current Branch**: main
 **Last Commit**: "adding new requirements docs." (69f5e96)
