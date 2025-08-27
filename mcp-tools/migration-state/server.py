@@ -910,19 +910,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             if not active:
                 result = {"status": "error", "message": "No active migration"}
             else:
+                google_photos_gb = arguments["google_photos_gb"]
+                google_drive_gb = arguments.get("google_drive_gb", 0)
+                gmail_gb = arguments.get("gmail_gb", 0)
+                day_number = arguments["day_number"]
+                is_baseline = arguments.get("is_baseline", False)
+                
                 with db.get_connection() as conn:
-                    # Get baseline storage if this is first snapshot
-                    baseline_result = conn.execute("""
-                        SELECT google_photos_baseline_gb, google_drive_baseline_gb, gmail_baseline_gb
-                        FROM migration_status WHERE id = ?
-                    """, (active["id"],)).fetchone()
-                    
-                    google_photos_gb = arguments["google_photos_gb"]
-                    google_drive_gb = arguments.get("google_drive_gb", 0)
-                    gmail_gb = arguments.get("gmail_gb", 0)
-                    day_number = arguments["day_number"]
-                    is_baseline = arguments.get("is_baseline", False)
-                    
                     # If this is baseline, update migration_status
                     if is_baseline:
                         conn.execute("""
@@ -935,29 +929,30 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         
                         storage_growth_gb = 0
                         percent_complete = 0
+                        estimated_photos = 0
+                        estimated_videos = 0
+                        progress_calc = {"message": "Baseline established.", "success": False}
                     else:
-                        # Calculate growth and percentage
-                        baseline_photos = baseline_result[0] if baseline_result else 0
-                        storage_growth_gb = google_photos_gb - baseline_photos
+                        # Use shared calculate_storage_progress method for consistent calculation
+                        progress_calc = await db.calculate_storage_progress(
+                            migration_id=active["id"],
+                            current_storage_gb=google_photos_gb,
+                            day_number=day_number
+                        )
                         
-                        # Get expected total from media_transfer
-                        expected_result = conn.execute("""
-                            SELECT total_size_gb FROM media_transfer WHERE migration_id = ?
-                        """, (active["id"],)).fetchone()
-                        
-                        expected_total = expected_result[0] if expected_result else 383
-                        percent_complete = min(100, (storage_growth_gb / expected_total * 100) if expected_total > 0 else 0)
-                    
-                    # Calculate estimated items transferred
-                    photos_result = conn.execute("""
-                        SELECT total_photos, total_videos FROM media_transfer WHERE migration_id = ?
-                    """, (active["id"],)).fetchone()
-                    
-                    total_photos = photos_result[0] if photos_result else 0
-                    total_videos = photos_result[1] if photos_result else 0
-                    
-                    estimated_photos = int(total_photos * percent_complete / 100)
-                    estimated_videos = int(total_videos * percent_complete / 100)
+                        # Check for error
+                        if progress_calc.get('status') == 'error':
+                            result = progress_calc
+                        else:
+                            # Extract calculated values
+                            storage_info = progress_calc.get('storage', {})
+                            estimates = progress_calc.get('estimates', {})
+                            progress_info = progress_calc.get('progress', {})
+                            
+                            storage_growth_gb = storage_info.get('growth_gb', 0)
+                            percent_complete = progress_info.get('percent_complete', 0)
+                            estimated_photos = estimates.get('photos_transferred', 0)
+                            estimated_videos = estimates.get('videos_transferred', 0)
                     
                     # Insert storage snapshot
                     conn.execute("""
@@ -975,16 +970,20 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         estimated_photos, estimated_videos, is_baseline
                     ))
                     
-                    result = {
-                        "status": "snapshot_recorded",
-                        "day": day_number,
-                        "google_photos_gb": google_photos_gb,
-                        "storage_growth_gb": storage_growth_gb,
-                        "percent_complete": round(percent_complete, 1),
-                        "estimated_photos": estimated_photos,
-                        "estimated_videos": estimated_videos,
-                        "is_baseline": is_baseline
-                    }
+                    # Only build result if no error occurred
+                    if progress_calc.get('status') != 'error':
+                        result = {
+                            "status": "snapshot_recorded",
+                            "day": day_number,
+                            "google_photos_gb": google_photos_gb,
+                            "storage_growth_gb": storage_growth_gb,
+                            "percent_complete": percent_complete,
+                            "estimated_photos": estimated_photos,
+                            "estimated_videos": estimated_videos,
+                            "is_baseline": is_baseline,
+                            "message": progress_calc.get('message', '') if not is_baseline else "Baseline established.",
+                            "success": progress_calc.get('success', False) if not is_baseline else False
+                        }
                     
         elif name == "get_storage_progress":
             # Get active migration and latest snapshot

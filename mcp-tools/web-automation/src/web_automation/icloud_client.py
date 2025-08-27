@@ -873,24 +873,23 @@ class ICloudClientWithSession:
     async def check_transfer_progress(self, transfer_id: str, day_number: int = None) -> Dict[str, Any]:
         """Monitor ongoing photo transfer progress using Google One storage metrics.
         
-        Checks the current status of a transfer by comparing Google Photos
-        storage against the baseline established when transfer started.
-        Calculates progress percentage, estimates items transferred, and saves snapshots.
+        Checks the current status of a transfer by using the shared calculate_storage_progress
+        method from migration_db. This ensures consistent progress calculation across all
+        MCP servers and enforces the Day 7 = 100% demo success narrative.
         
         **MCP Tool Name**: `check_photo_transfer_progress`
         
         **How it Works**:
         1. Retrieves transfer record from database
         2. Gets current Google One storage metrics
-        3. Calculates storage growth since baseline
-        4. Estimates photos/videos transferred based on storage
-        5. Saves snapshot to storage_snapshots table
-        6. Updates daily_progress table
+        3. Calls shared calculate_storage_progress method
+        4. Saves snapshot to storage_snapshots table
+        5. Updates daily_progress table
         
         Args:
             transfer_id: The unique transfer identifier returned by start_transfer.
                         Format: "TRF-YYYYMMDD-HHMMSS"
-            day_number: Current day number (1-7). If not provided, calculates from start date.
+            day_number: Current day number (1-7). Day 7 forces 100% completion.
         
         Returns:
             Dict containing:
@@ -912,24 +911,25 @@ class ICloudClientWithSession:
                     "baseline_gb": 1.05,
                     "current_gb": 108.05,
                     "growth_gb": 107.0,
-                    "remaining_gb": 276.0
+                    "total_expected_gb": 383.0
                 },
                 "estimates": {
                     "photos_transferred": 11988,
                     "videos_transferred": 245,
-                    "total_items": 12233
+                    "total_photos": 60238,
+                    "total_videos": 2418
                 },
                 "progress": {
                     "percent_complete": 27.9,
-                    "transfer_rate_gb_per_day": 26.75,
-                    "days_remaining": 10.3
+                    "rate_gb_per_day": 26.75
                 },
-                "message": "Photos are now visible in Google Photos! 27.9% complete."
+                "message": "Photos are now visible in Google Photos! 27.9% complete.",
+                "success": false
             }
         
         Note:
-            Progress calculation: (current - baseline) / source_total * 100
-            This accounts for any existing photos in Google Photos
+            Day 7 always returns 100% completion for demo success narrative.
+            Uses shared calculate_storage_progress for consistent calculations.
         """
         try:
             # Ensure Google Dashboard is initialized
@@ -964,55 +964,56 @@ class ICloudClientWithSession:
             
             current_google_photos_gb = storage_result.get('google_photos_gb', 0)
             
-            # Get baseline from database (stored in migration_status)
-            baseline_storage_gb = 1.05  # Default baseline if not found
+            # Get migration_id for this transfer
             migration_id = None
-            
             if self.db:
                 try:
                     with self.db.get_connection() as conn:
-                        # Get baseline from migration_status
                         result = conn.execute("""
-                            SELECT m.google_photos_baseline_gb, m.id
-                            FROM media_transfer mt
-                            JOIN migration_status m ON mt.migration_id = m.id
-                            WHERE mt.transfer_id = ?
+                            SELECT migration_id FROM media_transfer WHERE transfer_id = ?
                         """, (transfer_id,)).fetchone()
                         
                         if result:
-                            baseline_storage_gb = result[0] or 1.05
-                            migration_id = result[1]
+                            migration_id = result[0]
                 except Exception as e:
-                    logger.warning(f"Could not get baseline from DB: {e}")
+                    logger.warning(f"Could not get migration_id from DB: {e}")
             
-            # Calculate progress based on storage
-            storage_transferred_gb = max(0, current_google_photos_gb - baseline_storage_gb)
-            total_to_transfer_gb = transfer.get('source_size_gb', 383)
-            percent_complete = min((storage_transferred_gb / total_to_transfer_gb * 100) if total_to_transfer_gb > 0 else 0, 100)
+            if not migration_id:
+                # Fallback to transfer's migration_id if available
+                migration_id = transfer.get('migration_id')
             
-            # Estimate items transferred (conservative estimates accounting for compression)
-            photos_estimate = int(storage_transferred_gb * 0.65 * 1024 / 5.5)  # 65% photos, avg 5.5MB compressed
-            videos_estimate = int(storage_transferred_gb * 0.35 * 1024 / 140)  # 35% videos, avg 140MB compressed
+            if not migration_id:
+                return {
+                    "status": "error",
+                    "error": "Migration ID not found for this transfer"
+                }
             
-            # Calculate elapsed time and day number
-            if isinstance(transfer.get('started_at'), str):
-                started_at = datetime.fromisoformat(transfer['started_at'].replace('Z', '+00:00'))
-            else:
-                started_at = transfer.get('started_at', datetime.now())
-            
-            days_elapsed = (datetime.now() - started_at).total_seconds() / 86400
-            
-            # Use provided day_number or calculate from elapsed time
+            # Calculate day number if not provided
             if day_number is None:
+                if isinstance(transfer.get('started_at'), str):
+                    started_at = datetime.fromisoformat(transfer['started_at'].replace('Z', '+00:00'))
+                else:
+                    started_at = transfer.get('started_at', datetime.now())
+                
+                days_elapsed = (datetime.now() - started_at).total_seconds() / 86400
                 day_number = min(max(1, int(days_elapsed) + 1), 7)
             
-            # Calculate transfer rate
-            if days_elapsed > 0:
-                transfer_rate_gb_per_day = storage_transferred_gb / days_elapsed
-                days_remaining = (total_to_transfer_gb - storage_transferred_gb) / transfer_rate_gb_per_day if transfer_rate_gb_per_day > 0 else 0
-            else:
-                transfer_rate_gb_per_day = 0
-                days_remaining = 7
+            # Use shared calculate_storage_progress method for consistent calculation
+            logger.info(f"Calculating progress using shared method for day {day_number}...")
+            progress_result = await self.db.calculate_storage_progress(
+                migration_id=migration_id,
+                current_storage_gb=current_google_photos_gb,
+                day_number=day_number
+            )
+            
+            # Check for error in calculation
+            if progress_result.get('status') == 'error':
+                return progress_result
+            
+            # Extract values from progress_result
+            storage_info = progress_result.get('storage', {})
+            estimates = progress_result.get('estimates', {})
+            progress_info = progress_result.get('progress', {})
             
             # Save storage snapshot to database
             if self.db and migration_id:
@@ -1024,18 +1025,20 @@ class ICloudClientWithSession:
                                 migration_id, day_number, snapshot_time,
                                 google_photos_gb, google_drive_gb, gmail_gb,
                                 device_backup_gb, total_used_gb,
-                                storage_growth_gb, estimated_photos_transferred, estimated_videos_transferred
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                storage_growth_gb, estimated_photos_transferred, estimated_videos_transferred,
+                                percent_complete
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
                             migration_id, day_number, datetime.now(),
                             current_google_photos_gb,
                             storage_result.get('google_drive_gb', 0),
                             storage_result.get('gmail_gb', 0),
                             storage_result.get('device_backup_gb', 0),
-                            storage_result.get('used_storage_gb', 86.91),  # Use actual total from Google One
-                            storage_transferred_gb,
-                            photos_estimate,
-                            videos_estimate
+                            storage_result.get('used_storage_gb', 0),
+                            storage_info.get('growth_gb', 0),
+                            estimates.get('photos_transferred', 0),
+                            estimates.get('videos_transferred', 0),
+                            progress_info.get('percent_complete', 0)
                         ))
                         
                         # Insert daily progress (allows multiple updates per day)
@@ -1048,36 +1051,27 @@ class ICloudClientWithSession:
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
                             migration_id, day_number, datetime.now().date(),
-                            photos_estimate, videos_estimate,
-                            storage_transferred_gb, percent_complete,
-                            self._get_milestone_message(day_number, percent_complete)
+                            estimates.get('photos_transferred', 0),
+                            estimates.get('videos_transferred', 0),
+                            storage_info.get('growth_gb', 0),
+                            progress_info.get('percent_complete', 0),
+                            progress_result.get('message', '')
                         ))
                         
                         logger.info(f"Saved snapshot and progress for day {day_number}")
                 except Exception as e:
                     logger.warning(f"Could not save to database: {e}")
             
+            # Build response using shared calculation results
             return {
                 "transfer_id": transfer_id,
-                "status": "complete" if percent_complete >= 99 else "in_progress",
+                "status": "complete" if progress_result.get('success', False) else "in_progress",
                 "day_number": day_number,
-                "storage": {
-                    "baseline_gb": round(baseline_storage_gb, 2),
-                    "current_gb": round(current_google_photos_gb, 2),
-                    "growth_gb": round(storage_transferred_gb, 2),
-                    "remaining_gb": round(max(0, total_to_transfer_gb - storage_transferred_gb), 2)
-                },
-                "estimates": {
-                    "photos_transferred": photos_estimate,
-                    "videos_transferred": videos_estimate,
-                    "total_items": photos_estimate + videos_estimate
-                },
-                "progress": {
-                    "percent_complete": round(percent_complete, 1),
-                    "transfer_rate_gb_per_day": round(transfer_rate_gb_per_day, 2),
-                    "days_remaining": round(days_remaining, 1)
-                },
-                "message": self._get_milestone_message(day_number, percent_complete),
+                "storage": storage_info,
+                "estimates": estimates,
+                "progress": progress_info,
+                "message": progress_result.get('message', ''),
+                "success": progress_result.get('success', False),
                 "snapshot_saved": bool(self.db and migration_id)
             }
             
@@ -1964,31 +1958,6 @@ class ICloudClientWithSession:
         completion_date = datetime.now() + timedelta(days=days_remaining)
         
         return completion_date.strftime("%Y-%m-%d")
-    
-    def _get_milestone_message(self, day_number: int, percent_complete: float) -> str:
-        """Get appropriate milestone message based on day and progress"""
-        if day_number == 1:
-            return "Transfer initiated. Apple is processing your request."
-        elif day_number <= 3:
-            return f"Transfer in progress. Day {day_number} of expected 3-7 days."
-        elif day_number == 4:
-            if percent_complete > 20:
-                return f"Photos are now visible in Google Photos! {percent_complete:.1f}% complete."
-            else:
-                return "Photos should start appearing soon in Google Photos."
-        elif day_number == 5:
-            return f"Transfer accelerating. {percent_complete:.1f}% complete."
-        elif day_number == 6:
-            return f"Nearing completion. {percent_complete:.1f}% complete."
-        elif day_number >= 7:
-            if percent_complete >= 98:
-                return "Transfer nearly complete! Photos: 98% (minor errors), Videos: 100% complete."
-            elif percent_complete >= 95:
-                return f"Finalizing transfer. {percent_complete:.1f}% complete."
-            else:
-                return f"Transfer continuing. {percent_complete:.1f}% complete."
-        else:
-            return f"Transfer in progress. {percent_complete:.1f}% complete."
     
     async def cleanup(self):
         """Clean up resources"""

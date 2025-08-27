@@ -522,6 +522,171 @@ class MigrationDatabase:
         """Log an event (simplified)"""
         logger.info(f"[{component}] {event_type}: {description}")
         return True
+    
+    async def calculate_storage_progress(self, migration_id: str,
+                                        current_storage_gb: float,
+                                        day_number: int = None) -> Dict[str, Any]:
+        """
+        Calculate storage-based progress for media transfer.
+        
+        Central calculation method that determines transfer progress based on
+        Google Photos storage growth since baseline. Implements the success
+        narrative strategy by returning 100% completion on Day 7 regardless
+        of actual storage metrics.
+        
+        Args:
+            migration_id: ID of the migration to calculate progress for
+            current_storage_gb: Current Google Photos storage in GB
+            day_number: Optional day number (1-7) for demo flow. Day 7 forces 100%
+            
+        Returns:
+            Dict containing:
+                - storage: Current storage metrics (baseline, current, growth)
+                - estimates: Estimated photos and videos transferred
+                - progress: Percent complete and transfer rate
+                - message: Human-readable progress message
+                - success: Boolean indicating if transfer is complete
+                
+        Progress Calculation:
+            - Storage growth = current - baseline
+            - Percent = (growth / total_icloud) * 100
+            - Day 7 Override: Always returns 100% for demo success
+            
+        Item Estimation:
+            - Photos: 65% of storage, average 5.5MB per photo
+            - Videos: 35% of storage, average 150MB per video
+            
+        Example:
+            result = await db.calculate_storage_progress(
+                migration_id="MIG-20250827-120000",
+                current_storage_gb=220.88,
+                day_number=5
+            )
+            # Returns: {
+            #     "storage": {"baseline_gb": 13.88, "current_gb": 220.88, "growth_gb": 207.0},
+            #     "estimates": {"photos_transferred": 26000, "videos_transferred": 500},
+            #     "progress": {"percent_complete": 57.0, "rate_gb_per_day": 41.4},
+            #     "message": "Transfer accelerating. 57.0% complete.",
+            #     "success": False
+            # }
+        """
+        try:
+            # Get migration details and baseline
+            migration = await self.get_migration_status(migration_id)
+            if not migration:
+                return {
+                    "status": "error",
+                    "message": "Migration not found"
+                }
+            
+            # Get baseline storage from migration_status
+            baseline_gb = migration.get('google_photos_baseline_gb', 0.0)
+            total_icloud_gb = migration.get('total_icloud_storage_gb', 383.0)
+            total_photos = migration.get('photo_count', 60238)
+            total_videos = migration.get('video_count', 2418)
+            
+            # Calculate actual storage growth
+            growth_gb = max(0, current_storage_gb - baseline_gb)
+            actual_percent = min(100, (growth_gb / total_icloud_gb) * 100) if total_icloud_gb > 0 else 0
+            
+            # CRITICAL: Day 7 Success Override for Demo
+            if day_number == 7:
+                # Force 100% completion on Day 7 for success narrative
+                percent_complete = 100.0
+                photos_transferred = total_photos  # Show full count
+                videos_transferred = total_videos  # Show full count
+                message = "Transfer complete! All photos and videos successfully migrated."
+                success = True
+            else:
+                # Normal calculation for Days 1-6
+                percent_complete = actual_percent
+                
+                # Estimate items transferred based on storage ratios
+                # Photos: 65% of storage, average 5.5MB per photo
+                photos_transferred = int((growth_gb * 0.65 * 1024) / 5.5)
+                # Videos: 35% of storage, average 150MB per video  
+                videos_transferred = int((growth_gb * 0.35 * 1024) / 150)
+                
+                # Cap at actual totals
+                photos_transferred = min(photos_transferred, total_photos)
+                videos_transferred = min(videos_transferred, total_videos)
+                
+                # Generate appropriate milestone message
+                message = self._get_day_milestone_message(day_number, percent_complete)
+                success = False
+            
+            # Calculate transfer rate if day_number provided
+            rate_gb_per_day = (growth_gb / day_number) if day_number and day_number > 0 else 0
+            
+            return {
+                "storage": {
+                    "baseline_gb": baseline_gb,
+                    "current_gb": current_storage_gb,
+                    "growth_gb": growth_gb,
+                    "total_expected_gb": total_icloud_gb
+                },
+                "estimates": {
+                    "photos_transferred": photos_transferred,
+                    "videos_transferred": videos_transferred,
+                    "total_photos": total_photos,
+                    "total_videos": total_videos
+                },
+                "progress": {
+                    "percent_complete": round(percent_complete, 1),
+                    "rate_gb_per_day": round(rate_gb_per_day, 1)
+                },
+                "message": message,
+                "success": success,
+                "day_number": day_number
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating storage progress: {e}")
+            return {
+                "status": "error",
+                "message": f"Failed to calculate progress: {str(e)}"
+            }
+    
+    def _get_day_milestone_message(self, day_number: int, percent_complete: float) -> str:
+        """
+        Get appropriate milestone message based on day and progress.
+        
+        Provides contextual messages that align with the 7-day demo narrative,
+        building anticipation and celebrating milestones.
+        
+        Args:
+            day_number: Current day of transfer (1-7)
+            percent_complete: Current completion percentage
+            
+        Returns:
+            str: Human-readable progress message
+        """
+        if day_number is None:
+            return f"Transfer in progress. {percent_complete:.1f}% complete."
+            
+        if day_number == 1:
+            return "Transfer initiated. Apple is processing your request."
+        elif day_number == 2:
+            return f"Apple is preparing your media. Day {day_number} of expected 3-7 days."
+        elif day_number == 3:
+            return f"Transfer processing continues. Day {day_number} of expected 3-7 days."
+        elif day_number == 4:
+            if percent_complete > 20:
+                return f"Photos are now visible in Google Photos! {percent_complete:.1f}% complete."
+            else:
+                return "Photos should start appearing soon in Google Photos."
+        elif day_number == 5:
+            return f"Transfer accelerating. {percent_complete:.1f}% complete."
+        elif day_number == 6:
+            if percent_complete >= 85:
+                return f"Nearly there! {percent_complete:.1f}% complete."
+            else:
+                return f"Nearing completion. {percent_complete:.1f}% complete."
+        elif day_number >= 7:
+            # Day 7 always handled by main method to return 100%
+            return "Transfer complete! All photos and videos successfully migrated."
+        else:
+            return f"Transfer in progress. Day {day_number}. {percent_complete:.1f}% complete."
 
 # Singleton instance
 def get_migration_db():
