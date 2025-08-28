@@ -72,7 +72,8 @@ class GoogleStorageClient:
             self.session_dir = Path.home() / ".google_session"
         
         self.session_dir.mkdir(exist_ok=True)
-        self.session_file = self.session_dir / "browser_state.json"
+        # Use session_state.json to match what setup_google_session.py creates
+        self.session_file = self.session_dir / "session_state.json"
         self.session_info_file = self.session_dir / "session_info.json"
         
         logger.info(f"Google One storage session directory: {self.session_dir}")
@@ -219,21 +220,40 @@ class GoogleStorageClient:
                 await self.initialize()
             
             # Launch browser
-            # Always run headless in demo mode, show browser in normal mode for debugging
+            # Determine if we should run headless
             is_demo = os.getenv("DEMO_MODE", "").lower() == "true"
+            
+            # In demo mode, only run headless if we have a valid session
+            self.is_demo = is_demo
+            if is_demo:
+                if use_saved_session and self.is_session_valid():
+                    headless = True
+                    logger.info("Demo mode: Running headless with saved Google session")
+                else:
+                    headless = False
+                    logger.info("Demo mode: Running non-headless (no valid session)")
+            else:
+                headless = False  # Always show browser in non-demo mode for debugging
+            
             self.browser = await self.playwright.chromium.launch(
-                headless=is_demo,  # Headless in demo mode, visible otherwise
+                headless=headless,
                 args=['--disable-blink-features=AutomationControlled']
             )
             
-            if is_demo:
-                logger.info("Demo mode: Google Storage client running headless")
-            
             if use_saved_session:
                 logger.info("Using saved Google session")
+                # Load the session state
+                with open(self.session_file, 'r') as f:
+                    storage_state = json.load(f)
+                
+                # Count cookies for debugging
+                cookies = storage_state.get('cookies', [])
+                google_cookies = [c for c in cookies if 'google.com' in c.get('domain', '')]
+                logger.info(f"Loaded {len(google_cookies)} Google cookies from saved session")
+                
                 # Create context with saved state
                 self.context = await self.browser.new_context(
-                    storage_state=str(self.session_file),
+                    storage_state=storage_state,
                     viewport={"width": 1920, "height": 1080}
                 )
             else:
@@ -259,10 +279,27 @@ class GoogleStorageClient:
             
             # Check if we need to sign in
             if "accounts.google.com" in current_url or "signin" in current_url.lower():
+                if use_saved_session:
+                    # If we're using a saved session but still redirected to login,
+                    # the session has expired
+                    logger.warning("Saved session appears to be expired or invalid")
+                    return {
+                        "status": "error",
+                        "error": "Google session expired. Please run: python scripts/setup_google_session.py"
+                    }
+                
                 if not google_email or not google_password:
                     return {
                         "status": "error",
                         "error": "Google credentials required for sign-in"
+                    }
+                
+                # In headless mode, we can't handle login properly
+                if self.is_demo and headless:
+                    logger.error("Cannot login to Google in headless mode")
+                    return {
+                        "status": "error",
+                        "error": "Cannot authenticate Google in headless mode. Run: python scripts/setup_google_session.py"
                     }
                 
                 logger.info("Need to sign in to Google...")
