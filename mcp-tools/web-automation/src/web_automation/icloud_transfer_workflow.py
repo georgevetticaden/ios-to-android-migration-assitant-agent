@@ -505,28 +505,74 @@ class TransferWorkflow:
                 logger.info("2-Step Verification required")
                 await self._handle_2fa(page)
             
-            # Step 4: Handle consent screen
-            logger.info("Handling consent screen...")
+            # Step 4: Handle consent screens (may have multiple)
+            logger.info("Handling consent screens...")
             await page.wait_for_timeout(3000)
             
-            # Look for Allow or Continue button on consent page
-            try:
-                # First try Allow button (Google consent)
-                allow_btn = await page.query_selector('button:has-text("Allow")')
-                if allow_btn:
-                    await allow_btn.click()
-                    logger.info("Clicked Allow on consent screen")
-                else:
-                    # Fallback to Continue button
-                    continue_btn = await page.wait_for_selector('button:has-text("Continue")', timeout=5000)
-                    await continue_btn.click()
-                    logger.info("Clicked Continue on consent screen")
-            except:
-                logger.info("No Allow/Continue button on consent screen")
+            # There can be multiple consent screens that need Continue clicks:
+            # 1. "You're signing back in to Apple Data and Privacy" - Continue
+            # 2. "Apple Data and Privacy wants access to your Google Account" - Continue
+            # We'll handle them in sequence
             
-            # The popup should close after clicking Allow - this is expected
+            consent_screens_handled = 0
+            max_consent_screens = 3  # Safety limit
+            
+            while consent_screens_handled < max_consent_screens:
+                try:
+                    # Check if page is still open
+                    if page.is_closed():
+                        logger.info("Popup closed - authorization complete")
+                        break
+                    
+                    # Look for Continue button on current page
+                    continue_btn = await page.wait_for_selector('button:has-text("Continue")', timeout=3000)
+                    
+                    if continue_btn:
+                        # Check if button is visible and enabled
+                        is_visible = await continue_btn.is_visible()
+                        is_enabled = await continue_btn.is_enabled()
+                        
+                        if is_visible and is_enabled:
+                            await continue_btn.click()
+                            consent_screens_handled += 1
+                            logger.info(f"Clicked Continue on consent screen #{consent_screens_handled}")
+                            await page.wait_for_timeout(2000)
+                        else:
+                            logger.info("Continue button found but not clickable")
+                            break
+                    else:
+                        # No Continue button found, check for Allow button
+                        allow_btn = await page.query_selector('button:has-text("Allow")')
+                        if allow_btn:
+                            await allow_btn.click()
+                            logger.info("Clicked Allow on final consent screen")
+                            break
+                        else:
+                            logger.info("No more consent buttons found")
+                            break
+                            
+                except Exception as e:
+                    # Check if it's because popup closed (which is expected)
+                    try:
+                        if page.is_closed():
+                            logger.info("Popup closed after consent - this is expected")
+                            break
+                    except:
+                        pass
+                    
+                    # If we handled at least one screen, this might be normal
+                    if consent_screens_handled > 0:
+                        logger.info(f"Consent flow completed after {consent_screens_handled} screen(s)")
+                        break
+                    else:
+                        logger.warning(f"Issue during consent handling: {e}")
+                        break
+            
+            logger.info(f"Handled {consent_screens_handled} consent screen(s)")
+            
+            # Final wait to ensure everything is processed
             try:
-                await page.wait_for_timeout(3000)
+                await page.wait_for_timeout(2000)
             except:
                 logger.info("Popup closed after authorization - this is expected")
             
