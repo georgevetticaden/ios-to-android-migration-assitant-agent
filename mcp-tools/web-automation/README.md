@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Web Automation MCP server provides 5 comprehensive browser automation tools for managing the complete iCloud to Google Photos migration workflow. It handles all web-based interactions for iOS to Android transitions using Playwright automation, session persistence, and storage-based progress tracking.
+The Web Automation MCP server provides 4 comprehensive browser automation tools for managing the complete iCloud to Google Photos migration workflow. It handles all web-based interactions for iOS to Android transitions using Playwright automation, session persistence, and storage-based progress tracking.
 
 ## Key Features
 
@@ -27,10 +27,16 @@ Playwright (Chromium) → privacy.apple.com → Apple Transfer Service
 ```
 
 ### Session Management
-Sessions stored in `~/.icloud_session/` remain valid for ~7 days:
+Two separate session stores remain valid for ~7 days:
+
+**iCloud Sessions** (`~/.icloud_session/`):
 - Apple context and cookies
-- Google context and cookies
 - Session metadata and timestamps
+
+**Google Sessions** (`~/.google_session/`):
+- Google account authentication
+- Google One storage access
+- Required for storage-based progress tracking
 
 ### Database Integration
 ```
@@ -205,9 +211,29 @@ playwright install chromium
 cp .env.template .env
 # Edit .env with Apple ID and Google credentials
 
+# REQUIRED: Setup Google session for storage tracking
+python ../../scripts/setup_google_session.py
+
 # Run tests
 python tests/test_migration_flow.py
 ```
+
+### Google Session Setup (Required)
+
+Before using the web-automation tools, you **must** establish a Google session:
+
+```bash
+# From project root
+python scripts/setup_google_session.py
+```
+
+This script:
+- Authenticates with your Google account 
+- Saves session to `~/.google_session/`
+- Enables storage-based progress tracking
+- Valid for ~7 days
+
+**Without this step**, `check_photo_transfer_progress` and `verify_photo_transfer_complete` will fail to get Google One storage metrics.
 
 ## Claude Desktop Configuration
 
@@ -340,17 +366,31 @@ When `DEMO_MODE=true`:
 ```
 
 ## Testing
+
+### Prerequisites for Testing
 ```bash
-# Test authentication
+# 1. Setup Google session first (REQUIRED)
+python scripts/setup_google_session.py
+
+# 2. Ensure environment variables are set
+export APPLE_ID="your-apple-id@icloud.com"
+export APPLE_PASSWORD="your-apple-password"
+export GOOGLE_EMAIL="your-google@gmail.com" 
+export GOOGLE_PASSWORD="your-google-password"
+```
+
+### Test Commands
+```bash
+# Test authentication only
 python tests/test_basic_auth.py
 
 # Test all 4 tools via MCP protocol
 python tests/test_mcp_server.py
 
-# Test in demo mode
+# Test in demo mode (for presentations)
 DEMO_MODE=true python tests/test_mcp_server.py
 
-# Clear sessions
+# Clear all sessions
 python utils/clear_sessions.py
 ```
 
@@ -361,14 +401,27 @@ python utils/clear_sessions.py
 - **Wrong position**: Ensure display is 5120x2880 (27" Studio Display)
 - **Can't connect**: Kill existing Chrome: `pkill -f "remote-debugging-port=9222"`
 
+### Google Session Issues
+- **Storage metrics not found**: Run `python scripts/setup_google_session.py`
+- **Session expired**: Re-run setup script (sessions last ~7 days)
+- **Wrong account**: Clear `~/.google_session/` and re-authenticate
+
 ### 2FA Issues
 Check Notification Center on Mac for Apple ID codes
 
 ### Session Not Persisting
-Clear with `--clear` flag and re-authenticate
+Clear with `--clear` flag and re-authenticate both sessions:
+```bash
+# Clear both session types
+rm -rf ~/.icloud_session/
+rm -rf ~/.google_session/
+python scripts/setup_google_session.py
+```
 
 ### Progress Not Updating
-Ensure Google One page loads correctly, check selectors
+1. Ensure Google One page loads correctly
+2. Check if Google session is valid
+3. Verify selectors in storage metrics extraction
 
 ### Day 7 Not Showing 100%
 Verify `day_number=7` parameter is passed

@@ -22,7 +22,7 @@ Phase 3 MCP Methods Used:
 - check_icloud_status(): Get current photo library counts
 - start_transfer(): Initiate transfer with baseline establishment
 - check_transfer_progress(): Monitor ongoing transfer
-- check_completion_email(): Check for confirmation emails
+- (REMOVED) check_completion_email(): Now handled via mobile-mcp Gmail
 - verify_transfer_complete(): Validate transfer completion
 
 Key Features:
@@ -89,7 +89,7 @@ async def test_phase3_flow():
         print("1. check_icloud_status - Get photo counts")
         print("2. start_transfer - Start transfer with baseline")
         print("3. check_transfer_progress - Monitor progress")
-        print("4. check_completion_email - Check for emails")
+        print("4. (REMOVED) check_completion_email - Now via mobile-mcp")
         print("5. verify_transfer_complete - Verify completion")
         print("="*80)
         
@@ -227,28 +227,32 @@ async def test_phase3_flow():
                         print(f"❌ Failed to check progress: {progress}")
                 
                 # ========================================================
-                # STEP 6: CHECK FOR EMAILS
+                # STEP 6: CHECK FOR EMAILS (REMOVED)
                 # ========================================================
                 print("\n" + "="*60)
-                print("STEP 6: CHECK FOR TRANSFER EMAILS")
+                print("STEP 6: CHECK FOR TRANSFER EMAILS (REMOVED)")
                 print("="*60)
+                print("Note: Email checking has been removed from this tool")
+                print("Email verification is now handled via mobile-mcp Gmail commands")
+                print("Use mobile-mcp to search for 'Your videos have been copied to Google Photos'")
                 
-                email_result = await client.check_completion_email(transfer_id)
-                
-                if email_result.get('status') == 'success':
-                    if email_result.get('has_completion_email'):
-                        print(f"✅ Found completion email!")
-                        email = email_result['email']
-                        print(f"   - Subject: {email['subject']}")
-                        print(f"   - From: {email['from']}")
-                        print(f"   - Date: {email['date']}")
-                        
-                        # Email is automatically saved to database!
-                        print("\n💾 Email confirmation saved to database automatically")
-                    else:
-                        print("No completion email found yet (transfer may still be in progress)")
-                else:
-                    print(f"Failed to check emails: {email_result}")
+                # Commented out - method no longer exists
+                # email_result = await client.check_completion_email(transfer_id)
+                # 
+                # if email_result.get('status') == 'success':
+                #     if email_result.get('has_completion_email'):
+                #         print(f"✅ Found completion email!")
+                #         email = email_result['email']
+                #         print(f"   - Subject: {email['subject']}")
+                #         print(f"   - From: {email['from']}")
+                #         print(f"   - Date: {email['date']}")
+                #         
+                #         # Email is automatically saved to database!
+                #         print("\n💾 Email confirmation saved to database automatically")
+                #     else:
+                #         print("No completion email found yet (transfer may still be in progress)")
+                # else:
+                #     print(f"Failed to check emails: {email_result}")
                 
                 # ========================================================
                 # STEP 7: VERIFY TRANSFER COMPLETE

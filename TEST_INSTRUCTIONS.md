@@ -1,12 +1,14 @@
 # Test Instructions for iOS to Android Migration Assistant (v2.0)
 
 ## Overview
-This document provides comprehensive testing instructions for the iOS to Android migration assistant with v2.0 schema supporting video transfers and storage-based progress tracking (18 MCP tools operational).
+This document provides comprehensive testing instructions for the iOS to Android migration assistant with v2.0 schema supporting video transfers and storage-based progress tracking (14 MCP tools operational).
 
 ## Prerequisites
 - Python 3.11+ installed
 - Virtual environment activated
 - DuckDB installed (comes with pip install)
+- Environment variables configured (APPLE_ID, APPLE_PASSWORD, GOOGLE_EMAIL, GOOGLE_PASSWORD)
+- Google session established (run `scripts/setup_google_session.py`)
 
 ## Test Organization
 
@@ -66,12 +68,35 @@ Expected: All 10 tests should pass
 ```bash
 python3 mcp-tools/migration-state/tests/test_migration_state.py
 ```
-Expected: All 17 tests should pass
-- Original 6 tools (status, progress, statistics, etc.)
-- New 10 tools (initialize, family, photos, apps, etc.)
+Expected: All tests should pass for 10 migration-state tools:
+- Core tools: initialize_migration, update_migration_progress, get_migration_overview
+- Family tools: add_family_member, update_family_member_apps
+- Storage tools: record_storage_snapshot, get_daily_summary
+- Reporting tools: get_migration_statistics, generate_migration_report
+- Photo tools: update_photo_progress
 - Complete 7-day demo flow simulation
 
-#### Step 5: Test Web Automation Database Compatibility
+#### Step 5: Setup Google Session (Required)
+```bash
+# REQUIRED before web-automation tests
+python3 scripts/setup_google_session.py
+```
+Expected:
+- Google authentication successful
+- Session saved to `~/.google_session/`
+- Storage access verified
+
+#### Step 6: Test Web Automation MCP Server
+```bash
+python3 mcp-tools/web-automation/tests/test_mcp_server.py
+```
+Expected: All 4 web-automation tools should work via MCP protocol:
+- check_icloud_status: Get photo/video counts
+- start_photo_transfer: Initiate transfer with baseline
+- check_photo_transfer_progress: Monitor via storage metrics
+- verify_photo_transfer_complete: Final verification
+
+#### Step 7: Test Web Automation Database Compatibility
 ```bash
 python3 mcp-tools/web-automation/tests/test_icloud_db.py
 ```
@@ -140,10 +165,14 @@ Run all tests in sequence:
 # From project root
 cd /Users/aju/Dropbox/Development/Git/08-14-2025-ios-to-android-migration-agent-take-2/ios-to-android-migration-assitant-agent
 
+# Setup Google session first (REQUIRED)
+python3 scripts/setup_google_session.py
+
 # Reinitialize and run all tests
 python3 shared/database/scripts/initialize_database.py && \
 python3 shared/database/tests/test_database.py && \
-python3 mcp-tools/migration-state/tests/test_migration_state.py
+python3 mcp-tools/migration-state/tests/test_migration_state.py && \
+python3 mcp-tools/web-automation/tests/test_mcp_server.py
 ```
 
 ## Test Results Interpretation
@@ -170,16 +199,19 @@ After running all tests, verify:
    - [ ] Storage tracking functional
 
 2. **Migration State Server** ✓
-   - [ ] 18 tools available (not 16)
+   - [ ] 10 tools available and functional
    - [ ] Can create migrations
    - [ ] Can record storage snapshots
    - [ ] Can track videos separately
    - [ ] Returns JSON properly
 
 3. **Web Automation** ✓
+   - [ ] 4 tools available via MCP protocol
+   - [ ] Google session established
    - [ ] Uses new `media_transfer` table
    - [ ] No references to old photo_transfer
    - [ ] Methods use migration_db helpers
+   - [ ] Storage-based progress tracking works
 
 ## Troubleshooting
 
@@ -194,6 +226,12 @@ If you see "ModuleNotFoundError":
 1. Ensure you're in the project root
 2. Check Python path includes parent directories
 3. Verify shared modules exist
+
+### Google Session Errors
+If web-automation tests fail with storage errors:
+1. Run `python scripts/setup_google_session.py`
+2. Verify session saved to `~/.google_session/`
+3. Check Google account has sufficient permissions
 
 ### Schema Errors
 If you see "table does not exist":
