@@ -187,10 +187,13 @@ class TransferWorkflow:
                     # Use page.click() directly to avoid stale element issues
                     clicked = False
                     selectors = [
-                        'button:has-text("Confirm Transfers")',  # Most general selector
+                        'button:has-text("Confirm Transfers")',  # Main button text
+                        'button:text-is("Confirm Transfers")',  # Exact text match
                         'button.button-primary:has-text("Confirm Transfers")',  # With class
                         'button[type="submit"]:has-text("Confirm Transfers")',  # With type
-                        '//button[contains(text(), "Confirm Transfers")]',  # XPath alternative
+                        '//button[text()="Confirm Transfers"]',  # XPath exact match
+                        '//button[contains(text(), "Confirm Transfers")]',  # XPath contains
+                        'button >> text="Confirm Transfers"',  # Alternative syntax
                     ]
                     
                     for selector in selectors:

@@ -9,6 +9,7 @@ import asyncio
 import logging
 import json
 import re
+import os
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -218,10 +219,15 @@ class GoogleStorageClient:
                 await self.initialize()
             
             # Launch browser
+            # Always run headless in demo mode, show browser in normal mode for debugging
+            is_demo = os.getenv("DEMO_MODE", "").lower() == "true"
             self.browser = await self.playwright.chromium.launch(
-                headless=False,  # Set to False for debugging, True for production
+                headless=is_demo,  # Headless in demo mode, visible otherwise
                 args=['--disable-blink-features=AutomationControlled']
             )
+            
+            if is_demo:
+                logger.info("Demo mode: Google Storage client running headless")
             
             if use_saved_session:
                 logger.info("Using saved Google session")

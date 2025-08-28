@@ -21,6 +21,7 @@ from playwright.async_api import async_playwright, Browser, Page, Frame
 # Import our Google Storage client and Gmail monitor
 from .google_storage_client import GoogleStorageClient
 from .gmail_monitor import GmailMonitor
+from .browser_manager import BrowserManager
 
 # Import shared database components
 sys.path.append(str(Path(__file__).parent.parent.parent.parent.parent))
@@ -240,34 +241,71 @@ class ICloudClientWithSession:
             # Check for existing session
             use_saved_session = self.is_session_valid() and not force_fresh_login
             
-            if use_saved_session:
-                logger.info("Using saved session to avoid 2FA...")
-                # Launch browser with saved state
-                self.browser = await self.playwright.chromium.launch(
-                    headless=False,
-                    args=['--disable-blink-features=AutomationControlled']
-                )
-                
-                # Load saved session
-                self.context = await self.browser.new_context(
-                    storage_state=str(self.session_file),
-                    viewport={"width": 1920, "height": 1080},
-                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-                )
-            else:
-                logger.info("Starting fresh login...")
-                # Launch browser without saved state
-                self.browser = await self.playwright.chromium.launch(
-                    headless=False,
-                    args=['--disable-blink-features=AutomationControlled']
-                )
-                
-                self.context = await self.browser.new_context(
-                    viewport={"width": 1920, "height": 1080},
-                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-                )
+            # Check if we're in demo mode
+            is_demo_mode = os.getenv("DEMO_MODE", "").lower() == "true"
             
-            self.page = await self.context.new_page()
+            if is_demo_mode:
+                # Try to connect to existing browser via CDP
+                logger.info("Demo mode: attempting to connect to existing browser")
+                browser_manager = BrowserManager()
+                existing_browser = await browser_manager.connect_to_existing_browser()
+                
+                if existing_browser:
+                    logger.info("Connected to existing browser via CDP")
+                    self.browser = existing_browser
+                    
+                    # Get or create a tab for iCloud
+                    self.page = await browser_manager.get_or_create_tab(
+                        "icloud",
+                        "https://privacy.apple.com"
+                    )
+                    self.context = self.page.context
+                    logger.info("Using existing browser tab for iCloud operations")
+                else:
+                    # CDP connection failed - user needs to launch browser
+                    logger.error("Failed to connect to browser via CDP")
+                    logger.info("Please ensure Chromium is running with: --remote-debugging-port=9222")
+                    # Fallback to normal browser launch
+                    logger.info("Falling back to normal browser launch...")
+                    self.browser = await self.playwright.chromium.launch(
+                        headless=False,
+                        args=['--disable-blink-features=AutomationControlled']
+                    )
+                    self.context = await self.browser.new_context(
+                        viewport={"width": 1920, "height": 1080},
+                        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                    )
+                    self.page = await self.context.new_page()
+            else:
+                # Normal mode: launch new browser
+                if use_saved_session:
+                    logger.info("Using saved session to avoid 2FA...")
+                    # Launch browser with saved state
+                    self.browser = await self.playwright.chromium.launch(
+                        headless=False,
+                        args=['--disable-blink-features=AutomationControlled']
+                    )
+                    
+                    # Load saved session
+                    self.context = await self.browser.new_context(
+                        storage_state=str(self.session_file),
+                        viewport={"width": 1920, "height": 1080},
+                        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                    )
+                else:
+                    logger.info("Starting fresh login...")
+                    # Launch browser without saved state
+                    self.browser = await self.playwright.chromium.launch(
+                        headless=False,
+                        args=['--disable-blink-features=AutomationControlled']
+                    )
+                    
+                    self.context = await self.browser.new_context(
+                        viewport={"width": 1920, "height": 1080},
+                        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                    )
+                
+                self.page = await self.context.new_page()
             
             # Navigate to privacy.apple.com
             logger.info("Navigating to privacy.apple.com...")
@@ -1961,7 +1999,17 @@ class ICloudClientWithSession:
     
     async def cleanup(self):
         """Clean up resources"""
-        if self.browser:
-            await self.browser.close()
+        # Check if we're in demo mode
+        if os.getenv("DEMO_MODE", "").lower() == "true":
+            logger.info("Demo mode: keeping browser open")
+            # Just clear our reference, don't close the browser
+            self.page = None
+            self.context = None
+            self.browser = None
+        else:
+            # Normal cleanup
+            if self.browser:
+                await self.browser.close()
+        
         if self.playwright:
             await self.playwright.stop()

@@ -187,7 +187,11 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
     "web-automation": {
       "command": "/path/to/.venv/bin/python",
       "args": ["-m", "web_automation.server"],
-      "cwd": "/path/to/mcp-tools/web-automation"
+      "cwd": "/path/to/mcp-tools/web-automation",
+      "env": {
+        "DEMO_MODE": "true",  // Set to "true" for demos, "false" for normal
+        "CDP_URL": "http://localhost:9222"
+      }
     },
     "migration-state": {
       "command": "/path/to/.venv/bin/python",
@@ -201,6 +205,11 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
+
+**Note**: The MCP server will use environment variables in this order:
+1. Claude Desktop config `env` (highest priority)
+2. Project `.env` file
+3. System environment variables
 
 ## 💻 Usage
 

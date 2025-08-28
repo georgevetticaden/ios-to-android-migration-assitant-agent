@@ -268,7 +268,98 @@ python tests/test_migration_flow.py --phase 1
 python utils/clear_sessions.py
 ```
 
+## Demo Mode
+
+### Setup Instructions
+
+#### Step 1: Launch Browser with CDP
+First, launch Chromium with remote debugging enabled:
+```bash
+# Use the provided script
+./scripts/launch_demo_browser.sh
+
+# Or manually:
+/Applications/Chromium.app/Contents/MacOS/Chromium \
+  --remote-debugging-port=9222
+```
+
+**Important**: Position the browser window in the bottom-right of your recording area.
+
+#### Step 2: Configure Demo Mode
+
+##### Option A: Using .env file (Recommended for testing)
+Edit your `.env` file:
+```bash
+# Demo Mode Configuration
+DEMO_MODE=true
+CDP_URL=http://localhost:9222
+```
+
+##### Option B: Claude Desktop Config (For production demos)
+In `~/Library/Application Support/Claude/claude_desktop_config.json`:
+```json
+"web-automation": {
+  "command": "/path/to/.venv/bin/python",
+  "args": ["-m", "web_automation.server"],
+  "cwd": "/path/to/mcp-tools/web-automation",
+  "env": {
+    "DEMO_MODE": "true",
+    "CDP_URL": "http://localhost:9222"
+  }
+}
+```
+
+##### Option C: Command line (For quick tests)
+```bash
+DEMO_MODE=true python tests/test_mcp_server.py
+```
+
+The system will:
+- Connect to your existing browser via CDP
+- Reuse browser tabs for all operations
+- Run Google Storage checks headlessly (invisible)
+
+### How It Works
+When `DEMO_MODE=true`:
+1. **First tool call**: Browser launches automatically at correct position
+2. **Tab reuse**: All operations happen in same browser window
+3. **Google Storage**: Always runs headless (no visual distraction)
+
+### Window Layout for 4K Recording
+```
+┌─────────────────────────────────────────────┐
+│                                             │
+│  Claude Desktop            Galaxy Z Fold 7  │
+│  (Left Panel)              (Right Top)      │
+│                           ┌─────────────────┤
+│                           │                 │
+│                           │  Chromium       │
+│                           │  (Right Bottom) │
+└───────────────────────────┴─────────────────┘
+          4K Recording Area (3840x2160)
+```
+
+## Testing
+```bash
+# Test authentication
+python tests/test_basic_auth.py
+
+# Test all 4 tools via MCP protocol
+python tests/test_mcp_server.py
+
+# Test in demo mode
+DEMO_MODE=true python tests/test_mcp_server.py
+
+# Clear sessions
+python utils/clear_sessions.py
+```
+
 ## Troubleshooting
+
+### Demo Mode Issues
+- **Browser doesn't launch**: Check if Chrome/Chromium is installed
+- **Wrong position**: Ensure display is 5120x2880 (27" Studio Display)
+- **Can't connect**: Kill existing Chrome: `pkill -f "remote-debugging-port=9222"`
 
 ### 2FA Issues
 Check Notification Center on Mac for Apple ID codes
