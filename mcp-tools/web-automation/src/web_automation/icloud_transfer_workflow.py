@@ -164,61 +164,82 @@ class TransferWorkflow:
             if confirm_transfer:
                 logger.info("🚀 Looking for 'Confirm Transfers' button to initiate actual transfer...")
                 try:
-                    # Wait for page to stabilize and button to be ready
-                    logger.info("Waiting for confirmation page to fully load...")
-                    await self.page.wait_for_load_state('networkidle', timeout=15000)
+                    # Use the same button selectors as in _wait_for_confirmation_page
+                    button_selectors = [
+                        'button:has-text("Confirm Transfers")',
+                        'button:has-text("Confirm Transfer")',  # Singular form
+                        'button >> text="Confirm Transfers"',
+                        'button >> text="Confirm Transfer"',
+                        '//button[contains(text(), "Confirm Transfer")]',
+                        'button[class*="button"]:has-text("Confirm")',
+                        'button:text-matches("Confirm.*Transfer")',
+                    ]
                     
-                    # The button takes ~20 seconds to enable, so wait patiently
-                    logger.info("Waiting up to 25 seconds for button to enable (Apple's processing)...")
                     button_ready = False
-                    for i in range(25):  # Check every second for up to 25 seconds
+                    button = None
+                    
+                    # First, try to find the button with any selector
+                    for selector in button_selectors:
                         try:
-                            button = await self.page.query_selector('button:has-text("Confirm Transfers")')
+                            button = await self.page.query_selector(selector)
                             if button:
+                                logger.info(f"Found button with selector: {selector}")
+                                break
+                        except:
+                            continue
+                    
+                    # If button found, check if it's ready
+                    if button:
+                        for i in range(10):  # Check for up to 10 seconds
+                            try:
                                 is_visible = await button.is_visible()
                                 is_enabled = await button.is_enabled()
                                 
-                                if i % 5 == 0:  # Log every 5 seconds
+                                if i % 2 == 0:  # Log every 2 seconds
                                     logger.info(f"Button state at {i}s - Visible: {is_visible}, Enabled: {is_enabled}")
                                 
                                 if is_visible and is_enabled:
                                     logger.info(f"✅ Button is ready after {i} seconds!")
                                     button_ready = True
                                     break
-                        except:
-                            pass
-                        
-                        await self.page.wait_for_timeout(1000)  # Wait 1 second
+                                elif is_visible and not is_enabled:
+                                    logger.info("Button visible but still disabled, waiting...")
+                            except:
+                                pass
+                            
+                            await self.page.wait_for_timeout(1000)  # Wait 1 second
+                    else:
+                        logger.warning("Button not found with any selector")
                     
                     if not button_ready:
-                        logger.warning("Button not ready after 25 seconds, but will try clicking anyway...")
+                        logger.warning("Button not ready after waiting, but will try clicking anyway...")
                     
                     # Take screenshot before attempting click
                     screenshot_before = f"/tmp/before_confirm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                     await self.page.screenshot(path=screenshot_before)
                     logger.info(f"Screenshot before click: {screenshot_before}")
                     
-                    # Now click the button
+                    # Now try to click the button with multiple strategies
                     clicked = False
-                    try:
-                        # Simple, direct click using the most basic selector
-                        logger.info("Attempting to click Confirm Transfers button...")
-                        await self.page.click('button:has-text("Confirm Transfers")', timeout=5000)
-                        logger.info("✅ Successfully clicked Confirm Transfers button!")
-                        clicked = True
-                    except Exception as e:
-                        logger.warning(f"First click attempt failed: {e}")
-                        
-                        # Try alternative approaches if the simple click fails
+                    for selector in button_selectors:
                         try:
-                            logger.info("Trying alternative click method...")
-                            button = await self.page.query_selector('button:has-text("Confirm Transfers")')
-                            if button:
-                                await button.click(force=True)
-                                logger.info("✅ Force clicked Confirm Transfers button!")
-                                clicked = True
-                        except Exception as e2:
-                            logger.warning(f"Alternative click also failed: {e2}")
+                            logger.info(f"Attempting to click with selector: {selector}")
+                            await self.page.click(selector, timeout=3000)
+                            logger.info("✅ Successfully clicked Confirm Transfers button!")
+                            clicked = True
+                            break
+                        except Exception as e:
+                            logger.debug(f"Click attempt with {selector} failed: {e}")
+                    
+                    # If still not clicked, try force click as last resort
+                    if not clicked and button:
+                        try:
+                            logger.info("Trying force click as last resort...")
+                            await button.click(force=True)
+                            logger.info("✅ Force clicked Confirm Transfers button!")
+                            clicked = True
+                        except Exception as e:
+                            logger.warning(f"Force click also failed: {e}")
                     
                     if clicked:
                         logger.info("✅ Transfer confirmed and initiated with Apple!")
@@ -626,28 +647,163 @@ class TransferWorkflow:
                         
                 # Check if we're back on main page with confirmation
                 if len(self.context.pages) > 0:
-                    main_page = self.context.pages[0]
-                    current_url = main_page.url
-                    if 'callback' in current_url or 'confirm' in current_url.lower():
-                        self.page = main_page
-                        logger.info(f"✅ On confirmation page: {current_url[:80]}...")
-                        break
+                    # IMPORTANT: Find the correct main page (not the popup)
+                    for page in self.context.pages:
+                        try:
+                            page_url = page.url
+                            if 'privacy.apple.com' in page_url and page != self.popup_page:
+                                self.page = page
+                                logger.info(f"✅ Found main Apple page: {page_url[:80]}...")
+                                break
+                        except:
+                            continue
             
-            # Ensure we're on the main page
+            # Ensure we're on the main page - get the correct page reference
             if len(self.context.pages) > 0:
-                self.page = self.context.pages[0]
+                # Find the privacy.apple.com page specifically
+                for page in self.context.pages:
+                    try:
+                        if 'privacy.apple.com' in page.url:
+                            self.page = page
+                            logger.info(f"Setting active page to: {page.url[:80]}...")
+                            break
+                    except:
+                        continue
+                        
                 logger.info(f"Current page URL: {self.page.url[:80]}...")
                 
-                # Wait for page to load completely - increase timeout
-                logger.info("Waiting for page to reach network idle state...")
-                await self.page.wait_for_load_state('networkidle', timeout=20000)
-                logger.info("Page reached network idle state")
+                # CRITICAL: After OAuth, Apple shows a spinner for 20-30 seconds
+                # We need to wait for the final confirmation page to fully load
+                logger.info("⏳ Waiting for Apple's processing spinner to complete (this takes 20-30 seconds)...")
                 
-                # Don't wait here - let the confirm_transfer logic handle waiting for the button
-                logger.info("Page ready for confirmation")
+                # Debug: Log current page info
+                logger.info(f"Current page URL: {self.page.url}")
+                logger.info(f"Current page title: {await self.page.title()}")
+                
+                # Take a screenshot for debugging
+                debug_screenshot = f"/tmp/waiting_for_confirm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                await self.page.screenshot(path=debug_screenshot)
+                logger.info(f"Debug screenshot: {debug_screenshot}")
+                
+                # Wait for the page to stabilize and spinner to complete
+                logger.info("Waiting for page to stabilize after OAuth...")
+                
+                # First, wait for the spinner to disappear (it shows during processing)
+                # The spinner typically takes 20-30 seconds
+                spinner_gone = False
+                for wait_attempt in range(30):  # Wait up to 30 seconds
+                    try:
+                        # Check if there's a loading spinner or processing indicator
+                        spinner = await self.page.query_selector('.spinner, .loading, [aria-busy="true"]')
+                        if not spinner:
+                            # Also check for the "Confirm your transfers:" heading as a sign the page is ready
+                            heading = await self.page.query_selector('h1:has-text("Confirm your transfers"), h2:has-text("Confirm your transfers"), text="Confirm your transfers:"')
+                            if heading:
+                                logger.info(f"✅ Page loaded - found confirmation heading after {wait_attempt} seconds")
+                                spinner_gone = True
+                                break
+                        
+                        if wait_attempt % 5 == 0:
+                            logger.info(f"Waiting for page to load... ({wait_attempt}/30 seconds)")
+                            # Take periodic screenshots for debugging
+                            if wait_attempt == 15:
+                                mid_screenshot = f"/tmp/mid_wait_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                                await self.page.screenshot(path=mid_screenshot)
+                                logger.info(f"Mid-wait screenshot: {mid_screenshot}")
+                    except:
+                        pass
+                    
+                    await self.page.wait_for_timeout(1000)
+                
+                if not spinner_gone:
+                    logger.warning("Spinner wait timeout - proceeding anyway")
+                
+                # Additional stabilization wait
+                await self.page.wait_for_timeout(3000)
+                
+                # Now try to find the button with multiple strategies
+                logger.info("Looking for 'Confirm Transfers' button...")
+                
+                # Method 1: Try multiple selectors for the button
+                button_selectors = [
+                    'button:has-text("Confirm Transfers")',
+                    'button:has-text("Confirm Transfer")',  # Singular form
+                    'button >> text="Confirm Transfers"',
+                    'button >> text="Confirm Transfer"',
+                    '//button[contains(text(), "Confirm Transfer")]',
+                    'button[class*="button"]:has-text("Confirm")',
+                    'button[type="submit"]:has-text("Confirm")',
+                    'button:text-matches("Confirm.*Transfer")',  # Regex match
+                ]
+                
+                confirm_button = None
+                for selector in button_selectors:
+                    try:
+                        logger.info(f"Trying selector: {selector}")
+                        confirm_button = await self.page.wait_for_selector(
+                            selector,
+                            timeout=5000  # 5 seconds per selector
+                        )
+                        
+                        if confirm_button:
+                            logger.info(f"✅ Found button with selector: {selector}")
+                            is_visible = await confirm_button.is_visible()
+                            logger.info(f"Button visible: {is_visible}")
+                            
+                            if is_visible:
+                                logger.info("✅ Confirmation page loaded - 'Confirm Transfers' button found!")
+                                break
+                    except Exception as e:
+                        logger.debug(f"Selector {selector} failed: {e}")
+                        continue
+                
+                if not confirm_button:
+                    # Fallback: Look for any button and log what we find
+                    logger.warning("Could not find 'Confirm Transfers' button with any selector")
+                    
+                    # Log all buttons on the page for debugging
+                    all_buttons = await self.page.query_selector_all('button')
+                    logger.info(f"Found {len(all_buttons)} buttons on page:")
+                    for i, btn in enumerate(all_buttons[:10]):  # Log first 10 buttons
+                        try:
+                            text = await btn.inner_text()
+                            is_visible = await btn.is_visible()
+                            is_enabled = await btn.is_enabled()
+                            logger.info(f"  Button {i}: '{text.strip()}' (visible: {is_visible}, enabled: {is_enabled})")
+                        except:
+                            logger.info(f"  Button {i}: Could not get text")
+                    
+                    # Check page content for diagnostic purposes
+                    try:
+                        # Get all text content on the page
+                        page_text = await self.page.inner_text('body')
+                        logger.info(f"Page text length: {len(page_text)} characters")
+                        
+                        # Check for key phrases that indicate we're on the right page
+                        if "Confirm your transfers" in page_text:
+                            logger.info("✅ Found 'Confirm your transfers' text - we're on the right page")
+                        if "photos" in page_text.lower() and "videos" in page_text.lower():
+                            logger.info("✅ Found photos and videos text")
+                        if "Google Photos" in page_text:
+                            logger.info("✅ Found Google Photos reference")
+                        
+                        # Log the first part of the page for context
+                        logger.info(f"Page preview (first 500 chars): {page_text[:500]}")
+                    except Exception as e:
+                        logger.warning(f"Could not get page text: {e}")
+                    
+                    # Take another screenshot
+                    confirm_screenshot = f"/tmp/confirm_page_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                    await self.page.screenshot(path=confirm_screenshot, full_page=True)
+                    logger.info(f"Full page screenshot saved: {confirm_screenshot}")
+                
+                # Give the page a moment to fully stabilize
+                await self.page.wait_for_timeout(2000)
+                
+                logger.info("Confirmation page loading complete")
                     
         except Exception as e:
-            logger.error(f"Failed to return to confirmation page: {e}")
+            logger.error(f"Failed to wait for confirmation page: {e}")
             # Don't raise, let the workflow continue and handle the error later
     
     async def _extract_confirmation_details(self):
