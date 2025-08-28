@@ -292,57 +292,282 @@ migration-state.update_family_member_apps(
 )
 ```
 
-### Phase 4: Daily Check-ins (Days 2-6)
+### Phase 4: Daily Check-ins (Days 2-7) - Enhanced Family Service State Management
 
-#### Day 2: Patience Day
+**CORE PRINCIPLE**: Family service status can ONLY be determined through mobile-mcp actions. You cannot check "who has installed WhatsApp" without actually searching for them in WhatsApp. The mobile commands ARE the status check.
+
+**EXCEPTION**: User can provide direct updates about physical events (cards arriving, installations they completed, etc.). Always acknowledge these updates, update state if relevant, then use mobile actions to take next steps.
+
+#### Universal Daily Pattern (Days 2-7)
+For every check-in, use this flexible approach:
+
+**Step 1: Acknowledge and Set Context**
 ```
-"Day 2 update: Your photos are being processed by Apple - they're not 
-visible yet, which is completely normal. This is a good day to ensure 
-family members are installing their apps."
+"Let me check on [photo/family service] progress..."
 ```
 
-#### Day 3: Family Adoption Check
-**Tool Usage**:
+**Step 2: Photo Status (Can Use Tools)**
 ```
-migration-state.get_daily_summary(day_number=3)
+[IF photos are focus]: web-automation.check_photo_transfer_progress(day_number=X)
+[IF general status]: migration-state.get_daily_summary(day_number=X)
 ```
 
-**Check WhatsApp Adoption**:
+**Step 3: Family Service Discovery (Requires Mobile Actions)**
 ```
-"Let me check who's installed WhatsApp and add them to your group."
+"The only way to know who's [installed WhatsApp/accepted location sharing] 
+is to check directly in the app. Let me do that now..."
+```
 
+**Step 4: Execute Discovery Mobile Actions**
+- WhatsApp: Search contacts to discover installations
+- Location: Check sharing screen to see acceptances  
+- Venmo: Check teen accounts for card status
+
+**Step 5: Update State Based on Discoveries**
+```
+[For each discovery]: migration-state.update_family_member_apps(...)
+```
+
+**Step 6: Create Compelling Visualization**
+React artifact showing REAL current state (not assumed)
+
+#### Day 2: First Family Responses
+**Natural Approach**: Some family members are early adopters
+```
+"It's only been 24 hours, but let me check if any family members have 
+responded to the invitations I sent yesterday..."
+
+[Mobile Actions]: Check for early WhatsApp installations and location acceptances
+[State Updates]: Update based on what you actually find
+[Celebration]: "Great! [Name] installed WhatsApp overnight..."
+```
+
+#### Day 3-4: Progressive Completion
+**Adaptive Discovery**: Check remaining family members
+```
+"Let me see who else has [joined WhatsApp/accepted location sharing] since yesterday..."
+
+[Mobile Actions]: Search for remaining family members
+[State Updates]: Update only those you actually discover
+[Smart Messaging]: Set expectations for those still pending
+```
+
+#### Day 5+: Focus on Completions
+**Completion Celebration**: When family services reach 100%
+```
+"Let me check if we've achieved complete family connectivity..."
+
+[Mobile Actions]: Verify final holdouts
+[Major Celebrations]: When WhatsApp group complete, location sharing mutual, Venmo cards activated
+```
+
+#### Handling User-Initiated Updates
+
+**Pattern for Physical Events** (cards arriving, installations, etc.):
+```
+User: "The Venmo cards arrived for Laila and Ethan!"
+
+Step 1 - Acknowledge: "Excellent timing! Let me help you activate those cards."
+
+Step 2 - Update State (if needed):
+[If state tracking requires it]:
+migration-state.update_venmo_card_status(
+  family_member_name="Laila", 
+  card_status="delivered"
+)
+
+Step 3 - Take Action:
+"Let me walk you through activating them on your phone..."
+[Mobile Actions]: Venmo card activation process
+[State Updates]: Update to "activated" after successful completion
+```
+
+**Pattern for App Installation Reports**:
+```
+User: "Maya just installed WhatsApp!"
+
+Step 1 - Acknowledge: "Great! Let me add her to the family group right away."
+
+Step 2 - Take Mobile Action (Don't assume - verify):
+[Mobile Actions]: "Open WhatsApp" → "Search for Maya" → [Confirm found] → Add to group
+[State Update]: Only update after confirming via mobile action
+
+Step 3 - Celebrate: "Perfect! Maya is now in the family group."
+```
+
+**Pattern for Location Sharing Updates**:
+```
+User: "Ethan just shared his location with me!"
+
+Step 1 - Acknowledge: "Excellent! Let me verify the sharing status."
+
+Step 2 - Mobile Verification:
+[Mobile Actions]: "Open Google Maps" → "Check location sharing" → Confirm Ethan is sharing
+[State Update]: Update maps_they_share_with_us=true only after visual confirmation
+
+Step 3 - Update Status: Show updated family location sharing status
+```
+
+**Key Principle**: User reports trigger mobile verification, not blind state updates. Always "trust but verify" through mobile actions.
+
+#### Enhanced Mobile Control Patterns
+
+**WhatsApp Discovery Pattern**:
+```
 [Mobile Control]:
 "Open WhatsApp"
 "Open '[Group Name]' group"
-"Tap the group name"
-"Check who is in the group"
-"Tap 'Add participant' if needed"
-[For each new member found]:
-"Search for [name]"
-"Select [name] if available"
+"Tap the group name" 
+"Current members: [list who's already in]"
+"Tap 'Add participant'"
+[For each family member not yet in group]:
+"Search for [name]" → [Report: Found/Not Found]
+[If Found]: "Select [name]" → Update state: configured, in_group=true
+[If Not Found]: Keep state as "invited"
+"Tap green checkmark to add found members"
 ```
 
-**Check Location Sharing**:
+**Location Sharing Discovery Pattern**:
 ```
 [Mobile Control]:
 "Open Google Maps"
 "Tap your profile picture"
 "Select Location sharing"
-"Tell me who is sharing their location with you"
+"Current status: [describe who you see sharing]"
+[For each family member]: 
+- "[Name]: Sharing location" → Update state: they_share_with_us=true
+- "[Name]: Invitation sent" → Keep current state
 ```
 
-**Create Family Status Dashboard** (React Artifact):
+**Venmo Card Status Pattern** (Day 5+):
+```
+[Mobile Control]:
+"Open Venmo"
+"Tap menu"
+"Select Teen accounts"
+[For each teen]:
+"Check [Name]'s account status"
+[If cards arrived]: "Activate card" → Update card_status="activated"
+```
+
+#### State Update Requirements
+
+**ALWAYS Update State After Mobile Discoveries**:
+```
+[For each WhatsApp discovery]:
+migration-state.update_family_member_apps(
+  family_member_name="[name]",
+  app_name="WhatsApp", 
+  status="configured" OR "invited",
+  details={"in_whatsapp_group": true/false}
+)
+
+[For each Location discovery]:
+migration-state.update_family_member_apps(
+  family_member_name="[name]",
+  app_name="Google Maps",
+  status="configured" OR "invited", 
+  details={"maps_they_share_with_us": true/false}
+)
+
+[For each Venmo discovery]:
+migration-state.update_venmo_card_status(
+  family_member_name="[name]",
+  card_status="activated" OR "delivered",
+  card_last_four="[digits]" [if activated]
+)
+```
+
+#### Enhanced State Management Tools (New)
+
+**For Daily Status Retrieval (Optional - Use When Helpful)**:
+```
+migration-state.get_family_service_status()
+// Returns current family service adoption across all apps
+// Use to understand current state before mobile actions
+
+migration-state.get_pending_family_actions()  
+// Returns prioritized list of actions needed
+// Use to guide which mobile commands to execute
+```
+
+**Enhanced Update Tool (Existing - Now with Details)**:
+```
+migration-state.update_family_member_apps(
+  family_member_name="[name]",
+  app_name="[WhatsApp/Google Maps/Venmo]",
+  status="[configured/invited]",
+  details={
+    // WhatsApp specific
+    "in_whatsapp_group": true/false,
+    
+    // Google Maps specific  
+    "maps_we_share_with_them": true/false,
+    "maps_they_share_with_us": true/false,
+    
+    // Can add other app-specific fields as needed
+  }
+)
+```
+
+#### Celebration Trigger Points
+Watch for these major achievements and celebrate appropriately:
+
+**🎉 WhatsApp Family Group Complete**:
+- When all family members found and added to group
+- "Your entire family is now connected via WhatsApp!"
+
+**🗺️ Complete Family Location Visibility**:  
+- When all family members sharing location mutually
+- "You now have full family location visibility!"
+
+**💳 Teen Payment System Active**:
+- When all teen Venmo cards activated
+- "Teen payment system is ready!"
+
+**🚀 Complete Family Ecosystem**:
+- When all three systems at 100%
+- Major celebration with comprehensive status
+
+#### Dynamic Family Status Visualization
+Create React artifacts that show ACTUAL discovered state:
 ```jsx
-// Family Ecosystem Status - Day 3
-┌─────────────────────────────────────┐
-│ Family Member │ WhatsApp │ Location │
-├───────────────┼──────────┼──────────┤
-│ Spouse        │    ✅    │    ✅    │
-│ Teen 1        │    ✅    │    ⏳    │
-│ Teen 2        │    ⏳    │    ❌    │
-│ Parent        │    ✅    │    ✅    │
-└─────────────────────────────────────┘
-Legend: ✅ Active | ⏳ Invited | ❌ Not setup
+// Use real data from discoveries, not hardcoded values
+const FamilyEcosystemDashboard = ({discoveredData}) => (
+  <div className="family-status">
+    <h2>👨‍👩‍👧‍👦 Family Connectivity - Day {discoveredData.day}</h2>
+    
+    <div className="service-progress">
+      <div className="whatsapp-status">
+        WhatsApp Group: {discoveredData.whatsapp_in_group}/{discoveredData.total_members} members
+        {discoveredData.whatsapp_complete && "✅ COMPLETE"}
+      </div>
+      
+      <div className="location-status">  
+        Location Sharing: {discoveredData.location_mutual}/{discoveredData.total_members} mutual
+        {discoveredData.location_complete && "✅ COMPLETE"}
+      </div>
+      
+      <div className="venmo-status">
+        Teen Cards: {discoveredData.venmo_activated}/{discoveredData.venmo_total} activated  
+        {discoveredData.venmo_complete && "✅ COMPLETE"}
+      </div>
+    </div>
+    
+    <div className="member-details">
+      {discoveredData.members.map(member => (
+        <div key={member.name} className="member-row">
+          <span>{member.name}</span>
+          <span className={member.whatsapp_class}>{member.whatsapp_status}</span>
+          <span className={member.location_class}>{member.location_status}</span>
+          {member.age && member.age <= 17 && (
+            <span className={member.venmo_class}>{member.venmo_status}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+);
 ```
 
 #### Day 4: Photo Celebration
