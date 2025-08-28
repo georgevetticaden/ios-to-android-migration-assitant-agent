@@ -4,13 +4,50 @@
 
 ---
 
-## Quick Demo Option (15 minutes)
+## 7-Day Migration Demo Script - Daily Summary Table
 
-For time-constrained demos, focus on these key moments:
-- Day 1: Initialize transfer and check status (2 mins)
-- Day 4: Show photos appearing with progress (2 mins)  
-- Day 7: Complete verification with 100% success (2 mins)
-- Skip intermediate family setup steps
+This table summarizes the enhanced migration demo with meaningful progress each day and explicit state management.
+
+### Day-by-Day Summary Table
+
+| Day | Key Milestones | Family Service Progress | Photo Progress | Tool Calls | Mobile-MCP Actions | State Updates |
+|-----|---------------|------------------------|----------------|------------|-------------------|---------------|
+| **Day 1** | **Initial Setup** | WhatsApp group created with Laila<br>Location invitations sent to all<br>Venmo teen accounts ordered | Transfer initiated<br>0% visible | `initialize_migration()`<br>`add_family_member()` x4<br>`start_photo_transfer()` | WhatsApp: Create group, search contacts<br>Gmail: Send invitations<br>Google Maps: Set up location sharing<br>Web: Order Venmo cards | Laila: WhatsApp=configured<br>Others: WhatsApp=invited<br>All: Location=invited<br>Venmo: cards=ordered |
+| **Day 2** | **First Responses** | Jaisy installs WhatsApp → added to group<br>Jaisy accepts location sharing | Still processing<br>0% visible | `update_family_member_apps()` x2 | WhatsApp: Search for Jaisy → Found, add to group<br>Google Maps: Check sharing status | Jaisy: WhatsApp=configured, in_group=true<br>Jaisy: Location=configured, they_share=true |
+| **Day 3** | **WhatsApp Completion** | Ethan installs WhatsApp → added to group<br>Laila accepts location sharing<br>3 of 4 in WhatsApp, 2 of 4 sharing | Still processing<br>0% visible | `get_daily_summary()`<br>`update_family_member_apps()` x2 | WhatsApp: Search for Ethan → Found, add to group<br>Google Maps: Check sharing updates | Ethan: WhatsApp=configured, in_group=true<br>Laila: Location=configured, they_share=true |
+| **Day 4** | **Photos Arrive + Final WhatsApp** | Maya installs WhatsApp → ALL in group<br>Ethan accepts location sharing<br>Photos start appearing! | 28% complete<br>17,200 photos visible | `check_photo_transfer_progress()`<br>`update_family_member_apps()` x2 | WhatsApp: Search for Maya → Found, add to group<br>Google Maps: Check sharing updates<br>Google Photos: Show arriving photos | Maya: WhatsApp=configured, in_group=true<br>Ethan: Location=configured, they_share=true |
+| **Day 5** | **Complete Family Ecosystem** | Maya accepts location sharing → ALL sharing<br>Venmo cards arrive and activated<br>🎉 100% Family Ecosystem Complete! | 57% complete<br>Transfer accelerating | `check_photo_transfer_progress()`<br>`update_family_member_apps()`<br>`update_venmo_card_status()` x2 | Google Maps: Check final sharing status<br>Venmo: Activate Laila's card<br>Venmo: Activate Ethan's card | Maya: Location=configured, they_share=true<br>Laila: Venmo=activated, card_last_four=1234<br>Ethan: Venmo=activated, card_last_four=5678 |
+| **Day 6** | **Near Photo Completion** | All family services 100% operational<br>Focus on photo progress | 88% complete<br>53,009 photos visible | `get_migration_overview()`<br>`check_photo_transfer_progress()` | Google Photos: Show near-complete library | (No family service updates - all complete) |
+| **Day 7** | **100% Success Celebration** | Complete family ecosystem operational<br>Cross-platform connectivity achieved | 100% complete<br>ALL photos transferred | `check_photo_transfer_progress()`<br>`generate_migration_report()` | Gmail: Check Apple completion email<br>Google Photos: Victory tour | (Final celebration - no state changes needed) |
+
+### Progressive Family Adoption Timeline
+
+**WhatsApp Group "Vetticaden Family"**
+- Day 1: Laila (original member) - 1/4 members
+- Day 2: + Jaisy installed & added - 2/4 members  
+- Day 3: + Ethan installed & added - 3/4 members
+- Day 4: + Maya installed & added - 4/4 members ✅ **COMPLETE**
+
+**Location Sharing Progress**
+- Day 1: Invitations sent to all - 0/4 sharing
+- Day 2: + Jaisy accepted - 1/4 sharing
+- Day 3: + Laila accepted - 2/4 sharing  
+- Day 4: + Ethan accepted - 3/4 sharing
+- Day 5: + Maya accepted - 4/4 sharing ✅ **COMPLETE**
+
+**Venmo Teen Payment System**
+- Day 1: Teen accounts created, cards ordered
+- Days 2-4: Cards in production/transit
+- Day 5: Cards arrive & activated ✅ **COMPLETE**
+
+### Demo Constraints Honored
+
+✅ **Photo Progress**: Can be checked via tools (storage metrics)  
+✅ **Family Services**: Must be discovered via mobile-mcp actions  
+✅ **State Updates**: All mobile discoveries update database  
+✅ **Visual Flow**: Right panel shows actual mobile actions  
+✅ **Natural Progression**: Realistic family adoption timeline  
+✅ **No Gaps**: Every day has meaningful progress
 
 ---
 
@@ -340,16 +377,116 @@ You'll see all of this happening on your phone screen. I'll need your family mem
 
 ---
 
-## 6:00-7:00 - DAY 3: COMPREHENSIVE CHECK-IN
+## 5:30-6:00 - DAY 2: FIRST FAMILY RESPONSES
 
 ### Visual
-[TITLE CARD: "Day 3 - Progress Check"]
+[TITLE CARD: "Day 2 - Family Members Start Responding"]
 
 ### User-Agent Conversation
 
-**Me**: "Good morning! It's day 3. What's our overall migration status?"
+**Me**: "It's Day 2. Any family activity yet?"
 
-**Claude**: "Let me check all our migration systems for you..."
+**Claude**: "Let me check if any family members have responded to the WhatsApp and location sharing invitations I sent yesterday. Early adopters often install apps within 24 hours..."
+
+### Check for Early WhatsApp Installations
+```
+[MOBILE-MCP COMMANDS]:
+"Open WhatsApp"
+"Open 'Vetticaden Family' group" 
+"Tap the group name"
+"Tap 'Add participant'"
+"Search for Jaisy" → Found!
+"Select Jaisy"
+"Search for Laila" → Already in group
+"Search for Ethan" → Not found yet
+"Search for Maya" → Not found yet
+"Tap green checkmark to add Jaisy"
+```
+
+### Update State After Discovery
+```
+[TOOL CALL]: migration-state.update_family_member_apps(
+  family_member_name="Jaisy",
+  app_name="WhatsApp",
+  status="configured",
+  details={"in_whatsapp_group": true}
+)
+```
+
+### Visual on Right Panel
+- Audience sees WhatsApp search finding Jaisy
+- Jaisy gets added to "Vetticaden Family" group
+- Group now shows 2 of 4 members
+
+**Claude**: "Great! Jaisy installed WhatsApp overnight and I've added her to the family group. Let me check location sharing responses..."
+
+### Check Location Sharing Early Responses
+```
+[MOBILE-MCP COMMANDS]:
+"Open Google Maps"
+"Tap your profile picture"
+"Tap 'Location sharing'"
+"Show current sharing status"
+```
+
+### Visual on Right Panel
+- Google Maps location sharing screen opens
+- Shows Jaisy has accepted and is now sharing her location
+- Other family members still show "invitation sent"
+
+**Claude**: "Excellent! Jaisy has also accepted location sharing - you can now see her location in real-time. So after just 24 hours, Jaisy is fully connected on both WhatsApp and location sharing."
+
+### Update Location Sharing State
+```
+[TOOL CALL]: migration-state.update_family_member_apps(
+  family_member_name="Jaisy",
+  app_name="Google Maps",
+  status="configured", 
+  details={"maps_they_share_with_us": true}
+)
+```
+
+### Day 2 Status Visualization
+```
+[REACT ARTIFACT - Day 2 Early Progress]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📸 PHOTO TRANSFER: Processing
+   ░░░░░░░░░░░░░░░░░░░░ 0%
+   Status: Apple processing (Day 4 photos appear)
+
+👨‍👩‍👧‍👦 FAMILY RESPONSES - 24 HOURS:
+   
+   WhatsApp Group:
+   ✅ Laila - Original member
+   ✅ Jaisy - Installed & added today!
+   ⏳ Ethan - Invitation sent  
+   ⏳ Maya - Invitation sent
+
+   Location Sharing:
+   ✅ Jaisy - Accepted & sharing!
+   ⏳ Laila - Invitation sent
+   ⏳ Ethan - Invitation sent
+   ⏳ Maya - Invitation sent
+
+   Venmo Setup:
+   🚚 Cards in production (arriving Day 4-5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Claude**: "Solid progress! After just one day, Jaisy is fully connected. Family adoption typically happens over 2-3 days as people see the invitations and install apps. Tomorrow we should see more family members joining."
+
+---
+
+## 6:00-7:00 - DAY 3: WHATSAPP GROUP COMPLETION
+
+### Visual
+[TITLE CARD: "Day 3 - WhatsApp Group Completion"]
+
+### User-Agent Conversation
+
+**Me**: "Good morning! It's day 3. How's the family adoption going?"
+
+**Claude**: "Day 3 typically brings more family members online. Let me check who else has installed WhatsApp and get your family group fully connected..."
 
 ### Tool Execution
 ```
@@ -410,40 +547,118 @@ You'll see all of this happening on your phone screen. I'll need your family mem
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-**Claude**: "Great progress! Jaisy and Ethan just installed WhatsApp. Let me add them to your family group now..."
+**Claude**: "Let me check who else has installed WhatsApp since yesterday. Ethan and Maya were still missing - let's see if they're ready to join the family group now..."
 
-### Mobile Control Sequence
+### Mobile Control Sequence - Day 3 WhatsApp Check
 ```
 [MOBILE-MCP COMMANDS]:
 "Open WhatsApp"
 "Open 'Vetticaden Family' group"
-"Tap the group name at top"
+"Tap the group name at top" 
+"Current members: Laila, Jaisy (added yesterday)"
 "Tap 'Add participant'"
-"Search for Jaisy" → Found
-"Select Jaisy"
-"Search for Ethan" → Found
+"Search for Ethan" → Found!
 "Select Ethan"
-"Tap the green checkmark"
+"Search for Maya" → Not found yet
+"Tap the green checkmark to add Ethan"
 ```
 
-### Visual
-- Jaisy and Ethan added to group
-- Group now has 4 of 5 members
+### Update State Based on Discovery
+```
+[TOOL CALL]: migration-state.update_family_member_apps(
+  family_member_name="Ethan",
+  app_name="WhatsApp",
+  status="configured", 
+  details={"in_whatsapp_group": true}
+)
 
-**Claude**: "Excellent! Jaisy and Ethan are now in the WhatsApp group. Maya still needs to install the app. Also, Jaisy and Laila have already shared their locations with you in Google Maps - you can now see where they are. Tomorrow your photos should start appearing!"
+[TOOL CALL]: migration-state.update_family_member_apps(
+  family_member_name="Maya",
+  app_name="WhatsApp",
+  status="invited"  // Still not installed
+)
+```
+
+### Visual on Right Panel
+- WhatsApp group now shows: Laila, Jaisy, Ethan (3 members)
+- Ethan successfully found and added
+- Maya still not in contacts (hasn't installed yet)
+
+**Claude**: "Great progress! Ethan installed WhatsApp and I've added him to the family group. Now we have 3 of 4 family members connected via WhatsApp. Maya is taking a bit longer - she'll appear in your contacts once she installs the app."
+
+### Check Location Sharing Progress
+```
+[MOBILE-MCP COMMANDS]:
+"Open Google Maps"
+"Tap your profile picture" 
+"Tap 'Location sharing'"
+"Check who has accepted invitations since yesterday"
+```
+
+### Visual on Right Panel  
+- Google Maps location sharing screen shows:
+  - Jaisy: Sharing location (from yesterday)
+  - Laila: Just accepted! Now sharing location  
+  - Ethan: Invitation still pending
+  - Maya: Invitation still pending
+
+**Claude**: "Excellent! Laila just accepted location sharing - you can now see both Jaisy and Laila's locations in real-time. That's 2 of 4 family members sharing locations with you."
+
+### Update Location Sharing State
+```
+[TOOL CALL]: migration-state.update_family_member_apps(
+  family_member_name="Laila",
+  app_name="Google Maps", 
+  status="configured",
+  details={"maps_they_share_with_us": true}
+)
+```
+
+### Day 3 Progress Summary
+```
+[REACT ARTIFACT - Day 3 WhatsApp Group Progress]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📸 PHOTO TRANSFER: Processing
+   ░░░░░░░░░░░░░░░░░░░░ 0%
+   Status: Apple processing (photos appear tomorrow!)
+
+👨‍👩‍👧‍👦 FAMILY CONNECTIVITY - DAY 3:
+   
+   WhatsApp Group "Vetticaden Family":
+   ✅ Laila - Original member
+   ✅ Jaisy - Added Day 2
+   ✅ Ethan - Added today!
+   ⏳ Maya - Still needs to install
+
+   📊 WhatsApp: 3 of 4 connected (75%)
+
+   Location Sharing:
+   ✅ Jaisy - Sharing (Day 2)
+   ✅ Laila - Just accepted today!
+   ⏳ Ethan - Invitation pending
+   ⏳ Maya - Invitation pending
+
+   📊 Location: 2 of 4 sharing mutually (50%)
+
+   Venmo Setup:
+   🚚 Cards in production (arriving tomorrow)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Claude**: "Solid progress! Your WhatsApp family group is almost complete with 3 of 4 members. Both Jaisy and Laila are sharing their locations with you. Tomorrow is exciting - your photos will start appearing AND Venmo cards should arrive!"
 
 ---
 
-## 7:00-7:30 - DAY 4: PHOTOS ARRIVE!
+## 7:00-7:30 - DAY 4: PHOTOS ARRIVE + FAMILY CONNECTIONS COMPLETE!
 
 ### Visual
-[TITLE CARD: "Day 4 - Photos Arrive!"]
+[TITLE CARD: "Day 4 - Photos Arrive & Family Complete!"]
 
 ### User-Agent Conversation
 
 **Me**: "It's day 4! What's happening with everything?"
 
-**Claude**: "Day 4 is exciting - this is when photos typically start appearing! Let me check everything..."
+**Claude**: "Day 4 is the big day - photos typically start appearing AND family members usually complete their app setup! Let me check your photo progress first, then see if Maya finally joined WhatsApp..."
 
 ### Tool Execution
 ```
@@ -501,21 +716,64 @@ You'll see all of this happening on your phone screen. I'll need your family mem
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-**Claude**: "Fantastic news! Your photos are arriving - 17,200 already visible! And Maya just installed WhatsApp this morning. Let me add her to the group, then we'll look at your photos..."
+**Claude**: "Fantastic news! Your photos are arriving - 17,200 already visible! And this is usually when the final family member joins. Let me check if Maya has installed WhatsApp..."
 
-### Mobile Control Sequence
+### Complete WhatsApp Family Group
 ```
 [MOBILE-MCP COMMANDS]:
 "Open WhatsApp"
 "Open 'Vetticaden Family' group"
-"Tap the group name"
+"Current members: Laila, Jaisy, Ethan (3 members)"
 "Tap 'Add participant'"
-"Search for Maya"
+"Search for Maya" → Found!
 "Select Maya"
 "Tap the green checkmark"
 ```
 
-**Claude**: "Perfect! All 5 family members are now in the WhatsApp group. Now let me show you your arriving photos..."
+### Update Maya's WhatsApp Status
+```
+[TOOL CALL]: migration-state.update_family_member_apps(
+  family_member_name="Maya",
+  app_name="WhatsApp",
+  status="configured",
+  details={"in_whatsapp_group": true}
+)
+```
+
+### Visual on Right Panel
+- WhatsApp group now shows all 4 members: Laila, Jaisy, Ethan, Maya
+- Group is complete!
+
+**Claude**: "🎉 Perfect! Maya finally installed WhatsApp and I've added her to the group. Your entire family is now connected via WhatsApp! Let me also check if more family members have accepted location sharing..."
+
+### Check Location Sharing Completions  
+```
+[MOBILE-MCP COMMANDS]:
+"Open Google Maps"
+"Tap your profile picture"
+"Tap 'Location sharing'"
+"Check current sharing status"
+```
+
+### Visual on Right Panel
+- Shows Jaisy and Laila still sharing (from previous days)
+- Ethan has now accepted and is sharing!
+- Maya invitation still pending
+
+### Update Ethan's Location Status
+```
+[TOOL CALL]: migration-state.update_family_member_apps(
+  family_member_name="Ethan",
+  app_name="Google Maps",
+  status="configured", 
+  details={"maps_they_share_with_us": true}
+)
+```
+
+**Claude**: "Excellent! Ethan also accepted location sharing. Now 3 of 4 family members are sharing their locations with you. Only Maya's location sharing is still pending."
+
+### Show Photos Arriving
+**Claude**: "Now let me show you your arriving photos - this is the moment we've been waiting for..."
 
 ### Mobile Control Sequence
 ```
@@ -536,16 +794,16 @@ You'll see all of this happening on your phone screen. I'll need your family mem
 
 ---
 
-## 7:30-8:00 - DAY 5: VENMO CARDS & ACCELERATION
+## 7:30-8:00 - DAY 5: VENMO CARDS ARRIVE + COMPLETE FAMILY ECOSYSTEM
 
 ### Visual
-[TITLE CARD: "Day 5 - Acceleration Phase"]
+[TITLE CARD: "Day 5 - Venmo Cards & Final Connections"]
 
 ### User-Agent Conversation
 
-**Me**: "Day 5 update! Oh, and the Venmo debit cards just arrived for Laila and Ethan."
+**Me**: "Day 5 update! The Venmo debit cards just arrived for Laila and Ethan."
 
-**Claude**: "Excellent timing! Let me check your overall status first, then we'll activate those cards."
+**Claude**: "Perfect timing! Let me activate those cards and also check if Maya has finally accepted location sharing - that would complete your entire family ecosystem..."
 
 ### Tool Execution
 ```
@@ -584,9 +842,34 @@ You'll see all of this happening on your phone screen. I'll need your family mem
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-**Claude**: "Fantastic progress! You're at 57% with the transfer accelerating. And Maya just shared her location - all family members are now visible in Google Maps! Now let's activate those Venmo cards..."
+**Claude**: "Fantastic progress! You're at 57% with the transfer accelerating. Let me first check if Maya accepted location sharing, then we'll activate those Venmo cards..."
 
-### Mobile Control Sequence
+### Check Final Location Sharing
+```
+[MOBILE-MCP COMMANDS]:
+"Open Google Maps"
+"Tap your profile picture"
+"Tap 'Location sharing'"
+"Check current sharing status"
+```
+
+### Visual on Right Panel
+- Shows all family members now sharing: Jaisy, Laila, Ethan, Maya
+- Complete family location visibility achieved!
+
+### Update Maya's Location Status
+```
+[TOOL CALL]: migration-state.update_family_member_apps(
+  family_member_name="Maya",
+  app_name="Google Maps",
+  status="configured", 
+  details={"maps_they_share_with_us": true}
+)
+```
+
+**Claude**: "🎉 YES! Maya just accepted location sharing! You now have complete family location visibility - you can see all 4 family members in Google Maps. Your family ecosystem is nearly complete. Now let's activate those Venmo cards..."
+
+### Venmo Card Activation Sequence
 ```
 [MOBILE-MCP COMMANDS]:
 "Open Venmo"
@@ -594,21 +877,75 @@ You'll see all of this happening on your phone screen. I'll need your family mem
 "Select 'Teen accounts'"
 "Tap on 'Laila's account'"
 "Tap 'Activate card'"
-"Enter last 4 digits of card"
+"Enter last 4 digits: 1234"
+"Card activated successfully"
 ```
 
-**Me**: "5678"
+### Update Laila's Venmo Status
+```
+[TOOL CALL]: migration-state.update_venmo_card_status(
+  family_member_name="Laila",
+  card_status="activated",
+  card_last_four="1234"
+)
+```
 
+### Activate Ethan's Card
 ```
 [MOBILE-MCP COMMANDS]:
-"Type 5678"
-"Tap 'Activate'"
+"Tap on 'Ethan's account'"
+"Tap 'Activate card'"  
+"Enter last 4 digits: 5678"
+"Card activated successfully"
 ```
 
-### Visual
-- Venmo card activation for both teens
+### Update Ethan's Venmo Status
+```
+[TOOL CALL]: migration-state.update_venmo_card_status(
+  family_member_name="Ethan",
+  card_status="activated", 
+  card_last_four="5678"
+)
+```
 
-**Claude**: "Both teen Venmo cards are now active! Your family ecosystem is nearly complete. With 57% of photos transferred and all critical family connections established, you're well on track for Day 7 completion."
+### Complete Day 5 Family Ecosystem Achievement
+```
+[REACT ARTIFACT - Day 5 Complete Family Ecosystem]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📸 TRANSFER ACCELERATING!
+   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░ 57%
+
+🎉 FAMILY ECOSYSTEM: 100% COMPLETE!
+
+👨‍👩‍👧‍👦 WhatsApp "Vetticaden Family":
+   ✅ All 4 members connected
+   ├─ Laila: Original member (Day 1)
+   ├─ Jaisy: Added Day 2
+   ├─ Ethan: Added Day 3  
+   └─ Maya: Added Day 4
+
+🗺️ Location Sharing:
+   ✅ Complete family visibility
+   ├─ Jaisy: Sharing since Day 2
+   ├─ Laila: Sharing since Day 3
+   ├─ Ethan: Sharing since Day 4
+   └─ Maya: Just accepted today!
+
+💳 Venmo Teen Payment System:
+   ✅ Both cards activated
+   ├─ Laila: Card ****1234 (active)
+   └─ Ethan: Card ****5678 (active)
+
+🚀 CROSS-PLATFORM FAMILY CONNECTIVITY: ACHIEVED!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Claude**: "🎉 INCREDIBLE! Your family ecosystem is now 100% complete! 
+- All 4 family members are connected via WhatsApp
+- Complete family location visibility in Google Maps  
+- Both teen payment cards are activated and ready
+
+You've successfully replicated your entire Apple family ecosystem on Android with cross-platform compatibility! Tomorrow we'll celebrate the complete photo transfer."
 
 ---
 
