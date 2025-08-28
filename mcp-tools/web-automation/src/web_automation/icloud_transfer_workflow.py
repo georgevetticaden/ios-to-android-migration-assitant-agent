@@ -164,66 +164,61 @@ class TransferWorkflow:
             if confirm_transfer:
                 logger.info("🚀 Looking for 'Confirm Transfers' button to initiate actual transfer...")
                 try:
-                    # Wait longer for the confirmation page to fully load and button to appear
-                    logger.info("Waiting for confirmation page to fully load (15-20 seconds)...")
-                    await self.page.wait_for_timeout(5000)  # Initial wait
+                    # Wait for page to stabilize and button to be ready
+                    logger.info("Waiting for confirmation page to fully load...")
+                    await self.page.wait_for_load_state('networkidle', timeout=15000)
                     
-                    # Try to wait for the button to appear (up to 20 seconds total)
-                    try:
-                        await self.page.wait_for_selector(
-                            'button:has-text("Confirm Transfers")',
-                            timeout=15000,  # 15 more seconds
-                            state='visible'
-                        )
-                        logger.info("✅ Confirm Transfers button is now visible")
-                    except:
-                        logger.warning("Button not visible after 20 seconds, but will try clicking anyway...")
+                    # The button takes ~20 seconds to enable, so wait patiently
+                    logger.info("Waiting up to 25 seconds for button to enable (Apple's processing)...")
+                    button_ready = False
+                    for i in range(25):  # Check every second for up to 25 seconds
+                        try:
+                            button = await self.page.query_selector('button:has-text("Confirm Transfers")')
+                            if button:
+                                is_visible = await button.is_visible()
+                                is_enabled = await button.is_enabled()
+                                
+                                if i % 5 == 0:  # Log every 5 seconds
+                                    logger.info(f"Button state at {i}s - Visible: {is_visible}, Enabled: {is_enabled}")
+                                
+                                if is_visible and is_enabled:
+                                    logger.info(f"✅ Button is ready after {i} seconds!")
+                                    button_ready = True
+                                    break
+                        except:
+                            pass
+                        
+                        await self.page.wait_for_timeout(1000)  # Wait 1 second
+                    
+                    if not button_ready:
+                        logger.warning("Button not ready after 25 seconds, but will try clicking anyway...")
                     
                     # Take screenshot before attempting click
                     screenshot_before = f"/tmp/before_confirm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                     await self.page.screenshot(path=screenshot_before)
                     logger.info(f"Screenshot before click: {screenshot_before}")
                     
-                    # Use page.click() directly to avoid stale element issues
+                    # Now click the button
                     clicked = False
-                    selectors = [
-                        'button:has-text("Confirm Transfers")',  # Main button text
-                        'button:text-is("Confirm Transfers")',  # Exact text match
-                        'button.button-primary:has-text("Confirm Transfers")',  # With class
-                        'button[type="submit"]:has-text("Confirm Transfers")',  # With type
-                        '//button[text()="Confirm Transfers"]',  # XPath exact match
-                        '//button[contains(text(), "Confirm Transfers")]',  # XPath contains
-                        'button >> text="Confirm Transfers"',  # Alternative syntax
-                    ]
-                    
-                    for selector in selectors:
+                    try:
+                        # Simple, direct click using the most basic selector
+                        logger.info("Attempting to click Confirm Transfers button...")
+                        await self.page.click('button:has-text("Confirm Transfers")', timeout=5000)
+                        logger.info("✅ Successfully clicked Confirm Transfers button!")
+                        clicked = True
+                    except Exception as e:
+                        logger.warning(f"First click attempt failed: {e}")
+                        
+                        # Try alternative approaches if the simple click fails
                         try:
-                            logger.info(f"Attempting to click with selector: {selector}")
-                            
-                            # First check if element exists
-                            if selector.startswith('//'):
-                                element = await self.page.query_selector(f'xpath={selector}')
-                            else:
-                                element = await self.page.query_selector(selector)
-                            
-                            if element:
-                                logger.info(f"Element found with selector: {selector}")
-                                # Get element info before clicking
-                                is_visible = await element.is_visible()
-                                is_enabled = await element.is_enabled()
-                                logger.info(f"Element state - Visible: {is_visible}, Enabled: {is_enabled}")
-                                
-                                if is_visible and is_enabled:
-                                    # Use page.click() directly - this handles retries internally
-                                    await self.page.click(selector, timeout=5000)
-                                    logger.info("✅ Successfully clicked Confirm Transfers button!")
-                                    clicked = True
-                                    break
-                                else:
-                                    logger.warning(f"Element not ready - Visible: {is_visible}, Enabled: {is_enabled}")
-                        except Exception as e:
-                            logger.warning(f"Failed with selector {selector}: {str(e)[:100]}")
-                            continue
+                            logger.info("Trying alternative click method...")
+                            button = await self.page.query_selector('button:has-text("Confirm Transfers")')
+                            if button:
+                                await button.click(force=True)
+                                logger.info("✅ Force clicked Confirm Transfers button!")
+                                clicked = True
+                        except Exception as e2:
+                            logger.warning(f"Alternative click also failed: {e2}")
                     
                     if clicked:
                         logger.info("✅ Transfer confirmed and initiated with Apple!")
@@ -458,25 +453,51 @@ class TransferWorkflow:
             page = self.popup_page
             await page.wait_for_timeout(2000)
             
-            # Step 1: Enter email
-            logger.info("Entering Google email...")
-            email_field = await page.wait_for_selector('input#identifierId', timeout=10000)
-            await email_field.fill(email)
+            # Check if already authorized (page might auto-close)
+            try:
+                if page.is_closed():
+                    logger.info("✅ Google OAuth auto-authorized (already logged in)")
+                    return
+            except:
+                pass
             
-            # Click Next
-            next_btn = await page.wait_for_selector('#identifierNext', timeout=5000)
-            await next_btn.click()
-            await page.wait_for_timeout(3000)
+            # Check URL - if it's already redirected back to Apple, we're done
+            current_url = page.url
+            if 'privacy.apple.com/oauth/callback' in current_url:
+                logger.info("✅ Google OAuth already authorized, redirected back to Apple")
+                return
             
-            # Step 2: Enter password
-            logger.info("Entering Google password...")
-            password_field = await page.wait_for_selector('input[type="password"]', timeout=10000)
-            await password_field.fill(password)
+            # Only try to login if we see the login form
+            try:
+                # Step 1: Enter email (only if needed)
+                logger.info("Checking if Google login is needed...")
+                email_field = await page.wait_for_selector('input#identifierId', timeout=3000)
+                logger.info("Google login required, entering email...")
+                await email_field.fill(email)
             
-            # Click Next
-            password_next = await page.wait_for_selector('#passwordNext', timeout=5000)
-            await password_next.click()
-            await page.wait_for_timeout(3000)
+                # Click Next
+                next_btn = await page.wait_for_selector('#identifierNext', timeout=5000)
+                await next_btn.click()
+                await page.wait_for_timeout(3000)
+                
+                # Step 2: Enter password
+                logger.info("Entering Google password...")
+                password_field = await page.wait_for_selector('input[type="password"]', timeout=10000)
+                await password_field.fill(password)
+                
+                # Click Next
+                password_next = await page.wait_for_selector('#passwordNext', timeout=5000)
+                await password_next.click()
+                await page.wait_for_timeout(3000)
+            except Exception as e:
+                # Check if page closed or redirected (meaning auth succeeded)
+                try:
+                    if page.is_closed() or 'privacy.apple.com' in page.url:
+                        logger.info("✅ Google OAuth completed during login")
+                        return
+                except:
+                    pass
+                logger.warning(f"OAuth login issue (may be auto-authorized): {e}")
             
             # Step 3: Handle 2-step verification if needed
             current_url = page.url
