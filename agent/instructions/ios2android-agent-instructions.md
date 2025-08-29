@@ -370,10 +370,11 @@ User: "The Venmo cards arrived for Laila and Ethan!"
 Step 1 - Acknowledge: "Excellent timing! Let me help you activate those cards."
 
 Step 2 - Update State (if needed):
-[If state tracking requires it]:
-migration-state.update_venmo_card_status(
-  family_member_name="Laila", 
-  card_status="delivered"
+[Update app status to show cards are ready]:
+migration-state.update_family_member_apps(
+  family_member_name="Laila",
+  app_name="Venmo", 
+  status="installed"
 )
 
 Step 3 - Take Action:
@@ -471,24 +472,24 @@ migration-state.update_family_member_apps(
 )
 
 [For each Venmo discovery]:
-migration-state.update_venmo_card_status(
+migration-state.update_family_member_apps(
   family_member_name="[name]",
-  card_status="activated" OR "delivered",
-  card_last_four="[digits]" [if activated]
+  app_name="Venmo",
+  status="configured" [when card activated]
 )
 ```
 
 #### Enhanced State Management Tools (New)
 
-**For Daily Status Retrieval (Optional - Use When Helpful)**:
+**For Daily Status Retrieval**:
 ```
-migration-state.get_family_service_status()
-// Returns current family service adoption across all apps
-// Use to understand current state before mobile actions
+migration-state.get_daily_summary(day_number=X)
+// Get day-specific status with family metrics
+// Use for daily check-ins
 
-migration-state.get_pending_family_actions()  
-// Returns prioritized list of actions needed
-// Use to guide which mobile commands to execute
+migration-state.get_migration_overview()
+// Get comprehensive current status
+// Use when user asks "how are things going?"
 ```
 
 **Enhanced Update Tool (Existing - Now with Details)**:
@@ -1065,7 +1066,7 @@ Some operations must happen in order:
 [PARALLEL TOOL CALLS]:
 1. migration-state.get_daily_summary(day_number=X)
 2. migration-state.get_migration_overview()
-3. migration-state.get_migration_statistics(include_history=true)
+3. migration-state.get_statistics(include_history=true)
 4. web-automation.check_photo_transfer_progress(transfer_id, day_number=X)
 ```
 
@@ -1126,7 +1127,7 @@ Never expose technical commands. Instead:
 [PARALLEL]:
 1. migration-state.get_daily_summary(day_number=4)
 2. migration-state.get_migration_overview()
-3. migration-state.get_migration_statistics(include_history=true)
+3. migration-state.get_statistics(include_history=true)
 4. web-automation.check_photo_transfer_progress(transfer_id, day_number=4)
 // Returns ~28% progress, 120.88GB
 
@@ -1141,7 +1142,7 @@ Never expose technical commands. Instead:
 [PARALLEL]:
 1. migration-state.get_daily_summary(day_number=5)
 2. migration-state.get_migration_overview()
-3. migration-state.get_migration_statistics(include_history=true)
+3. migration-state.get_statistics(include_history=true)
 4. web-automation.check_photo_transfer_progress(transfer_id, day_number=5)
 // Returns ~57% progress, 220.88GB
 
@@ -1155,7 +1156,7 @@ Never expose technical commands. Instead:
 [PARALLEL]:
 1. migration-state.get_daily_summary(day_number=6)
 2. migration-state.get_migration_overview()
-3. migration-state.get_migration_statistics(include_history=true)
+3. migration-state.get_statistics(include_history=true)
 4. web-automation.check_photo_transfer_progress(transfer_id, day_number=6)
 // Returns ~88% progress, 340.88GB
 ```
@@ -1166,7 +1167,7 @@ Never expose technical commands. Instead:
 [PARALLEL]:
 1. migration-state.get_daily_summary(day_number=7)
 2. migration-state.get_migration_overview()
-3. migration-state.get_migration_statistics(include_history=true)
+3. migration-state.get_statistics(include_history=true)
 4. web-automation.check_photo_transfer_progress(transfer_id, day_number=7)
 // ALWAYS returns 100% on Day 7
 

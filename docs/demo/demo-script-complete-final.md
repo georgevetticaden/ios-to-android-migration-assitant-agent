@@ -663,8 +663,7 @@ You'll see all of this happening on your phone screen. I'll need your family mem
 ### Tool Execution
 ```
 [TOOL CALL]: web-automation.check_photo_transfer_progress(
-  transfer_id="TRF-20250827-120000",
-  day_number=4
+  transfer_id="TRF-20250827-120000"
 )
 
 [TOOL RETURNS]:
@@ -808,8 +807,7 @@ You'll see all of this happening on your phone screen. I'll need your family mem
 ### Tool Execution
 ```
 [TOOL CALL]: web-automation.check_photo_transfer_progress(
-  transfer_id="TRF-20250827-120000",
-  day_number=5
+  transfer_id="TRF-20250827-120000"
 )
 ```
 
@@ -883,10 +881,10 @@ You'll see all of this happening on your phone screen. I'll need your family mem
 
 ### Update Laila's Venmo Status
 ```
-[TOOL CALL]: migration-state.update_venmo_card_status(
+[TOOL CALL]: migration-state.update_family_member_apps(
   family_member_name="Laila",
-  card_status="activated",
-  card_last_four="1234"
+  app_name="Venmo",
+  status="configured"
 )
 ```
 
@@ -901,10 +899,10 @@ You'll see all of this happening on your phone screen. I'll need your family mem
 
 ### Update Ethan's Venmo Status
 ```
-[TOOL CALL]: migration-state.update_venmo_card_status(
+[TOOL CALL]: migration-state.update_family_member_apps(
   family_member_name="Ethan",
-  card_status="activated", 
-  card_last_four="5678"
+  app_name="Venmo",
+  status="configured"
 )
 ```
 
@@ -964,8 +962,7 @@ You've successfully replicated your entire Apple family ecosystem on Android wit
 ```
 [TOOL CALL]: migration-state.get_migration_overview()
 [TOOL CALL]: web-automation.check_photo_transfer_progress(
-  transfer_id="TRF-20250827-120000",
-  day_number=6
+  transfer_id="TRF-20250827-120000"
 )
 ```
 
@@ -1028,8 +1025,7 @@ You've successfully replicated your entire Apple family ecosystem on Android wit
 ```
 [TOOL CALL]: migration-state.get_migration_overview()
 [TOOL CALL]: web-automation.check_photo_transfer_progress(
-  transfer_id="TRF-20250827-120000",
-  day_number=7
+  transfer_id="TRF-20250827-120000"
 )
 [TOOL CALL]: migration-state.generate_migration_report(format="detailed")
 ```
