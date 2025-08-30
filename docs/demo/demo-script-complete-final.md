@@ -12,13 +12,13 @@ This table summarizes the enhanced migration demo with meaningful progress each 
 
 | Day | Key Milestones | Family Service Progress | Photo Progress | Tool Calls | Mobile-MCP Actions | State Updates |
 |-----|---------------|------------------------|----------------|------------|-------------------|---------------|
-| **Day 1** | **Initial Setup** | WhatsApp group created with Jaisy, Laila, Ethan<br>Maya invited via SMS<br>Location invitations sent to all<br>Venmo teen accounts ordered | Transfer initiated<br>0% visible | `initialize_migration()`<br>`add_family_member()` x4<br>`check_icloud_status()`<br>`update_migration_status()` #1<br>`start_photo_transfer()`<br>`update_migration_status()` #2 | WhatsApp: Create group, find 3 of 4<br>WhatsApp SMS invite for Maya<br>Google Maps: Set up location sharing<br>Venmo: Order teen cards | Jaisy, Laila, Ethan: WhatsApp=configured<br>Maya: WhatsApp=invited<br>All: Location=invited<br>Venmo: cards=ordered |
-| **Day 2** | **WhatsApp Complete** | Maya installs WhatsApp → added to group<br>Jaisy & Laila accept location sharing | Still processing<br>0% visible | `update_family_member_apps()` x3<br>`update_migration_status()` #3 | WhatsApp: Search for Maya → Found, add to group<br>Google Maps: Check sharing status | Maya: WhatsApp=configured, in_group=true<br>Jaisy & Laila: Location=configured |
-| **Day 3** | **Location Complete** | Ethan & Maya accept location sharing<br>All 4 family members now sharing<br>Family ecosystem 100% connected | Still processing<br>0% visible | `get_daily_summary()`<br>`update_family_member_apps()` x2<br>`update_migration_status()` #4 | Google Maps: Check sharing updates<br>All 4 now sharing location | Ethan & Maya: Location=configured<br>All family services connected |
-| **Day 4** | **Photos Arrive!** | Photos start appearing!<br>All family services operational<br>Celebration of connectivity | 28% complete<br>17,200 photos visible | `check_photo_transfer_progress()`<br>`update_migration_status()` #5<br>`get_family_service_summary()` | Google Photos: Show arriving photos<br>Browse through memories<br>Show photo details | All services already connected<br>Focus on photo arrival |
-| **Day 5** | **Venmo Cards Activated** | Venmo cards arrive and activated<br>Teen payment system operational<br>Transfer accelerating | 57% complete<br>Transfer accelerating | `check_photo_transfer_progress()`<br>`get_family_members(filter="teen")`<br>`update_family_member_apps()` x2<br>`update_migration_status()` #6 | Venmo: Activate Laila's card<br>Venmo: Activate Ethan's card<br>Test payment system | Laila: Venmo=activated, card_last_four=1234<br>Ethan: Venmo=activated, card_last_four=5678 |
-| **Day 6** | **Near Photo Completion** | All family services 100% operational<br>Focus on photo progress | 88% complete<br>53,009 photos visible | `get_migration_overview()`<br>`check_photo_transfer_progress()`<br>`update_migration_status()` #7 | Google Photos: Show near-complete library | (No family service updates - all complete) |
-| **Day 7** | **100% Success Celebration** | Complete family ecosystem operational<br>Cross-platform connectivity achieved | 100% complete<br>ALL photos transferred | `check_photo_transfer_progress()`<br>`update_migration_status()` #8 (final)<br>`generate_migration_report()` | Gmail: Check Apple completion email<br>Google Photos: Victory tour | (Final celebration - no state changes needed) |
+| **Day 1** | **Initial Setup** | WhatsApp group created with Jaisy, Laila, Ethan<br>Maya invited via SMS<br>Location invitations sent to all<br>Venmo teen accounts ordered | Transfer initiated<br>0% visible | `initialize_migration()`<br>`add_family_member()` x4<br>`get_family_members()`<br>`check_icloud_status()`<br>`update_migration_status()` #1<br>`start_photo_transfer()`<br>`update_migration_status()` #2<br>`update_migration_status()` #3 | WhatsApp: Create group, find 3 of 4<br>WhatsApp SMS invite for Maya<br>Google Maps: Set up location sharing<br>Venmo: Order teen cards | Jaisy, Laila, Ethan: WhatsApp=configured<br>Maya: WhatsApp=invited<br>All: Location=invited<br>Venmo: cards=ordered |
+| **Day 2** | **WhatsApp Complete** | Maya installs WhatsApp → added to group<br>Jaisy & Laila accept location sharing | Still processing<br>0% visible | `get_migration_status(2)`<br>`update_family_member_apps()` x3<br>`update_migration_status()` #4 | WhatsApp: Search for Maya → Found, add to group<br>Google Maps: Check sharing status | Maya: WhatsApp=configured, in_group=true<br>Jaisy & Laila: Location=configured |
+| **Day 3** | **Location Complete** | Ethan & Maya accept location sharing<br>All 4 family members now sharing<br>Family ecosystem 100% connected | Still processing<br>0% visible | `get_migration_status(3)`<br>`update_family_member_apps()` x2<br>`update_migration_status()` #5 | Google Maps: Check sharing updates<br>All 4 now sharing location | Ethan & Maya: Location=configured<br>All family services connected |
+| **Day 4** | **Photos Arrive!** | Photos start appearing!<br>All family services operational<br>Celebration of connectivity | 28% complete<br>17,200 photos visible | `get_migration_status(4)`<br>`update_migration_status()` #6 | Google Photos: Show arriving photos<br>Browse through memories<br>Show photo details | All services already connected<br>Focus on photo arrival |
+| **Day 5** | **Venmo Cards Activated** | Venmo cards arrive and activated<br>Teen payment system operational<br>Transfer accelerating | 57% complete<br>Transfer accelerating | `get_migration_status(5)`<br>`update_family_member_apps()` x2<br>`update_migration_status()` #7 | Venmo: Activate Laila's card<br>Venmo: Activate Ethan's card<br>Test payment system | Laila: Venmo=activated, card_last_four=1234<br>Ethan: Venmo=activated, card_last_four=5678 |
+| **Day 6** | **Near Photo Completion** | All family services 100% operational<br>Focus on photo progress | 88% complete<br>53,009 photos visible | `get_migration_status(6)`<br>`update_migration_status()` #8 | Google Photos: Show near-complete library | (No family service updates - all complete) |
+| **Day 7** | **100% Success Celebration** | Complete family ecosystem operational<br>Cross-platform connectivity achieved | 100% complete<br>ALL photos transferred | `get_migration_status(7)`<br>`update_migration_status()` #9 (final)<br>`generate_migration_report()` | Gmail: Check Apple completion email<br>Google Photos: Victory tour | (Final celebration - no state changes needed) |
 
 ### Progressive Family Adoption Timeline
 
@@ -256,26 +256,7 @@ Runs entirely in background
 - Shows "Transfer a copy of your data" → "Google Photos"
 - Confirmation screens
 
-**Claude**: "Starting the Apple to Google Photos transfer..."
-
-### Tool Execution
-```
-[TOOL CALL]: migration-state.initialize_migration(
-  user_name="George Vetticaden",
-  photo_count=60238,
-  video_count=2418,
-  storage_gb=383
-)
-
-[TOOL RETURNS]:
-{
-  "migration_id": "MIG-20250827-120000",
-  "status": "initialized",
-  "google_photos_baseline_gb": 13.88
-}
-```
-
-**Claude**: "Migration tracking initialized. The transfer has been initiated. Let me check your Gmail for Apple's confirmation email..."
+**Claude**: "The transfer has been initiated. Let me check your Gmail for Apple's confirmation email..."
 
 ### Mobile Control Sequence
 ```
@@ -317,11 +298,12 @@ You'll see all of this happening on your phone screen."
 ```
 [TOOL CALL]: migration-state.get_family_members()
 
-[TOOL RETURNS]: ["Jaisy", "Laila", "Ethan", "Maya"]
-
-[TOOL CALL]: migration-state.get_migration_overview()
-
-[TOOL RETURNS]: {..., "whatsapp_group_name": "Vetticaden Family"}
+[TOOL RETURNS]: [
+  {"name": "Jaisy", "role": "spouse"},
+  {"name": "Laila", "age": 17, "role": "child"},
+  {"name": "Ethan", "age": 15, "role": "child"},
+  {"name": "Maya", "age": 13, "role": "child"}
+]
 ```
 
 **Claude**: "Now watch your Galaxy screen as I create the WhatsApp group. I'll search for all family members at once to see who's already on WhatsApp."
@@ -467,8 +449,10 @@ You'll see all of this happening on your phone screen."
 
 ### Tool Execution
 ```
-[TOOL CALL]: migration-state.update_migration_progress(
-  status="venmo_accounts_created"
+[TOOL CALL]: migration-state.update_migration_status(
+  migration_id="MIG-20250827-120000",
+  current_phase="family_setup",
+  family_size=4
 )
 
 [TOOL RETURNS]: Status updated
@@ -1489,7 +1473,7 @@ Tools: Claude + MCP + Natural Language
 web-automation (Playwright - 4 tools)
 ├── check_icloud_status() → photo/video counts
 ├── start_photo_transfer() → initiate Apple service
-├── check_photo_transfer_progress(day_number) → storage-based progress
+├── check_photo_transfer_progress() → calls internal record_storage_snapshot
 └── verify_photo_transfer_complete() → final verification
 
 mobile-mcp (Natural Language - Database-Driven)
@@ -1498,13 +1482,14 @@ mobile-mcp (Natural Language - Database-Driven)
 ├── Batch operations (check multiple people at once)
 └── WhatsApp SMS invite feature for missing members
 
-migration-state (DuckDB - 10 essential tools)
-├── initialize_migration() → setup tracking
+migration-state (DuckDB - 7 MCP tools)
+├── initialize_migration() → setup tracking (minimal params)
 ├── add_family_member() → store family data
-├── get_family_members(filter) → dynamic queries
+├── update_migration_status() → progressive enrichment (NEW)
 ├── update_family_member_apps() → granular state tracking
-├── get_family_service_summary() → aggregated status
-└── 5 more tools for complete lifecycle
+├── get_migration_status(day_number) → uber status tool (NEW)
+├── get_family_members(filter) → database-driven discovery
+└── generate_migration_report() → final celebration
 ```
 
 ### Database-Driven Data Flow
