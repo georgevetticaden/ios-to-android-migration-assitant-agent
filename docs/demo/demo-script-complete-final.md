@@ -12,13 +12,13 @@ This table summarizes the enhanced migration demo with meaningful progress each 
 
 | Day | Key Milestones | Family Service Progress | Photo Progress | Tool Calls | Mobile-MCP Actions | State Updates |
 |-----|---------------|------------------------|----------------|------------|-------------------|---------------|
-| **Day 1** | **Initial Setup** | WhatsApp group created with Jaisy, Laila, Ethan<br>Maya invited via SMS<br>Location invitations sent to all<br>Venmo teen accounts ordered | Transfer initiated<br>0% visible | `initialize_migration()`<br>`add_family_member()` x4<br>`start_photo_transfer()` | WhatsApp: Create group, find 3 of 4<br>WhatsApp SMS invite for Maya<br>Google Maps: Set up location sharing<br>Venmo: Order teen cards | Jaisy, Laila, Ethan: WhatsApp=configured<br>Maya: WhatsApp=invited<br>All: Location=invited<br>Venmo: cards=ordered |
-| **Day 2** | **WhatsApp Complete** | Maya installs WhatsApp → added to group<br>Jaisy & Laila accept location sharing | Still processing<br>0% visible | `update_family_member_apps()` x3 | WhatsApp: Search for Maya → Found, add to group<br>Google Maps: Check sharing status | Maya: WhatsApp=configured, in_group=true<br>Jaisy & Laila: Location=configured |
-| **Day 3** | **Location Complete** | Ethan & Maya accept location sharing<br>All 4 family members now sharing<br>Family ecosystem 100% connected | Still processing<br>0% visible | `get_daily_summary()`<br>`update_family_member_apps()` x2 | Google Maps: Check sharing updates<br>All 4 now sharing location | Ethan & Maya: Location=configured<br>All family services connected |
-| **Day 4** | **Photos Arrive!** | Photos start appearing!<br>All family services operational<br>Celebration of connectivity | 28% complete<br>17,200 photos visible | `check_photo_transfer_progress()`<br>`get_family_service_summary()` | Google Photos: Show arriving photos<br>Browse through memories<br>Show photo details | All services already connected<br>Focus on photo arrival |
-| **Day 5** | **Venmo Cards Activated** | Venmo cards arrive and activated<br>Teen payment system operational<br>Transfer accelerating | 57% complete<br>Transfer accelerating | `check_photo_transfer_progress()`<br>`get_family_members(filter="teen")`<br>`update_family_member_apps()` x2 | Venmo: Activate Laila's card<br>Venmo: Activate Ethan's card<br>Test payment system | Laila: Venmo=activated, card_last_four=1234<br>Ethan: Venmo=activated, card_last_four=5678 |
-| **Day 6** | **Near Photo Completion** | All family services 100% operational<br>Focus on photo progress | 88% complete<br>53,009 photos visible | `get_migration_overview()`<br>`check_photo_transfer_progress()` | Google Photos: Show near-complete library | (No family service updates - all complete) |
-| **Day 7** | **100% Success Celebration** | Complete family ecosystem operational<br>Cross-platform connectivity achieved | 100% complete<br>ALL photos transferred | `check_photo_transfer_progress()`<br>`generate_migration_report()` | Gmail: Check Apple completion email<br>Google Photos: Victory tour | (Final celebration - no state changes needed) |
+| **Day 1** | **Initial Setup** | WhatsApp group created with Jaisy, Laila, Ethan<br>Maya invited via SMS<br>Location invitations sent to all<br>Venmo teen accounts ordered | Transfer initiated<br>0% visible | `initialize_migration()`<br>`add_family_member()` x4<br>`check_icloud_status()`<br>`update_migration_status()` #1<br>`start_photo_transfer()`<br>`update_migration_status()` #2 | WhatsApp: Create group, find 3 of 4<br>WhatsApp SMS invite for Maya<br>Google Maps: Set up location sharing<br>Venmo: Order teen cards | Jaisy, Laila, Ethan: WhatsApp=configured<br>Maya: WhatsApp=invited<br>All: Location=invited<br>Venmo: cards=ordered |
+| **Day 2** | **WhatsApp Complete** | Maya installs WhatsApp → added to group<br>Jaisy & Laila accept location sharing | Still processing<br>0% visible | `update_family_member_apps()` x3<br>`update_migration_status()` #3 | WhatsApp: Search for Maya → Found, add to group<br>Google Maps: Check sharing status | Maya: WhatsApp=configured, in_group=true<br>Jaisy & Laila: Location=configured |
+| **Day 3** | **Location Complete** | Ethan & Maya accept location sharing<br>All 4 family members now sharing<br>Family ecosystem 100% connected | Still processing<br>0% visible | `get_daily_summary()`<br>`update_family_member_apps()` x2<br>`update_migration_status()` #4 | Google Maps: Check sharing updates<br>All 4 now sharing location | Ethan & Maya: Location=configured<br>All family services connected |
+| **Day 4** | **Photos Arrive!** | Photos start appearing!<br>All family services operational<br>Celebration of connectivity | 28% complete<br>17,200 photos visible | `check_photo_transfer_progress()`<br>`update_migration_status()` #5<br>`get_family_service_summary()` | Google Photos: Show arriving photos<br>Browse through memories<br>Show photo details | All services already connected<br>Focus on photo arrival |
+| **Day 5** | **Venmo Cards Activated** | Venmo cards arrive and activated<br>Teen payment system operational<br>Transfer accelerating | 57% complete<br>Transfer accelerating | `check_photo_transfer_progress()`<br>`get_family_members(filter="teen")`<br>`update_family_member_apps()` x2<br>`update_migration_status()` #6 | Venmo: Activate Laila's card<br>Venmo: Activate Ethan's card<br>Test payment system | Laila: Venmo=activated, card_last_four=1234<br>Ethan: Venmo=activated, card_last_four=5678 |
+| **Day 6** | **Near Photo Completion** | All family services 100% operational<br>Focus on photo progress | 88% complete<br>53,009 photos visible | `get_migration_overview()`<br>`check_photo_transfer_progress()`<br>`update_migration_status()` #7 | Google Photos: Show near-complete library | (No family service updates - all complete) |
+| **Day 7** | **100% Success Celebration** | Complete family ecosystem operational<br>Cross-platform connectivity achieved | 100% complete<br>ALL photos transferred | `check_photo_transfer_progress()`<br>`update_migration_status()` #8 (final)<br>`generate_migration_report()` | Gmail: Check Apple completion email<br>Google Photos: Victory tour | (Final celebration - no state changes needed) |
 
 ### Progressive Family Adoption Timeline
 
@@ -108,21 +108,56 @@ Let me show you how this actually works..."
 **Day 6: Near Completion** - Final family member onboarding
 **Day 7: Validation** - Verify all systems operational
 
-First, let me register your family members and group name. Then we'll check your photos."
+Let me start by setting up your migration tracking."
 
 **Me**: "Yes, go ahead."
 
-### Tool Execution - Parse and Store Family
+### Tool Execution - Initialize Migration FIRST
 ```
-[TOOL CALL]: migration-state.add_family_member(name="Jaisy", role="spouse")
-[TOOL CALL]: migration-state.add_family_member(name="Laila", role="child", age=17)
-[TOOL CALL]: migration-state.add_family_member(name="Ethan", role="child", age=15)
-[TOOL CALL]: migration-state.add_family_member(name="Maya", role="child", age=11)
+[TOOL CALL]: migration-state.initialize_migration(
+  user_name="George Vetticaden",
+  years_on_ios=18
+)
+
+[TOOL RETURNS]:
+{
+  "migration_id": "MIG-20250827-120000",
+  "status": "initialized"
+}
+```
+
+**Claude**: "Migration tracking initialized. Now let me register your family members using this migration ID."
+
+### Tool Execution - Add Family Members
+```
+[TOOL CALL]: migration-state.add_family_member(
+  name="Jaisy", 
+  role="spouse",
+  migration_id="MIG-20250827-120000"
+)
+[TOOL CALL]: migration-state.add_family_member(
+  name="Laila", 
+  role="child", 
+  age=17,
+  migration_id="MIG-20250827-120000"
+)
+[TOOL CALL]: migration-state.add_family_member(
+  name="Ethan", 
+  role="child", 
+  age=15,
+  migration_id="MIG-20250827-120000"
+)
+[TOOL CALL]: migration-state.add_family_member(
+  name="Maya", 
+  role="child", 
+  age=11,
+  migration_id="MIG-20250827-120000"
+)
 
 [TOOLS RETURN]: Family members registered
 ```
 
-**Claude**: "Family members registered. Now let me check your iCloud photos..."
+**Claude**: "Family members registered. Now let me check your iCloud photos to understand what we're migrating..."
 
 ### Tool Execution
 ```
@@ -136,6 +171,23 @@ First, let me register your family members and group name. Then we'll check your
   "storage_gb": 383.2,
   "total_items": 62656,
   "session_used": true
+}
+
+[TOOL CALL]: migration-state.update_migration_status(
+  migration_id="MIG-20250827-120000",
+  photo_count=60238,
+  video_count=2418,
+  total_icloud_storage_gb=383,
+  icloud_photo_storage_gb=268,
+  icloud_video_storage_gb=115,
+  album_count=125
+)
+
+[TOOL RETURNS]: 
+{
+  "status": "success",
+  "migration_id": "MIG-20250827-120000",
+  "updated_fields": ["photo_count", "video_count", "storage_metrics", "album_count"]
 }
 ```
 
@@ -182,6 +234,20 @@ Runs entirely in background
   "source_videos": 2418,
   "google_photos_baseline_gb": 13.88,
   "estimated_completion": "3-7 days"
+}
+
+[TOOL CALL]: migration-state.update_migration_status(
+  migration_id="MIG-20250827-120000",
+  current_phase="media_transfer",
+  google_photos_baseline_gb=13.88,
+  overall_progress=10
+)
+
+[TOOL RETURNS]: 
+{
+  "status": "success",
+  "migration_id": "MIG-20250827-120000",
+  "updated_fields": ["current_phase", "google_photos_baseline_gb", "overall_progress"]
 }
 ```
 
@@ -501,6 +567,18 @@ You'll see all of this happening on your phone screen."
         details={"location_sharing_received": true})
 [TOOL CALL]: migration-state.update_family_member_apps("Laila", "Google Maps", "configured",
         details={"location_sharing_received": true})
+
+[TOOL CALL]: migration-state.update_migration_status(
+  migration_id="MIG-20250827-120000",
+  overall_progress=15
+)
+
+[TOOL RETURNS]: 
+{
+  "status": "success",
+  "migration_id": "MIG-20250827-120000",
+  "updated_fields": ["overall_progress"]
+}
 ```
 
 ### Day 2 Status Visualization
@@ -639,6 +717,19 @@ You'll see all of this happening on your phone screen."
         details={"location_sharing_received": true})
 [TOOL CALL]: migration-state.update_family_member_apps("Maya", "Google Maps", "configured",
         details={"location_sharing_received": true})
+
+[TOOL CALL]: migration-state.update_migration_status(
+  migration_id="MIG-20250827-120000",
+  overall_progress=20,
+  current_phase="family_setup"
+)
+
+[TOOL RETURNS]: 
+{
+  "status": "success",
+  "migration_id": "MIG-20250827-120000",
+  "updated_fields": ["overall_progress", "current_phase"]
+}
 ```
 
 ### Verify Complete Family Connectivity
@@ -728,6 +819,18 @@ You'll see all of this happening on your phone screen."
   },
   "message": "Photos starting to appear! 28% complete.",
   "success": false
+}
+
+[TOOL CALL]: migration-state.update_migration_status(
+  migration_id="MIG-20250827-120000",
+  overall_progress=28
+)
+
+[TOOL RETURNS]: 
+{
+  "status": "success",
+  "migration_id": "MIG-20250827-120000",
+  "updated_fields": ["overall_progress"]
 }
 ```
 
@@ -919,6 +1022,19 @@ You'll see all of this happening on your phone screen."
         details={"venmo_card_activated": true, "card_last_four": "1234"})
 [TOOL CALL]: migration-state.update_family_member_apps("Ethan", "Venmo", "configured",
         details={"venmo_card_activated": true, "card_last_four": "5678"})
+
+[TOOL CALL]: migration-state.update_migration_status(
+  migration_id="MIG-20250827-120000",
+  overall_progress=57,
+  current_phase="validation"
+)
+
+[TOOL RETURNS]: 
+{
+  "status": "success",
+  "migration_id": "MIG-20250827-120000",
+  "updated_fields": ["overall_progress", "current_phase"]
+}
 ```
 
 ### Complete Day 5 Family Ecosystem Achievement
@@ -979,6 +1095,18 @@ You've successfully replicated your entire Apple family ecosystem on Android wit
 [TOOL CALL]: web-automation.check_photo_transfer_progress(
   transfer_id="TRF-20250827-120000"
 )
+
+[TOOL CALL]: migration-state.update_migration_status(
+  migration_id="MIG-20250827-120000",
+  overall_progress=88
+)
+
+[TOOL RETURNS]: 
+{
+  "status": "success",
+  "migration_id": "MIG-20250827-120000",
+  "updated_fields": ["overall_progress"]
+}
 ```
 
 ### Claude's Final Status Report
@@ -1113,7 +1241,24 @@ You've successfully replicated your entire Apple family ecosystem on Android wit
 - Subject: "Your videos have been copied to Google Photos"
 - Content: "2,418 videos have been successfully copied"
 
-**Claude**: "Perfect! Apple confirmed your videos transferred successfully. Now let me show you your complete photo library in Google Photos..."
+**Claude**: "Perfect! Apple confirmed your videos transferred successfully. Now let me mark your migration as complete and show you your photo library..."
+
+### Mark Migration Complete
+```
+[TOOL CALL]: migration-state.update_migration_status(
+  migration_id="MIG-20250827-120000",
+  overall_progress=100,
+  current_phase="completed",
+  completed_at="2025-09-02 14:30:00"
+)
+
+[TOOL RETURNS]: 
+{
+  "status": "success",
+  "migration_id": "MIG-20250827-120000",
+  "updated_fields": ["overall_progress", "current_phase", "completed_at"]
+}
+```
 
 ### Mobile Control Sequence
 ```
