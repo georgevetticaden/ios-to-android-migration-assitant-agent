@@ -18,9 +18,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from playwright.async_api import async_playwright, Browser, Page, Frame
 
-# Import our Google Storage client and Gmail monitor
+# Import our Google Storage client and browser manager
 from .google_storage_client import GoogleStorageClient
-from .gmail_monitor import GmailMonitor
 from .browser_manager import BrowserManager
 
 # Import shared database components
@@ -45,7 +44,6 @@ class ICloudClientWithSession:
         - Full browser automation for Apple's transfer workflow
         - Google Photos baseline establishment
         - Real-time progress tracking via Google Dashboard
-        - Gmail integration for completion email monitoring
         - Database persistence for multi-day transfer tracking
     
     MCP Integration:
@@ -54,12 +52,10 @@ class ICloudClientWithSession:
         - start_transfer -> start_photo_transfer
         - check_transfer_progress -> check_photo_transfer_progress
         - verify_transfer_complete -> verify_photo_transfer_complete
-        - check_completion_email -> check_photo_transfer_email
     
     Attributes:
         session_dir (Path): Directory for storing browser session state
         google_storage_client: Client for Google One storage monitoring
-        gmail_client: Client for email notifications
         db: Database connection for transfer tracking
     """
     
@@ -81,7 +77,6 @@ class ICloudClientWithSession:
         
         # Initialize new components for Phase 3
         self.google_storage_client = None
-        self.gmail_client = None
         self.db = None
         
         # Local storage for transfers if database not available
@@ -99,17 +94,6 @@ class ICloudClientWithSession:
         google_session_dir = os.path.expanduser("~/.google_session")
         self.google_storage_client = GoogleStorageClient(session_dir=google_session_dir)
         await self.google_storage_client.initialize()
-        
-        # Initialize Gmail client
-        gmail_creds_path = os.getenv('GMAIL_CREDENTIALS_PATH')
-        if gmail_creds_path and os.path.exists(gmail_creds_path):
-            self.gmail_client = GmailMonitor(credentials_path=gmail_creds_path)
-            try:
-                await self.gmail_client.authenticate()
-                logger.info("Gmail API initialized successfully")
-            except Exception as e:
-                logger.warning(f"Gmail API initialization failed: {e}")
-                self.gmail_client = None
         
         # Initialize database if available
         if MigrationDatabase:
@@ -1199,12 +1183,6 @@ class ICloudClientWithSession:
             if final_progress.get("status") == "error":
                 return final_progress
             
-            # Check for completion email if requested
-            email_result = None
-            if include_email_check and self.gmail_client:
-                logger.info("Checking for Apple completion email...")
-                email_result = await self.check_completion_email(transfer_id)
-            
             # Generate completion assessment
             is_complete = final_progress['progress']['percent_complete'] >= 99
             
@@ -1223,7 +1201,6 @@ class ICloudClientWithSession:
                     "estimated_videos": final_progress.get('estimates', {}).get('videos_transferred', 0),
                     "match_rate": final_progress.get('progress', {}).get('percent_complete', 0)
                 },
-                "email_confirmation": email_result or {"email_found": False},
                 "important_photos_check": important_photos if important_photos else [],
                 "certificate": {
                     "grade": "A+" if is_complete else "Incomplete",
@@ -1306,114 +1283,6 @@ class ICloudClientWithSession:
             return {
                 "status": "error",
                 "message": f"Failed to confirm transfer: {str(e)}"
-            }
-    
-    async def check_completion_email(self, transfer_id: str) -> Dict[str, Any]:
-        """Check Gmail for Apple transfer completion notification.
-        
-        Searches Gmail inbox for emails from Apple confirming that the
-        photo transfer to Google Photos has completed. Uses OAuth2
-        authentication with automatic browser flow on first use.
-        
-        **MCP Tool Name**: `check_photo_transfer_email`
-        
-        **Required Environment Variable**:
-            - GMAIL_CREDENTIALS_PATH: Path to Gmail OAuth2 credentials JSON
-        
-        **Email Search Criteria**:
-            - From: noreply@email.apple.com
-            - Subject keywords: "transfer complete", "transfer ready"
-            - Time window: Last 72 hours by default
-        
-        Args:
-            transfer_id: The unique transfer identifier to search for in emails.
-                        Used to find the specific transfer confirmation.
-        
-        Returns:
-            Dict containing:
-                - transfer_id: The provided transfer ID
-                - email_found: Boolean indicating if email was found
-                - email_details: Subject, sender, timestamp, content summary
-                - error: Error message if Gmail not configured
-        
-        Example Response (Found):
-            {
-                "transfer_id": "TRF-20250820-143022",
-                "email_found": true,
-                "email_details": {
-                    "subject": "Your transfer to Google Photos is complete",
-                    "sender": "appleid@apple.com",
-                    "received_at": "2025-08-24T16:30:00Z",
-                    "content_summary": {
-                        "message": "Transfer completion confirmed",
-                        "photos_mentioned": "60,238",
-                        "videos_mentioned": "2,418"
-                    }
-                }
-            }
-        
-        Example Response (Not Found):
-            {
-                "transfer_id": "TRF-20250820-143022",
-                "email_found": false,
-                "checked_at": "2025-08-22T10:00:00Z",
-                "message": "No completion email found yet"
-            }
-        
-        Note:
-            First use will open browser for Gmail OAuth authorization.
-            Subsequent uses will reuse the saved token.
-        """
-        if not self.gmail_client:
-            return {"email_found": False, "error": "Gmail API not configured"}
-        
-        try:
-            # Get transfer details
-            transfer = await self._get_transfer(transfer_id)
-            if not transfer:
-                return {"email_found": False, "error": "Transfer not found"}
-            
-            # Search for Apple emails since transfer started
-            # Handle both string and datetime objects from database
-            if isinstance(transfer['started_at'], str):
-                transfer_start = datetime.fromisoformat(transfer['started_at'])
-            else:
-                transfer_start = transfer['started_at']
-            
-            logger.info(f"Searching for Apple emails since {transfer_start}")
-            emails = await self.gmail_client.search_emails(
-                query="from:appleid@apple.com subject:photos",
-                after_date=transfer_start.strftime("%Y/%m/%d")
-            )
-            
-            if emails:
-                # Parse the most recent email
-                latest_email = emails[0]
-                return {
-                    "transfer_id": transfer_id,
-                    "email_found": True,
-                    "email_details": {
-                        "subject": latest_email.get('subject', ''),
-                        "received_at": latest_email.get('date', ''),
-                        "sender": "appleid@apple.com",
-                        "content_summary": {
-                            "message": "Transfer completion email found"
-                        }
-                    }
-                }
-            
-            return {
-                "transfer_id": transfer_id,
-                "email_found": False,
-                "message": "No Apple completion email found yet"
-            }
-            
-        except Exception as e:
-            logger.error(f"Email check failed: {e}")
-            return {
-                "transfer_id": transfer_id,
-                "email_found": False,
-                "error": str(e)
             }
     
     # ==================== HELPER METHODS ====================
