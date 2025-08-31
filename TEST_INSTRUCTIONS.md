@@ -32,6 +32,9 @@ python --version  # Should show Python 3.11.x
 # Install dependencies
 pip install -r requirements.txt
 
+# Install web-automation package in editable mode
+pip install -e mcp-tools/web-automation/
+
 # Install Playwright browsers (required for web automation)
 playwright install chromium
 ```
@@ -186,6 +189,10 @@ The `test_mcp_server.py` validates the complete migration flow:
 ## Troubleshooting
 
 ### Common Issues and Solutions
+
+**ModuleNotFoundError: No module named 'web_automation'**
+- Install the web-automation package in editable mode: `pip install -e mcp-tools/web-automation/`
+- This is required for the MCP server to find the web_automation module when running with `-m web_automation.server`
 
 **ModuleNotFoundError: No module named 'mcp'**
 - Make sure you've installed all requirements: `pip install -r requirements.txt`
