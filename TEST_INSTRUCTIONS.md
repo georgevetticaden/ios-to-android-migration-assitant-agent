@@ -64,17 +64,32 @@ Expected: All 10 tests should pass
 
 ### Phase 2: MCP Tools Compatibility Tests
 
-#### Step 4: Test Migration State Server
+#### Step 4: Test Migration State Server (Demo Flow Test)
 ```bash
-python3 mcp-tools/migration-state/tests/test_migration_state.py
+# First initialize fresh database
+python3 shared/database/scripts/initialize_database.py
+
+# Then run the comprehensive demo flow test
+cd mcp-tools/migration-state/tests
+python3 test_mcp_server.py
 ```
-Expected: All tests should pass for 10 migration-state tools:
-- Core tools: initialize_migration, update_migration_progress, get_migration_overview
-- Family tools: add_family_member, update_family_member_apps
-- Storage tools: record_storage_snapshot, get_daily_summary
-- Reporting tools: get_migration_statistics, generate_migration_report
-- Photo tools: update_photo_progress
-- Complete 7-day demo flow simulation
+Expected: All 28 tests should pass, testing:
+- **Day 1 Setup (11 tests)**:
+  - initialize_migration
+  - add_family_member (x4 for Jaisy, Laila, Ethan, Maya)
+  - update_migration_status (x3 progressive updates)
+  - update_family_member_apps (x4 WhatsApp updates)
+  - get_family_members (x3 filters: all, not_in_whatsapp, teen)
+- **Days 2-7 Flow (16 tests)**:
+  - get_migration_status (x6, one per day)
+  - update_migration_status (x6, progress updates per day)
+- **Day 7 Completion (1 test)**:
+  - generate_migration_report
+
+The test follows the exact demo flow from `demo-script-complete-final.md` with 7 streamlined tools:
+- initialize_migration, add_family_member, update_migration_status
+- update_family_member_apps, get_family_members
+- get_migration_status, generate_migration_report
 
 #### Step 5: Setup Google Session (Required)
 ```bash
@@ -171,7 +186,7 @@ python3 scripts/setup_google_session.py
 # Reinitialize and run all tests
 python3 shared/database/scripts/initialize_database.py && \
 python3 shared/database/tests/test_database.py && \
-python3 mcp-tools/migration-state/tests/test_migration_state.py && \
+cd mcp-tools/migration-state/tests && python3 test_mcp_server.py && cd ../../.. && \
 python3 mcp-tools/web-automation/tests/test_mcp_server.py
 ```
 
@@ -199,11 +214,12 @@ After running all tests, verify:
    - [ ] Storage tracking functional
 
 2. **Migration State Server** ✓
-   - [ ] 10 tools available and functional
-   - [ ] Can create migrations
-   - [ ] Can record storage snapshots
-   - [ ] Can track videos separately
-   - [ ] Returns JSON properly
+   - [ ] 7 streamlined tools available and functional
+   - [ ] Can create migrations and add family members
+   - [ ] Can update migration status progressively
+   - [ ] Can manage family app adoption
+   - [ ] Returns JSON properly with consistent "success" field
+   - [ ] Follows exact demo flow from demo-script-complete-final.md
 
 3. **Web Automation** ✓
    - [ ] 4 tools available via MCP protocol
