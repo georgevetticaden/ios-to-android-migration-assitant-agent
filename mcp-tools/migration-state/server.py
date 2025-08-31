@@ -214,7 +214,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         
         if name == "initialize_migration":
             # Create new migration
-            migration_id = await db.initialize_migration(
+            migration_id = await db.create_migration(
                 user_name=arguments["user_name"],
                 years_on_ios=arguments.get("years_on_ios")
             )
