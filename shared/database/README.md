@@ -2,10 +2,10 @@
 
 ## Overview
 
-The migration database is a DuckDB-based system that tracks the complete 7-day iOS to Android migration journey. It uses 8 tables and 4 views to manage photo/video transfers, family member coordination, app adoption, and progress monitoring through storage-based metrics.
+The migration database is a DuckDB-based system that tracks the complete 7-day iOS to Android migration journey. It uses 7 tables and 4 views to manage photo/video transfers, family member coordination, app adoption, and progress monitoring through storage-based metrics.
 
 **Database Location**: `~/.ios_android_migration/migration.db`  
-**Engine**: DuckDB (latest)
+**Engine**: DuckDB
 
 ## Structure
 
@@ -14,14 +14,14 @@ database/
 ├── schemas/                      # Database schema definitions
 │   └── migration_schema.sql     # Complete schema with media & storage support
 ├── scripts/                     # Database management scripts
-│   ├── initialize_database.py   # Creates all 8 tables and 4 views
+│   ├── initialize_database.py   # Creates all 7 tables and 4 views
 │   └── reset_database.py        # Complete database reset
 ├── tests/                       # Database tests
 │   └── test_database.py         # Comprehensive test suite
 └── migration_db.py              # Core database interface with calculate_storage_progress()
 ```
 
-## Database Tables (8)
+## Database Tables (7)
 
 ### 1. migration_status
 **Purpose**: Core migration tracking with Google One storage baselines  
@@ -59,23 +59,17 @@ database/
 - `age`: Used for teen account determination
 - `staying_on_ios`: If they're keeping iPhone
 
-### 5. app_setup
-**Purpose**: Track app installation status (WhatsApp, Maps, Venmo)  
-**Key Fields**:
-- `app_name`: WhatsApp/Google Maps/Venmo
-- `installed_at`, `configured_at`: Timestamp tracking
-- `group_created_at`: For WhatsApp groups
-- `invites_sent`: Number of invitations
-
-### 6. family_app_adoption
+### 5. family_app_adoption
 **Purpose**: Per-member app adoption tracking  
 **Key Fields**:
 - `family_member_id`: Links to family_members
-- `app_name`: Which app
+- `app_name`: Which app (WhatsApp/Google Maps/Venmo)
 - `status`: not_started → invited → installed → configured
+- `whatsapp_in_group`: Boolean for WhatsApp group membership
+- `location_sharing_received`: Boolean for Maps location sharing
 - `configuration_details`: App-specific settings
 
-### 7. daily_progress
+### 6. daily_progress
 **Purpose**: Day-by-day milestone tracking  
 **Key Fields**:
 - `day_number`: 1-7 of migration journey
@@ -83,7 +77,7 @@ database/
 - `storage_percent_complete`: Progress percentage
 - `key_milestone`: Human-readable achievement
 
-### 8. venmo_setup
+### 7. venmo_setup
 **Purpose**: Teen debit card activation tracking  
 **Key Fields**:
 - `family_member_id`: Links to teen family member
@@ -104,6 +98,20 @@ Matrix view showing each family member's app adoption status
 ### 4. daily_progress_summary
 Aggregated daily progress with milestone messages
 
+## MCP Tool Integration
+
+The database is accessed through 7 MCP tools provided by the migration-state server:
+
+| MCP Tool | Database Operations |
+|----------|-------------------|
+| `initialize_migration` | INSERTS into migration_status, media_transfer |
+| `add_family_member` | INSERTS into family_members, venmo_setup, family_app_adoption |
+| `update_migration_status` | UPDATES migration_status, INSERTS daily_progress |
+| `update_family_member_apps` | SELECTS family_members, UPDATES family_app_adoption, venmo_setup |
+| `get_migration_status` | SELECTS from all 7 tables for comprehensive status |
+| `get_family_members` | Complex JOINs with family_app_adoption, venmo_setup |
+| `generate_migration_report` | SELECTS from 5 tables for final report |
+
 ## Key Methods
 
 ### calculate_storage_progress()
@@ -123,33 +131,48 @@ async def calculate_storage_progress(
 - Item estimation based on storage ratios
 - Contextual milestone messages
 
+### MigrationDatabase Singleton
+The `MigrationDatabase` class uses a singleton pattern to ensure all MCP tools share the same database connection:
+
+```python
+db = MigrationDatabase()  # Always returns the same instance
+migration_id = await db.create_migration(user_name="George", years_on_ios=18)
+```
+
 ## Data Flow
 
 ### Day 1: Initialization
-- Create migration_status record with baseline storage
-- Add family_members
-- Initialize app_setup records
-- Capture Google Photos baseline
+- `initialize_migration` creates migration_status record
+- `add_family_member` adds 4 family members (spouse + 3 children)
+- `update_migration_status` called 3 times:
+  - First: Add iCloud metrics (photo_count, video_count, storage)
+  - Second: Set Google Photos baseline after transfer starts
+  - Third: Add family information (family_size, whatsapp_group_name)
+- Family app adoption records initialized
 
 ### Days 2-3: Processing
 - Apple processes transfer request
-- No visible progress yet
-- Family app invitations sent
+- `get_migration_status` called daily (shows 0% progress)
+- `update_migration_status` updates overall_progress
+- Family app invitations tracked via `update_family_member_apps`
 
 ### Day 4: Photos Appear
 - First storage growth detected (~28% complete)
 - Photos become visible in Google Photos
-- Storage snapshot recorded
+- `storage_snapshots` records growth metrics
+- WhatsApp group fully configured
 
 ### Days 5-6: Acceleration
 - Rapid storage growth (57% → 88%)
-- Venmo cards activated (Day 5)
-- Location sharing configured
+- Venmo teen cards activated (Day 5)
+- Google Maps location sharing configured
+- Daily `get_migration_status` calls show increasing progress
 
 ### Day 7: Completion
-- Force 100% completion regardless of actual storage
-- Show video success email only
-- Celebrate complete migration
+- `calculate_storage_progress` forces 100% completion
+- `update_migration_status` sets completed_at timestamp
+- `generate_migration_report` creates celebration report
+- Shows complete success regardless of actual metrics
 
 ## Testing
 

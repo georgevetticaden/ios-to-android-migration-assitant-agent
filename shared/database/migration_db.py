@@ -18,8 +18,7 @@ Database Location: ~/.ios_android_migration/migration.db
 Tables:
 - migration_status: Core migration tracking with storage baselines
 - family_members: Family member details
-- media_transfer: Photo AND video transfer progress (formerly photo_transfer)
-- app_setup: App installation tracking
+- media_transfer: Photo and video transfer progress
 - family_app_adoption: Per-member app status
 - daily_progress: Day-by-day snapshots with video metrics
 - venmo_setup: Teen card tracking
@@ -29,9 +28,6 @@ Usage:
     db = MigrationDatabase()
     migration_id = await db.create_migration(user_name="George", ...)
     await db.add_family_member(migration_id, "Jaisy", "jaisy@example.com")
-    
-Author: iOS2Android Migration Team
-Version: 2.0
 """
 
 import duckdb
@@ -103,9 +99,15 @@ class MigrationDatabase:
             conn.close()
     
     async def initialize_schemas(self):
-        """Initialize schema if needed"""
-        # Schema is initialized via shared/database/scripts/initialize_database.py
-        # This method kept for compatibility
+        """
+        Initialize database schema.
+        
+        Note: Schema initialization is handled by shared/database/scripts/initialize_database.py
+        This method is kept for backward compatibility but does not perform any operations.
+        
+        Returns:
+            bool: Always returns True for compatibility
+        """
         logger.info("Schema should be initialized via shared/database/scripts/initialize_database.py")
         return True
     
@@ -277,7 +279,24 @@ class MigrationDatabase:
                 logger.info(f"Updated migration {migration_id}: {', '.join(updates)}")
     
     async def get_migration_status(self, migration_id: str) -> Optional[Dict[str, Any]]:
-        """Get specific migration status"""
+        """
+        Get status for a specific migration.
+        
+        Retrieves complete migration record by ID, used for tracking progress
+        and generating reports.
+        
+        Args:
+            migration_id: ID of the migration to retrieve
+            
+        Returns:
+            Optional[Dict[str, Any]]: Migration data dictionary or None if not found
+            
+        Dictionary includes:
+            - User and device information
+            - Photo/video counts and storage metrics
+            - Current phase and overall progress
+            - Family size and timestamps
+        """
         with self.get_connection() as conn:
             result = conn.execute("""
                 SELECT * FROM migration_status WHERE id = ?
@@ -298,7 +317,21 @@ class MigrationDatabase:
     async def create_media_transfer(self, migration_id: str, 
                                    total_photos: int, total_videos: int,
                                    total_size_gb: float) -> str:
-        """Create a media transfer record for both photos and videos"""
+        """
+        Create a media transfer record for photos and videos.
+        
+        Initializes tracking for the photo/video transfer process, setting initial
+        status to 'pending' and configuring photos to become visible on Day 4.
+        
+        Args:
+            migration_id: ID of the migration
+            total_photos: Total number of photos to transfer
+            total_videos: Total number of videos to transfer
+            total_size_gb: Total size of media in GB
+            
+        Returns:
+            str: Transfer ID (format: TRF-YYYYMMDD-HHMMSS)
+        """
         transfer_id = f"TRF-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         
         with self.get_connection() as conn:
@@ -312,11 +345,15 @@ class MigrationDatabase:
         logger.info(f"Created media transfer: {transfer_id}")
         return transfer_id
     
-    # Backward compatibility alias
     async def create_photo_transfer(self, migration_id: str, 
                                    total_photos: int, total_videos: int,
                                    total_size_gb: float) -> str:
-        """Backward compatibility wrapper for create_media_transfer"""
+        """
+        Backward compatibility wrapper for create_media_transfer.
+        
+        Maintained for compatibility with existing code that uses the old method name.
+        Delegates to create_media_transfer.
+        """
         return await self.create_media_transfer(migration_id, total_photos, total_videos, total_size_gb)
     
     async def update_media_progress(self, migration_id: str,
@@ -326,7 +363,21 @@ class MigrationDatabase:
                                    photo_status: str = None,
                                    video_status: str = None,
                                    overall_status: str = None):
-        """Update media transfer progress for photos and videos separately"""
+        """
+        Update media transfer progress.
+        
+        Updates photo and video transfer metrics separately, allowing for
+        different completion rates (videos typically complete 100%, photos ~98%).
+        
+        Args:
+            migration_id: ID of the migration
+            transferred_photos: Number of photos transferred
+            transferred_videos: Number of videos transferred
+            transferred_size_gb: Total GB transferred
+            photo_status: Status of photo transfer (pending/in_progress/completed)
+            video_status: Status of video transfer (pending/in_progress/completed)
+            overall_status: Overall transfer status
+        """
         with self.get_connection() as conn:
             updates = []
             values = []
@@ -369,14 +420,17 @@ class MigrationDatabase:
         
         logger.info(f"Updated media progress for migration: {migration_id}")
     
-    # Backward compatibility alias
     async def update_photo_progress(self, migration_id: str,
                                    transferred_photos: int = None,
                                    transferred_videos: int = None,
                                    transferred_size_gb: float = None,
                                    status: str = None):
-        """Backward compatibility wrapper for update_media_progress"""
-        # Map old status to new separate statuses
+        """
+        Backward compatibility wrapper for update_media_progress.
+        
+        Maintained for compatibility with existing code. Maps single status
+        to separate photo/video/overall statuses.
+        """
         photo_status = status
         video_status = status
         overall_status = status
@@ -511,7 +565,19 @@ class MigrationDatabase:
                                        photos_transferred: int = None,
                                        videos_transferred: int = None,
                                        total_size_gb: float = None):
-        """Simplified progress update for MCP tools"""
+        """
+        Simplified progress update for MCP tools.
+        
+        Provides a single method to update both migration status and media transfer
+        progress, automatically mapping migration phases to transfer statuses.
+        
+        Args:
+            migration_id: ID of the migration
+            status: Migration phase (initialization/media_transfer/family_setup/validation/completed)
+            photos_transferred: Number of photos transferred
+            videos_transferred: Number of videos transferred
+            total_size_gb: Total GB transferred
+        """
         await self.update_migration_status(migration_id, status)
         
         if any([photos_transferred, videos_transferred, total_size_gb]):
@@ -537,8 +603,15 @@ class MigrationDatabase:
             )
     
     async def get_pending_items(self, category: str) -> List[Dict[str, Any]]:
-        """Get pending items to migrate"""
-        # Simplified - return basic status
+        """
+        Get items pending migration.
+        
+        Args:
+            category: Type of items to check ('photos', 'apps', etc.)
+            
+        Returns:
+            List of dictionaries with pending item details
+        """
         items = []
         
         if category == 'photos':
@@ -563,13 +636,33 @@ class MigrationDatabase:
         return items
     
     async def mark_item_complete(self, item_type: str, item_id: str, details: Dict = None):
-        """Mark an item as complete"""
-        # Simplified
+        """
+        Mark an item as complete.
+        
+        Args:
+            item_type: Type of item (photo, app, etc.)
+            item_id: ID of the item
+            details: Optional completion details
+            
+        Returns:
+            bool: True if successful
+        """
         logger.info(f"Marked {item_type} {item_id} as complete")
         return True
     
     async def get_migration_statistics(self, include_history: bool = False) -> Dict[str, Any]:
-        """Get migration statistics"""
+        """
+        Get migration statistics.
+        
+        Provides summary statistics about migrations including active migration
+        details and counts of total/completed migrations.
+        
+        Args:
+            include_history: Whether to include historical migration data
+            
+        Returns:
+            Dictionary with active_migration, total_migrations, and completed_migrations
+        """
         with self.get_connection() as conn:
             # Get active migration stats
             active = await self.get_active_migration()
@@ -593,7 +686,20 @@ class MigrationDatabase:
     
     async def log_event(self, event_type: str, component: str, 
                        description: str, metadata: Dict = None):
-        """Log an event (simplified)"""
+        """
+        Log a migration event.
+        
+        Simple event logging for tracking migration activities.
+        
+        Args:
+            event_type: Type of event
+            component: Component generating the event
+            description: Event description
+            metadata: Optional event metadata
+            
+        Returns:
+            bool: True if logged successfully
+        """
         logger.info(f"[{component}] {event_type}: {description}")
         return True
     
@@ -770,10 +876,16 @@ class MigrationDatabase:
         else:
             return f"Transfer in progress. Day {day_number}. {percent_complete:.1f}% complete."
 
-# Singleton instance
 def get_migration_db():
-    """Get the singleton database instance"""
+    """
+    Get the singleton database instance.
+    
+    Returns the single MigrationDatabase instance used across all MCP tools,
+    ensuring consistent database access and preventing connection conflicts.
+    
+    Returns:
+        MigrationDatabase: The singleton database instance
+    """
     return MigrationDatabase()
 
-# Make MigrationDatabase available at module level for backward compatibility
 __all__ = ['MigrationDatabase', 'get_migration_db']
