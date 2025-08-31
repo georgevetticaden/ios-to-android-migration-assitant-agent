@@ -41,7 +41,7 @@ python3 shared/database/scripts/initialize_database.py
 
 Expected output:
 - Database created at `~/.ios_android_migration/migration.db`
-- 8 tables created (migration_status, media_transfer, family_members, etc.)
+- 7 tables created (migration_status, media_transfer, family_members, etc.)
 - 4 views created for reporting
 - Success message: "Database initialization complete!"
 
