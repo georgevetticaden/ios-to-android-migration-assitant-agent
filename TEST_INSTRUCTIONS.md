@@ -75,9 +75,7 @@ Expected: All tests should pass (typically 10 tests)
 ### 5. Test Migration State MCP Server
 ```bash
 # Test the main migration orchestration server
-cd mcp-tools/migration-state/tests
-python test_mcp_server.py
-cd ../../..
+python mcp-tools/migration-state/tests/test_mcp_server.py
 ```
 
 Expected: All 28 tests should pass, validating the complete 7-day migration flow

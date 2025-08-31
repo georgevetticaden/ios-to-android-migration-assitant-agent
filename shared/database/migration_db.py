@@ -188,6 +188,17 @@ class MigrationDatabase:
             - transferred_size_gb, total_size_gb
         """
         with self.get_connection() as conn:
+            # First, get column names from both tables dynamically
+            migration_columns_result = conn.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'migration_status'
+                ORDER BY ordinal_position
+            """).fetchall()
+            
+            migration_columns = [col[0] for col in migration_columns_result]
+            
+            # Build query to select all migration columns plus specific media_transfer columns
             result = conn.execute("""
                 SELECT m.*, 
                        mt.photo_status,
@@ -207,20 +218,15 @@ class MigrationDatabase:
             """).fetchone()
             
             if result:
-                # Note: migration_status has more columns now with storage baselines
-                columns = [
-                    'id', 'user_name', 'source_device', 'target_device',
-                    'years_on_ios', 'photo_count', 'video_count', 'total_icloud_storage_gb',
-                    'icloud_photo_storage_gb', 'icloud_video_storage_gb', 'album_count',
-                    'google_storage_total_gb', 'google_photos_baseline_gb', 'google_drive_baseline_gb',
-                    'gmail_baseline_gb', 'family_size', 'started_at', 'current_phase', 
-                    'overall_progress', 'completed_at',
+                # Combine migration columns with the specific media_transfer columns we selected
+                media_columns = [
                     'photo_status', 'video_status', 'overall_status',
                     'transferred_photos', 'transferred_videos',
                     'total_photos', 'total_videos',
                     'transferred_size_gb', 'total_size_gb'
                 ]
-                return dict(zip(columns, result))
+                all_columns = migration_columns + media_columns
+                return dict(zip(all_columns, result))
             return None
     
     async def update_migration_status(self, migration_id: str, status: str = None, **kwargs):
@@ -298,17 +304,22 @@ class MigrationDatabase:
             - Family size and timestamps
         """
         with self.get_connection() as conn:
+            # Get column names from the table
+            columns_result = conn.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'migration_status'
+                ORDER BY ordinal_position
+            """).fetchall()
+            
+            columns = [col[0] for col in columns_result]
+            
+            # Get the migration record
             result = conn.execute("""
                 SELECT * FROM migration_status WHERE id = ?
             """, (migration_id,)).fetchone()
             
             if result:
-                columns = [
-                    'id', 'user_name', 'source_device', 'target_device',
-                    'years_on_ios', 'photo_count', 'video_count', 'storage_gb',
-                    'family_size', 'started_at', 'current_phase', 'overall_progress',
-                    'completed_at'
-                ]
                 return dict(zip(columns, result))
             return None
     
