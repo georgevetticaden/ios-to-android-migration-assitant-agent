@@ -231,13 +231,17 @@ playwright install chromium
 ### Environment Configuration
 Create `.env` file in project root:
 ```bash
-# Apple ID credentials
+# Apple ID credentials (required)
 APPLE_ID=your-apple-id@icloud.com
 APPLE_PASSWORD=your-apple-password
 
-# Google account credentials  
+# Google account credentials (required)
 GOOGLE_EMAIL=your-google@gmail.com
 GOOGLE_PASSWORD=your-google-password
+
+# Demo mode settings (optional)
+DEMO_MODE=false
+CDP_URL=http://localhost:9222
 ```
 
 ### Claude Desktop Configuration
