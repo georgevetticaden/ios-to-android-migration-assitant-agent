@@ -53,10 +53,10 @@ class DatabaseTester:
             return False
     
     def test_all_tables_exist(self):
-        """Test that all 8 tables exist (including new storage_snapshots)"""
+        """Test that all 7 tables exist"""
         expected = [
             'migration_status', 'family_members', 'media_transfer',
-            'app_setup', 'family_app_adoption', 'daily_progress', 'venmo_setup',
+            'family_app_adoption', 'daily_progress', 'venmo_setup',
             'storage_snapshots'
         ]
         
@@ -217,59 +217,21 @@ class DatabaseTester:
                 pass
             return False
     
-    def test_app_setup(self):
-        """Test app setup tracking"""
+    def test_database_views(self):
+        """Test that all database views exist and are accessible"""
         try:
-            # Create migration
-            self.conn.execute("""
-                INSERT INTO migration_status (id, user_name)
-                VALUES ('TEST-MIG-003', 'TestUser')
-            """)
+            # Test each view exists and can be queried
+            views = ['migration_summary', 'family_app_status', 'active_migration', 'daily_progress_summary']
             
-            # Initialize apps
-            apps = [
-                (3001, 'WhatsApp', 'messaging'),
-                (3002, 'Google Maps', 'location'),
-                (3003, 'Venmo', 'payment')
-            ]
+            for view in views:
+                # Just check if we can query it without error
+                self.conn.execute(f"SELECT * FROM {view} LIMIT 1").fetchall()
             
-            for id, app, category in apps:
-                self.conn.execute(f"""
-                    INSERT INTO app_setup 
-                    (id, migration_id, app_name, category, setup_status)
-                    VALUES ({id}, 'TEST-MIG-003', '{app}', '{category}', 'pending')
-                """)
-            
-            # Update WhatsApp as in progress
-            self.conn.execute("""
-                UPDATE app_setup 
-                SET setup_status = 'in_progress',
-                    group_created = true,
-                    family_members_connected = 2
-                WHERE migration_id = 'TEST-MIG-003' AND app_name = 'WhatsApp'
-            """)
-            
-            # Verify
-            count = self.conn.execute("""
-                SELECT COUNT(*) FROM app_setup 
-                WHERE migration_id = 'TEST-MIG-003'
-            """).fetchone()[0]
-            
-            # Clean up
-            self.conn.execute("DELETE FROM app_setup WHERE migration_id = 'TEST-MIG-003'")
-            self.conn.execute("DELETE FROM migration_status WHERE id = 'TEST-MIG-003'")
-            
-            print(f"    Initialized {count} apps")
-            return count == 3
+            print(f"    All {len(views)} views are accessible")
+            return True
             
         except Exception as e:
-            print(f"    Error: {e}")
-            # Try cleanup anyway
-            try:
-                self.conn.execute("DELETE FROM app_setup WHERE migration_id = 'TEST-MIG-003'")
-                self.conn.execute("DELETE FROM migration_status WHERE id = 'TEST-MIG-003'")
-            except:
-                pass
+            print(f"    Error accessing views: {e}")
             return False
     
     def test_family_app_adoption(self):
@@ -538,7 +500,7 @@ class DatabaseTester:
         self.test("Family members with emails", self.test_family_members)
         self.test("Media transfer tracking (photos + videos)", self.test_media_transfer)
         self.test("Storage snapshots tracking", self.test_storage_snapshots)
-        self.test("App setup tracking", self.test_app_setup)
+        self.test("Database views functionality", self.test_database_views)
         self.test("Family app adoption", self.test_family_app_adoption)
         self.test("Venmo teen setup", self.test_venmo_teen_setup)
         self.test("Views functionality", self.test_views)
