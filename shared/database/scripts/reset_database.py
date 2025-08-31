@@ -129,9 +129,9 @@ def reset_database(backup=True, force=False):
     print("✅ Database reset complete!")
     print("\nNext steps:")
     print("1. Initialize fresh database:")
-    print("   python3 shared/database/scripts/initialize_v2_database.py")
+    print("   python3 shared/database/scripts/initialize_database.py")
     print("\n2. Run tests:")
-    print("   python3 shared/database/tests/test_v2_database.py")
+    print("   python3 shared/database/tests/test_database.py")
     
     return True
 

@@ -6,7 +6,7 @@ This document provides step-by-step testing instructions for the iOS to Android 
 ## Prerequisites
 
 Before running tests, ensure you have:
-- Python 3.11+ installed
+- Python 3.11+ installed (required for MCP support)
 - Virtual environment set up and activated
 - Required packages installed: `pip install -r requirements.txt`
 - Environment variables configured in `.env` file:
@@ -22,21 +22,27 @@ If you just cloned the repository, follow these steps in order:
 # Navigate to project root
 cd ios-to-android-migration-assitant-agent
 
-# Create and activate virtual environment
-python3 -m venv venv
+# Create and activate virtual environment with Python 3.11
+python3.11 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Verify Python version
+python --version  # Should show Python 3.11.x
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Install Playwright browsers (required for web automation)
+playwright install chromium
 ```
 
 ### 2. Initialize Database
 ```bash
 # Optional: Reset database if it already exists (start completely fresh)
-python3 shared/database/scripts/reset_database.py
+python shared/database/scripts/reset_database.py
 
 # Create the database with all required tables and views
-python3 shared/database/scripts/initialize_database.py
+python shared/database/scripts/initialize_database.py
 ```
 
 Expected output:
@@ -50,7 +56,7 @@ Note: The `reset_database.py` script removes any existing database and starts fr
 ### 3. Test Shared Infrastructure (Optional)
 ```bash
 # Test that all shared modules are working correctly
-python3 scripts/test_shared_infrastructure.py
+python scripts/test_shared_infrastructure.py
 ```
 
 Expected: 
@@ -61,7 +67,7 @@ Expected:
 ### 4. Verify Database Setup
 ```bash
 # Run database tests to ensure everything is working
-python3 shared/database/tests/test_database.py
+python shared/database/tests/test_database.py
 ```
 
 Expected: All tests should pass (typically 10 tests)
@@ -70,7 +76,7 @@ Expected: All tests should pass (typically 10 tests)
 ```bash
 # Test the main migration orchestration server
 cd mcp-tools/migration-state/tests
-python3 test_mcp_server.py
+python test_mcp_server.py
 cd ../../..
 ```
 
@@ -79,10 +85,10 @@ Expected: All 28 tests should pass, validating the complete 7-day migration flow
 ### 6. Setup Google Session (Required for Web Automation)
 ```bash
 # Optional: Clear any existing sessions if switching accounts or having issues
-python3 scripts/clear_sessions.py
+python scripts/clear_sessions.py
 
 # Authenticate with Google (required before web automation tests)
-python3 scripts/setup_google_session.py
+python scripts/setup_google_session.py
 ```
 
 Expected:
@@ -97,7 +103,7 @@ Expected:
 # export DEMO_MODE=true
 
 # Test browser automation tools (launches its own browser by default)
-python3 mcp-tools/web-automation/tests/test_mcp_server.py
+python mcp-tools/web-automation/tests/test_mcp_server.py
 ```
 
 Expected: All 4 web automation tools should pass
@@ -110,23 +116,23 @@ Run all tests in sequence with this single command:
 
 ```bash
 # From project root
-python3 shared/database/scripts/initialize_database.py && \
-python3 scripts/test_shared_infrastructure.py && \
-python3 shared/database/tests/test_database.py && \
-cd mcp-tools/migration-state/tests && python3 test_mcp_server.py && cd ../../.. && \
-python3 scripts/setup_google_session.py && \
-python3 mcp-tools/web-automation/tests/test_mcp_server.py
+python shared/database/scripts/initialize_database.py && \
+python scripts/test_shared_infrastructure.py && \
+python shared/database/tests/test_database.py && \
+cd mcp-tools/migration-state/tests && python test_mcp_server.py && cd ../../.. && \
+python scripts/setup_google_session.py && \
+python mcp-tools/web-automation/tests/test_mcp_server.py
 ```
 
 Or run without the optional shared infrastructure test:
 
 ```bash
 # From project root (minimal test suite)
-python3 shared/database/scripts/initialize_database.py && \
-python3 shared/database/tests/test_database.py && \
-cd mcp-tools/migration-state/tests && python3 test_mcp_server.py && cd ../../.. && \
-python3 scripts/setup_google_session.py && \
-python3 mcp-tools/web-automation/tests/test_mcp_server.py
+python shared/database/scripts/initialize_database.py && \
+python shared/database/tests/test_database.py && \
+cd mcp-tools/migration-state/tests && python test_mcp_server.py && cd ../../.. && \
+python scripts/setup_google_session.py && \
+python mcp-tools/web-automation/tests/test_mcp_server.py
 ```
 
 ## Test Organization
@@ -184,9 +190,9 @@ The `test_mcp_server.py` validates the complete migration flow:
 ### Common Issues and Solutions
 
 **ModuleNotFoundError: No module named 'mcp'**
-- The MCP module is installed via Claude Desktop
-- Tests that import server.py directly may show this error
-- This is expected and doesn't affect MCP server functionality
+- Make sure you've installed all requirements: `pip install -r requirements.txt`
+- The MCP package is available on PyPI and should install correctly
+- If you still see this error, try: `pip install mcp>=1.0.0`
 
 **Database is locked:**
 - Close any database viewers (DBeaver, etc.)
@@ -194,17 +200,17 @@ The `test_mcp_server.py` validates the complete migration flow:
 - Re-run the test
 
 **Google session expired:**
-- Re-run `python3 scripts/setup_google_session.py`
+- Re-run `python scripts/setup_google_session.py`
 - Complete the authentication in the browser
 - Sessions are valid for approximately 7 days
-- If issues persist, clear all sessions with `python3 scripts/clear_sessions.py`
+- If issues persist, clear all sessions with `python scripts/clear_sessions.py`
 
 **Test failures:**
 - Check the error message for specific tool that failed
 - Try resetting and reinitializing the database:
   ```bash
-  python3 shared/database/scripts/reset_database.py
-  python3 shared/database/scripts/initialize_database.py
+  python shared/database/scripts/reset_database.py
+  python shared/database/scripts/initialize_database.py
   ```
 - Verify environment variables are set in `.env` file
 
@@ -231,7 +237,7 @@ After all tests pass:
 ### Clear Sessions
 ```bash
 # Clear all saved authentication sessions
-python3 scripts/clear_sessions.py
+python scripts/clear_sessions.py
 ```
 Removes stored sessions for iCloud, Google, and Gmail. Use this when:
 - Testing fresh authentication flows
@@ -242,7 +248,7 @@ Removes stored sessions for iCloud, Google, and Gmail. Use this when:
 ### Check Migration Status
 ```bash
 # View current migration status from the database
-python3 scripts/migration_status.py
+python scripts/migration_status.py
 ```
 Shows comprehensive migration status including family members, app adoption, and transfer progress.
 
@@ -256,7 +262,7 @@ Use this when you want to run web automation tools with a fresh browser instance
 ### Test Shared Infrastructure
 ```bash
 # Verify all shared modules are working
-python3 scripts/test_shared_infrastructure.py
+python scripts/test_shared_infrastructure.py
 ```
 Quick test to ensure database, config, and utils modules are properly configured.
 
