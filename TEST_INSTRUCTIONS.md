@@ -47,7 +47,18 @@ Expected output:
 
 Note: The `reset_database.py` script removes any existing database and starts fresh. Use this if you need to clean up from previous test runs or start over.
 
-### 3. Verify Database Setup
+### 3. Test Shared Infrastructure (Optional)
+```bash
+# Test that all shared modules are working correctly
+python3 scripts/test_shared_infrastructure.py
+```
+
+Expected: 
+- All modules import successfully
+- Settings are configured correctly
+- Database connection works
+
+### 4. Verify Database Setup
 ```bash
 # Run database tests to ensure everything is working
 python3 shared/database/tests/test_database.py
@@ -55,7 +66,7 @@ python3 shared/database/tests/test_database.py
 
 Expected: All tests should pass (typically 10 tests)
 
-### 4. Test Migration State MCP Server
+### 5. Test Migration State MCP Server
 ```bash
 # Test the main migration orchestration server
 cd mcp-tools/migration-state/tests
@@ -65,7 +76,7 @@ cd ../../..
 
 Expected: All 28 tests should pass, validating the complete 7-day migration flow
 
-### 5. Setup Google Session (Required for Web Automation)
+### 6. Setup Google Session (Required for Web Automation)
 ```bash
 # Authenticate with Google (required before web automation tests)
 python3 scripts/setup_google_session.py
@@ -76,7 +87,7 @@ Expected:
 - Session saved to `~/.google_session/`
 - Success message: "Google session established"
 
-### 6. Test Web Automation MCP Server
+### 7. Test Web Automation MCP Server
 ```bash
 # Test browser automation tools
 python3 mcp-tools/web-automation/tests/test_mcp_server.py
@@ -90,6 +101,18 @@ Run all tests in sequence with this single command:
 
 ```bash
 # From project root
+python3 shared/database/scripts/initialize_database.py && \
+python3 scripts/test_shared_infrastructure.py && \
+python3 shared/database/tests/test_database.py && \
+cd mcp-tools/migration-state/tests && python3 test_mcp_server.py && cd ../../.. && \
+python3 scripts/setup_google_session.py && \
+python3 mcp-tools/web-automation/tests/test_mcp_server.py
+```
+
+Or run without the optional shared infrastructure test:
+
+```bash
+# From project root (minimal test suite)
 python3 shared/database/scripts/initialize_database.py && \
 python3 shared/database/tests/test_database.py && \
 cd mcp-tools/migration-state/tests && python3 test_mcp_server.py && cd ../../.. && \
@@ -192,6 +215,29 @@ After all tests pass:
 1. Configure MCP servers in Claude Desktop (`claude_desktop_config.json`)
 2. Test the complete system with Claude
 3. Run through the demo flow in `docs/demo/demo-script-complete-final.md`
+
+## Utility Scripts
+
+### Check Migration Status
+```bash
+# View current migration status from the database
+python3 scripts/migration_status.py
+```
+Shows comprehensive migration status including family members, app adoption, and transfer progress.
+
+### Launch Demo Browser
+```bash
+# Launch Chromium/Chrome with CDP enabled for demo mode
+./scripts/launch_demo_browser.sh
+```
+Use this when you want to run web automation tools with a fresh browser instance that has remote debugging enabled on port 9222.
+
+### Test Shared Infrastructure
+```bash
+# Verify all shared modules are working
+python3 scripts/test_shared_infrastructure.py
+```
+Quick test to ensure database, config, and utils modules are properly configured.
 
 ## Additional Resources
 
