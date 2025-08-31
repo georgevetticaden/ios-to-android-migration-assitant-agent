@@ -1,263 +1,201 @@
-# Test Instructions for iOS to Android Migration Assistant (v2.0)
+# Test Instructions for iOS to Android Migration Assistant
 
 ## Overview
-This document provides comprehensive testing instructions for the iOS to Android migration assistant with v2.0 schema supporting video transfers and storage-based progress tracking (14 MCP tools operational).
+This document provides step-by-step testing instructions for the iOS to Android migration assistant. Follow these steps after cloning the repository to verify everything works correctly.
 
 ## Prerequisites
+
+Before running tests, ensure you have:
 - Python 3.11+ installed
-- Virtual environment activated
-- DuckDB installed (comes with pip install)
-- Environment variables configured (APPLE_ID, APPLE_PASSWORD, GOOGLE_EMAIL, GOOGLE_PASSWORD)
-- Google session established (run `scripts/setup_google_session.py`)
+- Virtual environment set up and activated
+- Required packages installed: `pip install -r requirements.txt`
+- Environment variables configured in `.env` file:
+  - `APPLE_ID` and `APPLE_PASSWORD` 
+  - `GOOGLE_EMAIL` and `GOOGLE_PASSWORD`
 
-## Test Organization
+## Quick Start for New Users
 
-All tests are organized in `tests/` subdirectories within their respective modules:
+If you just cloned the repository, follow these steps in order:
 
-```
-├── shared/database/tests/          # Database tests (V2 schema)
-├── mcp-tools/migration-state/tests/  # Migration state server tests  
-├── mcp-tools/web-automation/tests/   # Web automation tests
-```
-
-## Complete Test Sequence (V2)
-
-### Phase 1: Database Tests
-
-#### Step 1: Reset Database
+### 1. Initial Setup
 ```bash
-# From project root
-cd /Users/aju/Dropbox/Development/Git/08-14-2025-ios-to-android-migration-agent-take-2/ios-to-android-migration-assitant-agent
+# Navigate to project root
+cd ios-to-android-migration-assitant-agent
 
-# Complete reset
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Initialize Database
+```bash
+# Optional: Reset database if it already exists (start completely fresh)
 python3 shared/database/scripts/reset_database.py
-```
 
-#### Step 2: Initialize Database (v2.0 Schema)
-```bash
-# Initialize with video and storage support
+# Create the database with all required tables and views
 python3 shared/database/scripts/initialize_database.py
 ```
-Expected: 
-- Database backed up (if exists)
-- 8 tables created (including media_transfer and storage_snapshots)
-- 8 indexes created
-- 4 views created (including daily_progress_summary)
-- All expected tables verified
-- Foreign key count: 0 (removed to fix DuckDB bug)
 
-#### Step 3: Run Database Tests
+Expected output:
+- Database created at `~/.ios_android_migration/migration.db`
+- 8 tables created (migration_status, media_transfer, family_members, etc.)
+- 4 views created for reporting
+- Success message: "Database initialization complete!"
+
+Note: The `reset_database.py` script removes any existing database and starts fresh. Use this if you need to clean up from previous test runs or start over.
+
+### 3. Verify Database Setup
 ```bash
+# Run database tests to ensure everything is working
 python3 shared/database/tests/test_database.py
 ```
-Expected: All 10 tests should pass
-- Table existence tests (8 tables)
-- Migration initialization
-- Family member management
-- Media transfer tracking (photos + videos)
-- Storage snapshots tracking (NEW)
-- App setup tracking
-- Family app adoption
-- Venmo teen setup
-- View functionality (4 views)
-- Constraint enforcement (foreign keys disabled)
 
-### Phase 2: MCP Tools Compatibility Tests
+Expected: All tests should pass (typically 10 tests)
 
-#### Step 4: Test Migration State Server (Demo Flow Test)
+### 4. Test Migration State MCP Server
 ```bash
-# First initialize fresh database
-python3 shared/database/scripts/initialize_database.py
-
-# Then run the comprehensive demo flow test
+# Test the main migration orchestration server
 cd mcp-tools/migration-state/tests
 python3 test_mcp_server.py
+cd ../../..
 ```
-Expected: All 28 tests should pass, testing:
-- **Day 1 Setup (11 tests)**:
-  - initialize_migration
-  - add_family_member (x4 for Jaisy, Laila, Ethan, Maya)
-  - update_migration_status (x3 progressive updates)
-  - update_family_member_apps (x4 WhatsApp updates)
-  - get_family_members (x3 filters: all, not_in_whatsapp, teen)
-- **Days 2-7 Flow (16 tests)**:
-  - get_migration_status (x6, one per day)
-  - update_migration_status (x6, progress updates per day)
-- **Day 7 Completion (1 test)**:
-  - generate_migration_report
 
-The test follows the exact demo flow from `demo-script-complete-final.md` with 7 streamlined tools:
-- initialize_migration, add_family_member, update_migration_status
-- update_family_member_apps, get_family_members
-- get_migration_status, generate_migration_report
+Expected: All 28 tests should pass, validating the complete 7-day migration flow
 
-#### Step 5: Setup Google Session (Required)
+### 5. Setup Google Session (Required for Web Automation)
 ```bash
-# REQUIRED before web-automation tests
+# Authenticate with Google (required before web automation tests)
 python3 scripts/setup_google_session.py
 ```
-Expected:
-- Google authentication successful
-- Session saved to `~/.google_session/`
-- Storage access verified
 
-#### Step 6: Test Web Automation MCP Server
+Expected:
+- Browser opens for Google authentication
+- Session saved to `~/.google_session/`
+- Success message: "Google session established"
+
+### 6. Test Web Automation MCP Server
 ```bash
+# Test browser automation tools
 python3 mcp-tools/web-automation/tests/test_mcp_server.py
 ```
-Expected: All 4 web-automation tools should work via MCP protocol:
-- check_icloud_status: Get photo/video counts
-- start_photo_transfer: Initiate transfer with baseline
-- check_photo_transfer_progress: Monitor via storage metrics
-- verify_photo_transfer_complete: Final verification
 
-#### Step 7: Test Web Automation Database Compatibility
-```bash
-python3 mcp-tools/web-automation/tests/test_icloud_db.py
-```
-Expected: 
-- Old tables should NOT exist (pass)
-- New tables should work (pass)
-- Old queries should fail (pass)
-- New queries should work (pass)
+Expected: All 4 web automation tools should pass
 
-## Database Validation with DuckDB
+## Complete Test Suite
 
-### Connect to Database
-```bash
-# Use DuckDB CLI (NOT sqlite3!)
-duckdb ~/.ios_android_migration/migration.db
-```
+Run all tests in sequence with this single command:
 
-### Validation Queries
-```sql
--- 1. Check tables exist (should show 8 tables)
-SELECT table_name FROM information_schema.tables 
-WHERE table_type = 'BASE TABLE' 
-ORDER BY table_name;
--- Expected: app_setup, daily_progress, family_app_adoption, 
--- family_members, media_transfer, migration_status, 
--- storage_snapshots, venmo_setup
-
--- 2. Verify NO foreign key constraints (should return 0)
-SELECT COUNT(*) as foreign_key_count
-FROM duckdb_constraints()
-WHERE constraint_type = 'FOREIGN KEY';
-
--- 3. Check views exist (should show 4 views)
-SELECT table_name FROM information_schema.tables 
-WHERE table_type = 'VIEW'
-ORDER BY table_name;
--- Expected: active_migration, daily_progress_summary,
--- family_app_status, migration_summary
-
--- 4. Verify media_transfer has video columns
-SELECT column_name FROM information_schema.columns
-WHERE table_name = 'media_transfer' 
-AND column_name LIKE '%video%';
--- Expected: video_status, transferred_videos, total_videos
-
--- 4. Test UPDATE works on migration_status
--- (This would fail with foreign keys, should work now)
-INSERT INTO migration_status (id, user_name) VALUES ('TEST-1', 'Test User');
-INSERT INTO family_members (id, migration_id, name, email) 
-VALUES (1, 'TEST-1', 'Member', 'test@test.com');
-UPDATE migration_status SET current_phase = 'photo_transfer' WHERE id = 'TEST-1';
--- Should succeed!
-
--- 5. Clean up test data
-DELETE FROM family_members WHERE migration_id = 'TEST-1';
-DELETE FROM migration_status WHERE id = 'TEST-1';
-
--- Exit DuckDB
-.quit
-```
-
-## Quick Test Command
-
-Run all tests in sequence:
 ```bash
 # From project root
-cd /Users/aju/Dropbox/Development/Git/08-14-2025-ios-to-android-migration-agent-take-2/ios-to-android-migration-assitant-agent
-
-# Setup Google session first (REQUIRED)
-python3 scripts/setup_google_session.py
-
-# Reinitialize and run all tests
 python3 shared/database/scripts/initialize_database.py && \
 python3 shared/database/tests/test_database.py && \
 cd mcp-tools/migration-state/tests && python3 test_mcp_server.py && cd ../../.. && \
+python3 scripts/setup_google_session.py && \
 python3 mcp-tools/web-automation/tests/test_mcp_server.py
 ```
 
-## Test Results Interpretation
+## Test Organization
 
-### Success Indicators
-- ✅ Green checkmarks for passed tests
-- "ALL TESTS PASSED" message
-- Exit code 0
+Tests are organized by component:
 
-### Failure Indicators  
-- ❌ Red X marks for failed tests
-- Specific error messages
-- Exit code 1
+```
+├── shared/database/tests/          # Database structure and operations
+├── mcp-tools/migration-state/tests/  # Migration orchestration tools
+└── mcp-tools/web-automation/tests/   # Browser automation tools
+```
 
-## Validation Checklist
+## Understanding Test Results
 
-After running all tests, verify:
+### Migration State Server Tests (28 tests)
 
-1. **Database Structure** ✓
-   - [ ] 8 tables exist (including media_transfer and storage_snapshots)
-   - [ ] No schema prefixes (no `migration.` prefix)
-   - [ ] 4 views work correctly
-   - [ ] Video columns in media_transfer
-   - [ ] Storage tracking functional
+The `test_mcp_server.py` validates the complete migration flow:
 
-2. **Migration State Server** ✓
-   - [ ] 7 streamlined tools available and functional
-   - [ ] Can create migrations and add family members
-   - [ ] Can update migration status progressively
-   - [ ] Can manage family app adoption
-   - [ ] Returns JSON properly with consistent "success" field
-   - [ ] Follows exact demo flow from demo-script-complete-final.md
+**Day 1 Setup (11 tests):**
+- Initialize migration for user
+- Add 4 family members (Jaisy, Laila, Ethan, Maya)
+- Update migration status with iCloud metrics
+- Configure WhatsApp group membership
+- Query family members with filters
 
-3. **Web Automation** ✓
-   - [ ] 4 tools available via MCP protocol
-   - [ ] Google session established
-   - [ ] Uses new `media_transfer` table
-   - [ ] No references to old photo_transfer
-   - [ ] Methods use migration_db helpers
-   - [ ] Storage-based progress tracking works
+**Days 2-7 Daily Flow (16 tests):**
+- Daily status checks with `get_migration_status`
+- Progress updates showing gradual completion
+- Day 4: Photos become visible (28% progress)
+- Day 7: Migration completes (100% success)
+
+**Completion (1 test):**
+- Generate final celebration report
+
+### What the Tests Validate
+
+1. **Database Operations:**
+   - Tables and views exist and work correctly
+   - Data relationships are maintained
+   - Queries return expected results
+
+2. **MCP Tool Integration:**
+   - All 7 migration state tools function properly
+   - All 4 web automation tools work correctly
+   - Tools return consistent JSON responses
+
+3. **Migration Flow:**
+   - Follows the exact 7-day timeline
+   - Progressive updates work correctly
+   - Family member management functions
+   - App adoption tracking works
 
 ## Troubleshooting
 
-### Database Lock Errors
-If you see "database is locked":
-1. Close DBeaver or any database viewers
-2. Kill any hanging Python processes
-3. Re-run the test
+### Common Issues and Solutions
 
-### Import Errors
-If you see "ModuleNotFoundError":
-1. Ensure you're in the project root
-2. Check Python path includes parent directories
-3. Verify shared modules exist
+**ModuleNotFoundError: No module named 'mcp'**
+- The MCP module is installed via Claude Desktop
+- Tests that import server.py directly may show this error
+- This is expected and doesn't affect MCP server functionality
 
-### Google Session Errors
-If web-automation tests fail with storage errors:
-1. Run `python scripts/setup_google_session.py`
-2. Verify session saved to `~/.google_session/`
-3. Check Google account has sufficient permissions
+**Database is locked:**
+- Close any database viewers (DBeaver, etc.)
+- Ensure no other Python processes are running
+- Re-run the test
 
-### Schema Errors
-If you see "table does not exist":
-1. Run reset_database.py
-2. Run initialize_database.py
-3. Verify tables with DBeaver
+**Google session expired:**
+- Re-run `python3 scripts/setup_google_session.py`
+- Complete the authentication in the browser
+- Sessions are valid for approximately 7 days
 
-## Next Steps After Testing
+**Test failures:**
+- Check the error message for specific tool that failed
+- Try resetting and reinitializing the database:
+  ```bash
+  python3 shared/database/scripts/reset_database.py
+  python3 shared/database/scripts/initialize_database.py
+  ```
+- Verify environment variables are set in `.env` file
 
-Once all tests pass:
-1. Proceed to Phase 2: Implement MCP tools
-2. Create demo flow test script
-3. Update documentation
+## Success Criteria
+
+All tests pass when you see:
+- ✅ Green checkmarks for individual tests
+- "ALL TESTS PASSED" message
+- Test summary showing 100% success rate
+
+For the migration state server specifically:
+- "🎉 ALL TESTS PASSED!" 
+- "Results: Total Tests: 28, Passed: 28, Failed: 0"
+
+## Next Steps
+
+After all tests pass:
+1. Configure MCP servers in Claude Desktop (`claude_desktop_config.json`)
+2. Test the complete system with Claude
+3. Run through the demo flow in `docs/demo/demo-script-complete-final.md`
+
+## Additional Resources
+
+- **Database Schema:** `shared/database/schemas/migration_schema.sql`
+- **Demo Script:** `docs/demo/demo-script-complete-final.md`
+- **Agent Instructions:** `agent/instructions/ios2android-agent-instructions.md`
+- **MCP Server Documentation:** Individual README files in each `mcp-tools/` subdirectory
