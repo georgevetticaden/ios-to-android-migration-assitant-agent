@@ -26,7 +26,7 @@ The system uses an AI agent (Claude) that follows natural language instructions 
 - `check_photo_transfer_progress` - Monitor via Google One storage
 - `verify_photo_transfer_complete` - Final verification
 
-#### 2. migration-state (10 tools)  
+#### 2. migration-state (7 tools)  
 **Purpose**: Central state management and database operations  
 **Location**: `mcp-tools/migration-state/`  
 **Documentation**: [`mcp-tools/migration-state/README.md`](mcp-tools/migration-state/README.md)  
@@ -89,7 +89,7 @@ The agent only searches for video success emails and presents complete success t
 **Size**: 1,194 lines of comprehensive orchestration patterns
 
 Key sections:
-- Tool Selection Guidelines (which of 14 tools to use when)
+- Tool Selection Guidelines (which of 11+ tools to use when)
 - Daily Orchestration Patterns (Day 1-7 specific flows)
 - Parallel Tool Call Examples (4x richer updates)
 - React Dashboard Data Formatting
@@ -111,7 +111,7 @@ Complete 7-day demo script showing:
 ## Key Technical Details
 
 ### Tool Count
-- **Total**: 14 MCP tools (4 web + 10 state)
+- **Total**: 11 MCP tools (4 web + 7 state)
 - **Removed**: 8 redundant tools for efficiency
 - **Philosophy**: Each tool has one specific purpose
 
@@ -144,7 +144,7 @@ ios-to-android-migration-assistant-agent/
 │   └── instructions/            # Agent orchestration patterns
 ├── mcp-tools/
 │   ├── web-automation/          # Browser automation (4 tools)
-│   ├── migration-state/         # Database operations (10 tools)
+│   ├── migration-state/         # Database operations (7 tools)
 │   └── mobile-mcp/              # Android control (forked)
 ├── shared/
 │   └── database/                # DuckDB interface & schemas
