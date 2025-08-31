@@ -43,6 +43,10 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 from shared.database.migration_db import MigrationDatabase
+from logging_config import setup_logging
+
+# Set up logging
+logger = setup_logging("migration_state.server")
 
 # Initialize server and database
 server = Server("migration-state")
@@ -131,7 +135,9 @@ async def internal_get_migration_overview(migration_id: str) -> Dict:
         """, (migration_id,)).fetchone()
         
         if result:
-            return dict(result)
+            # Convert DuckDB row to dict properly
+            columns = [desc[0] for desc in conn.description]
+            return dict(zip(columns, result))
         return {"status": "error", "message": "Migration not found"}
 
 async def internal_check_photo_transfer_progress(transfer_id: str, day_number: int, migration_id: str) -> Dict:
@@ -378,6 +384,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     
     Now handles only 7 MCP tools with internal functions for removed tools.
     """
+    logger.debug(f"Tool called: {name} with arguments: {json.dumps(arguments, default=str)}")
     
     try:
         result = {}
@@ -385,9 +392,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         # Get active migration for most operations
         active = await db.get_active_migration()
         migration_id = active["id"] if active else None
+        logger.debug(f"Active migration ID: {migration_id}")
         
         if name == "initialize_migration":
             # Simplified initialization with only 2 required params
+            logger.info(f"Initializing migration for {arguments['user_name']}")
             migration_id = await db.create_migration(
                 user_name=arguments["user_name"],
                 source_device="iPhone",
@@ -402,6 +411,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 "message": f"Migration initialized for {arguments['user_name']}",
                 "years_on_ios": arguments["years_on_ios"]
             }
+            logger.info(f"Migration initialized successfully: {migration_id}")
             
         elif name == "add_family_member":
             if not migration_id:
@@ -566,7 +576,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 
                 with db.get_connection() as conn:
                     base_query = """
-                        SELECT fm.*, 
+                        SELECT fm.id, fm.migration_id, fm.name, fm.role, fm.age, fm.email, fm.phone, fm.staying_on_ios,
+                               fm.created_at,
                                MAX(CASE WHEN faa.app_name = 'WhatsApp' THEN faa.whatsapp_in_group END) as whatsapp_in_group,
                                MAX(CASE WHEN faa.app_name = 'Google Maps' THEN faa.location_sharing_received END) as location_sharing_received
                         FROM family_members fm
@@ -581,31 +592,48 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     elif filter_type == "teen":
                         base_query += " AND fm.age BETWEEN 13 AND 17"
                     
-                    base_query += " GROUP BY fm.id, fm.name, fm.role, fm.age, fm.email"
+                    base_query += " GROUP BY fm.id, fm.migration_id, fm.name, fm.role, fm.age, fm.email, fm.phone, fm.staying_on_ios, fm.created_at"
                     
-                    results = conn.execute(base_query, (migration_id,)).fetchall()
+                    cursor = conn.execute(base_query, (migration_id,))
+                    results = cursor.fetchall()
+                    columns = [desc[0] for desc in cursor.description]
                     
                     members = []
                     for row in results:
+                        row_dict = dict(zip(columns, row))
                         members.append({
-                            "name": row["name"],
-                            "role": row["role"],
-                            "age": row["age"],
-                            "email": row["email"],
-                            "whatsapp_in_group": row["whatsapp_in_group"],
-                            "location_sharing": row["location_sharing_received"]
+                            "name": row_dict["name"],
+                            "role": row_dict["role"],
+                            "age": row_dict["age"],
+                            "email": row_dict["email"],
+                            "whatsapp_in_group": row_dict["whatsapp_in_group"],
+                            "location_sharing": row_dict["location_sharing_received"]
                         })
                     
                     result = {
+                        "success": True,
                         "filter": filter_type,
                         "count": len(members),
                         "members": members
                     }
                     
         elif name == "generate_migration_report":
+            # Check for active migration first, then check for recently completed
             if not migration_id:
-                result = {"status": "error", "message": "No active migration"}
-            else:
+                # Look for the most recently completed migration
+                with db.get_connection() as conn:
+                    recent = conn.execute("""
+                        SELECT id FROM migration_status 
+                        WHERE completed_at IS NOT NULL 
+                        ORDER BY completed_at DESC 
+                        LIMIT 1
+                    """).fetchone()
+                    if recent:
+                        migration_id = recent[0]
+                    else:
+                        result = {"status": "error", "message": "No migration found"}
+            
+            if migration_id and "error" not in result:
                 with db.get_connection() as conn:
                     # Comprehensive final report query
                     report_result = conn.execute("""
