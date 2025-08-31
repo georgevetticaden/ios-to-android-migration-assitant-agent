@@ -78,6 +78,9 @@ Expected: All 28 tests should pass, validating the complete 7-day migration flow
 
 ### 6. Setup Google Session (Required for Web Automation)
 ```bash
+# Optional: Clear any existing sessions if switching accounts or having issues
+python3 scripts/clear_sessions.py
+
 # Authenticate with Google (required before web automation tests)
 python3 scripts/setup_google_session.py
 ```
@@ -89,11 +92,17 @@ Expected:
 
 ### 7. Test Web Automation MCP Server
 ```bash
-# Test browser automation tools
+# For DEMO MODE only: Launch browser with CDP (optional)
+# ./scripts/launch_demo_browser.sh
+# export DEMO_MODE=true
+
+# Test browser automation tools (launches its own browser by default)
 python3 mcp-tools/web-automation/tests/test_mcp_server.py
 ```
 
 Expected: All 4 web automation tools should pass
+
+Note: The test normally launches its own browser. Only use `launch_demo_browser.sh` if you want to run in demo mode with a pre-launched browser for visibility.
 
 ## Complete Test Suite
 
@@ -188,6 +197,7 @@ The `test_mcp_server.py` validates the complete migration flow:
 - Re-run `python3 scripts/setup_google_session.py`
 - Complete the authentication in the browser
 - Sessions are valid for approximately 7 days
+- If issues persist, clear all sessions with `python3 scripts/clear_sessions.py`
 
 **Test failures:**
 - Check the error message for specific tool that failed
@@ -217,6 +227,17 @@ After all tests pass:
 3. Run through the demo flow in `docs/demo/demo-script-complete-final.md`
 
 ## Utility Scripts
+
+### Clear Sessions
+```bash
+# Clear all saved authentication sessions
+python3 scripts/clear_sessions.py
+```
+Removes stored sessions for iCloud, Google, and Gmail. Use this when:
+- Testing fresh authentication flows
+- Sessions have expired
+- Switching between different accounts
+- Troubleshooting authentication issues
 
 ### Check Migration Status
 ```bash
