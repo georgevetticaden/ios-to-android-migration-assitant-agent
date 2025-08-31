@@ -16,6 +16,10 @@ This server acts as the single source of truth for:
 ### 1. `initialize_migration`
 **When Used**: Day 1, called once at the very beginning  
 **Purpose**: Creates a new migration record and returns the migration_id used in all subsequent operations  
+**Database Operations**:
+- **INSERTS**: `migration_status` table (creates new migration record)
+- **INSERTS**: `media_transfer` table (initializes photo/video transfer records)
+
 **Parameters**:
 - `user_name` (required): Full name of the person migrating
 - `years_on_ios` (required): How many years they've used iPhone
@@ -41,6 +45,11 @@ This server acts as the single source of truth for:
 ### 2. `add_family_member`
 **When Used**: Day 1, called 4 times typically (spouse + 3 children)  
 **Purpose**: Registers family members for cross-platform connectivity coordination  
+**Database Operations**:
+- **INSERTS**: `family_members` table (creates family member record)
+- **INSERTS**: `venmo_setup` table (if age 13-17, creates teen account record)
+- **INSERTS**: `family_app_adoption` table (3 records for WhatsApp, Google Maps, Venmo)
+
 **Parameters**:
 - `name` (required): Family member's name from phone contacts
 - `role` (required): Either "spouse" or "child"
@@ -62,6 +71,10 @@ This server acts as the single source of truth for:
 ### 3. `update_migration_status`
 **When Used**: Called 9 times total across all 7 days  
 **Purpose**: Progressive updates with new information as it becomes available  
+**Database Operations**:
+- **UPDATES**: `migration_status` table (only fields provided in call)
+- **INSERTS**: `daily_progress` table (when overall_progress is updated)
+
 **Day-by-Day Usage**:
 - **Day 1 Call 1**: Add iCloud metrics (photo_count, video_count, storage sizes)
 - **Day 1 Call 2**: Set Google Photos baseline after transfer starts
@@ -86,6 +99,11 @@ This server acts as the single source of truth for:
 ### 4. `update_family_member_apps`
 **When Used**: Throughout Days 1-7 as family members adopt apps  
 **Purpose**: Track app installation and configuration status for each family member  
+**Database Operations**:
+- **SELECTS**: `family_members` table (to find member by name)
+- **UPDATES**: `family_app_adoption` table (status and details fields)
+- **UPDATES**: `venmo_setup` table (if Venmo app and teen account)
+
 **Parameters**:
 - `member_name` (required): Must match name from add_family_member
 - `app_name` (required): "WhatsApp", "Google Maps", or "Venmo"
@@ -112,6 +130,15 @@ This server acts as the single source of truth for:
 ### 5. `get_migration_status`
 **When Used**: Once per day on Days 2-7 (the "UBER" status tool)  
 **Purpose**: Returns EVERYTHING - complete migration details, progress, family status in one call  
+**Database Operations**:
+- **SELECTS**: `migration_status` table (current migration details)
+- **SELECTS**: `media_transfer` table (photo/video transfer status)
+- **SELECTS**: `storage_snapshots` table (latest storage metrics)
+- **SELECTS**: `daily_progress` table (progress history)
+- **SELECTS**: `family_members` table (family member list)
+- **SELECTS**: `family_app_adoption` table (app status per member)
+- **SELECTS**: `venmo_setup` table (teen account status)
+
 **Parameters**:
 - `day_number` (required): Integer 1-7
 
@@ -132,6 +159,12 @@ This server acts as the single source of truth for:
 ### 6. `get_family_members`
 **When Used**: As needed to query family status  
 **Purpose**: Find family members needing app setup or meeting specific criteria  
+**Database Operations**:
+- **SELECTS**: `family_members` table with complex JOIN queries
+- **JOINS**: `family_app_adoption` table (to check app status)
+- **JOINS**: `venmo_setup` table (for teen filter)
+- Uses GROUP BY to aggregate app status per member
+
 **Parameters**:
 - `filter` (optional): "all", "not_in_whatsapp", "not_sharing_location", or "teen"
 
@@ -143,6 +176,13 @@ This server acts as the single source of truth for:
 ### 7. `generate_migration_report`
 **When Used**: Day 7 only, after marking migration complete  
 **Purpose**: Generate celebratory final report showing 100% success  
+**Database Operations**:
+- **SELECTS**: `migration_status` table (completed migration, ordered by completed_at DESC)
+- **SELECTS**: `media_transfer` table (final photo/video counts)
+- **SELECTS**: `family_members` table (family member list)
+- **SELECTS**: `family_app_adoption` table (final app adoption status)
+- **SELECTS**: `storage_snapshots` table (final storage metrics)
+
 **Parameters**:
 - `format` (optional): "summary" or "detailed" (defaults to "summary")
 
