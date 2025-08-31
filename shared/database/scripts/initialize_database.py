@@ -53,17 +53,16 @@ def initialize_database():
     4. Applies the complete schema from migration_schema.sql
     5. Validates the schema was created correctly
     
-    Tables Created (8):
+    Tables Created (7):
     - migration_status: Core migration tracking with storage baselines
     - family_members: Family member details
     - media_transfer: Photo AND video transfer progress (was photo_transfer)
-    - app_setup: App installation tracking
-    - family_app_adoption: Per-member app status
+    - family_app_adoption: Per-member app status with granular tracking
     - daily_progress: Day-by-day snapshots with video metrics
     - venmo_setup: Teen card tracking
     - storage_snapshots: NEW - Google One storage tracking
     
-    Indexes Created (8):
+    Indexes Created (7):
     - One index per table on the most commonly queried fields
     
     Views Created (4):
@@ -148,8 +147,7 @@ def initialize_database():
                         print("  ✅ Created table: daily_progress (enhanced)")
                     elif 'family_members' in statement:
                         print("  ✅ Created table: family_members")
-                    elif 'app_setup' in statement:
-                        print("  ✅ Created table: app_setup")
+                    # app_setup table removed in latest schema
                     elif 'family_app_adoption' in statement:
                         print("  ✅ Created table: family_app_adoption")
                     elif 'venmo_setup' in statement:
@@ -187,7 +185,7 @@ def initialize_database():
         """).fetchall()
         
         expected_tables = [
-            'app_setup', 'daily_progress', 'family_app_adoption', 
+            'daily_progress', 'family_app_adoption', 
             'family_members', 'media_transfer', 'migration_status', 
             'storage_snapshots', 'venmo_setup'
         ]

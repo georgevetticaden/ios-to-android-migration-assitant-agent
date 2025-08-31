@@ -375,9 +375,8 @@ You'll see all of this happening on your phone screen."
 
 **Claude**: "Perfect! I've sent Maya a personalized WhatsApp invitation via SMS. The group has 3 of 4 members now, and Maya will be added once she installs WhatsApp."
 
-### Update Database with Phone Discovery
+### Update Database with WhatsApp Status
 ```
-[TOOL CALL]: migration-state.update_family_member("Maya", phone="+1-555-0103")
 [TOOL CALL]: migration-state.update_family_member_apps("Maya", "WhatsApp", "invited")
 ```
 

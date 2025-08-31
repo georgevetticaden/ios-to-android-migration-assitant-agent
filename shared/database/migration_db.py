@@ -114,10 +114,10 @@ class MigrationDatabase:
     async def create_migration(self, user_name: str, 
                               source_device: str = 'iPhone',
                               target_device: str = 'Galaxy Z Fold 7',
-                              photo_count: int = 0,
-                              video_count: int = 0,
-                              storage_gb: float = 0,
-                              google_photos_baseline_gb: float = 0.0,
+                              photo_count: int = None,
+                              video_count: int = None,
+                              storage_gb: float = None,
+                              google_photos_baseline_gb: float = None,
                               years_on_ios: int = None) -> str:
         """
         Create a new migration record.
@@ -149,6 +149,10 @@ class MigrationDatabase:
         migration_id = f"MIG-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         
         with self.get_connection() as conn:
+            # Handle optional parameters
+            photo_storage = (storage_gb * 0.7) if storage_gb else None
+            video_storage = (storage_gb * 0.3) if storage_gb else None
+            
             conn.execute("""
                 INSERT INTO migration_status 
                 (id, user_name, source_device, target_device, 
@@ -158,8 +162,8 @@ class MigrationDatabase:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'initialization')
             """, (migration_id, user_name, source_device, target_device,
                   photo_count, video_count, storage_gb,
-                  storage_gb * 0.7,  # Estimate 70% for photos
-                  storage_gb * 0.3,  # Estimate 30% for videos
+                  photo_storage,  # Estimate 70% for photos
+                  video_storage,  # Estimate 30% for videos
                   google_photos_baseline_gb,  # Google Photos baseline storage
                   years_on_ios, datetime.now()))
         
@@ -217,47 +221,60 @@ class MigrationDatabase:
                 return dict(zip(columns, result))
             return None
     
-    async def update_migration_status(self, migration_id: str, status: str, **kwargs):
+    async def update_migration_status(self, migration_id: str, status: str = None, **kwargs):
         """
-        Update migration status and phase.
+        Update migration status with progressive enrichment support.
         
-        Updates the current phase of the migration and optionally other fields like
-        overall_progress and family_size. Handles the DuckDB foreign key limitation
-        by allowing UPDATE operations without constraint checks.
+        Enhanced method that supports updating any migration_status field, enabling
+        progressive data enrichment throughout the 7-day journey. Called 9 times total:
+        3 times on Day 1, once each on Days 2-7.
         
         Args:
             migration_id: ID of the migration to update
-            status: New phase (initialization, photo_transfer, family_setup, validation, completed)
-            **kwargs: Optional fields to update (overall_progress, family_size)
+            status: Optional new phase (initialization, media_transfer, family_setup, validation, completed)
+            **kwargs: Any migration_status fields to update
             
-        Note:
-            Foreign keys removed from schema to allow UPDATEs due to DuckDB limitation.
-            Referential integrity is maintained at the application layer.
+        Supported fields in kwargs:
+            - photo_count, video_count, total_icloud_storage_gb
+            - icloud_photo_storage_gb, icloud_video_storage_gb
+            - album_count, google_photos_baseline_gb
+            - whatsapp_group_name, current_phase
+            - overall_progress, family_size, completed_at
         """
         with self.get_connection() as conn:
-            # Build update statement dynamically
-            updates = ['current_phase = ?']
-            values = [status]
+            updates = []
+            values = []
+            
+            # Handle status parameter (for backward compatibility)
+            if status:
+                updates.append('current_phase = ?')
+                values.append(status)
+                if status == 'completed' and 'completed_at' not in kwargs:
+                    kwargs['completed_at'] = datetime.now()
+            
+            # Extended list of allowed fields for progressive updates
+            allowed_fields = [
+                'photo_count', 'video_count', 'total_icloud_storage_gb',
+                'icloud_photo_storage_gb', 'icloud_video_storage_gb',
+                'album_count', 'google_photos_baseline_gb',
+                'whatsapp_group_name', 'current_phase',
+                'overall_progress', 'family_size', 'completed_at'
+            ]
             
             for key, value in kwargs.items():
-                if key in ['overall_progress', 'family_size']:
+                if key in allowed_fields:
                     updates.append(f'{key} = ?')
                     values.append(value)
             
-            if status == 'completed':
-                updates.append('completed_at = ?')
-                values.append(datetime.now())
-            
-            values.append(migration_id)
-            
-            # Execute the UPDATE
-            conn.execute(f"""
-                UPDATE migration_status 
-                SET {', '.join(updates)}
-                WHERE id = ?
-            """, values)
-        
-        logger.info(f"Updated migration {migration_id} status to: {status}")
+            if updates:
+                values.append(migration_id)
+                conn.execute(f"""
+                    UPDATE migration_status 
+                    SET {', '.join(updates)}
+                    WHERE id = ?
+                """, values)
+                
+                logger.info(f"Updated migration {migration_id}: {', '.join(updates)}")
     
     async def get_migration_status(self, migration_id: str) -> Optional[Dict[str, Any]]:
         """Get specific migration status"""
@@ -370,18 +387,20 @@ class MigrationDatabase:
     
     # ===== FAMILY OPERATIONS =====
     
-    async def add_family_member(self, migration_id: str, name: str, email: str,
+    async def add_family_member(self, migration_id: str, name: str,
+                               email: str = None, phone: str = None,
                                role: str = None, age: int = None) -> int:
         """
         Add a family member to the migration.
         
         Creates a new family member record and updates the family_size in migration_status.
-        Email is required for sending app invitations during the migration process.
+        Email and phone are optional since these are existing contacts on the phone.
         
         Args:
             migration_id: ID of the migration
-            name: Family member's name
-            email: Email address for invitations
+            name: Family member's name (from phone contacts)
+            email: Optional email address
+            phone: Optional phone number
             role: Optional role (spouse/child)
             age: Optional age (used to determine teen accounts for Venmo)
             
@@ -392,7 +411,6 @@ class MigrationDatabase:
             member_id = await db.add_family_member(
                 migration_id="MIG-20250825-120000",
                 name="Laila",
-                email="laila@example.com",
                 role="child",
                 age=15
             )
@@ -404,9 +422,9 @@ class MigrationDatabase:
             
             conn.execute("""
                 INSERT INTO family_members
-                (id, migration_id, name, email, role, age)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (next_id, migration_id, name, email, role, age))
+                (id, migration_id, name, email, phone, role, age)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (next_id, migration_id, name, email, phone, role, age))
             
             # Update family size
             conn.execute("""
@@ -420,16 +438,72 @@ class MigrationDatabase:
         logger.info(f"Added family member: {name}")
         return next_id
     
-    async def get_family_members(self, migration_id: str) -> List[Dict[str, Any]]:
-        """Get all family members for a migration"""
+    async def get_family_members(self, migration_id: str, filter_type: str = "all") -> List[Dict[str, Any]]:
+        """
+        Get family members with optional filtering for database-driven discovery.
+        
+        Enhanced to support filters that enable mobile-mcp to query the database
+        before taking actions, avoiding hardcoded family member names.
+        
+        Args:
+            migration_id: ID of the migration
+            filter_type: Filter to apply:
+                - "all": Return all family members (default)
+                - "not_in_whatsapp": Members not yet in WhatsApp group
+                - "not_sharing_location": Members not sharing location
+                - "teen": Members aged 13-17
+                
+        Returns:
+            List of family member dictionaries with app adoption status
+        """
         with self.get_connection() as conn:
-            results = conn.execute("""
-                SELECT * FROM family_members WHERE migration_id = ?
-            """, (migration_id,)).fetchall()
+            # Base query with app adoption status
+            base_query = """
+                SELECT fm.*, 
+                       MAX(CASE WHEN faa.app_name = 'WhatsApp' THEN faa.whatsapp_in_group END) as whatsapp_in_group,
+                       MAX(CASE WHEN faa.app_name = 'WhatsApp' THEN faa.status END) as whatsapp_status,
+                       MAX(CASE WHEN faa.app_name = 'Google Maps' THEN faa.location_sharing_received END) as location_sharing_received,
+                       MAX(CASE WHEN faa.app_name = 'Google Maps' THEN faa.status END) as maps_status,
+                       MAX(CASE WHEN faa.app_name = 'Venmo' THEN faa.status END) as venmo_status
+                FROM family_members fm
+                LEFT JOIN family_app_adoption faa ON fm.id = faa.family_member_id
+                WHERE fm.migration_id = ?
+            """
             
-            columns = ['id', 'migration_id', 'name', 'role', 'age', 'email', 
-                      'staying_on_ios', 'created_at']
-            return [dict(zip(columns, row)) for row in results]
+            # Apply filters
+            if filter_type == "not_in_whatsapp":
+                base_query += " AND (faa.whatsapp_in_group IS FALSE OR faa.whatsapp_in_group IS NULL OR faa.app_name != 'WhatsApp')"
+            elif filter_type == "not_sharing_location":
+                base_query += " AND (faa.location_sharing_received IS FALSE OR faa.location_sharing_received IS NULL OR faa.app_name != 'Google Maps')"
+            elif filter_type == "teen":
+                base_query += " AND fm.age BETWEEN 13 AND 17"
+            
+            base_query += " GROUP BY fm.id, fm.migration_id, fm.name, fm.role, fm.age, fm.email, fm.phone, fm.staying_on_ios, fm.created_at"
+            
+            results = conn.execute(base_query, (migration_id,)).fetchall()
+            
+            # Convert to dictionaries
+            members = []
+            for row in results:
+                member = {
+                    'id': row[0],
+                    'migration_id': row[1],
+                    'name': row[2],
+                    'role': row[3],
+                    'age': row[4],
+                    'email': row[5],
+                    'phone': row[6],
+                    'staying_on_ios': row[7],
+                    'created_at': row[8],
+                    'whatsapp_in_group': row[9] if len(row) > 9 else None,
+                    'whatsapp_status': row[10] if len(row) > 10 else None,
+                    'location_sharing_received': row[11] if len(row) > 11 else None,
+                    'maps_status': row[12] if len(row) > 12 else None,
+                    'venmo_status': row[13] if len(row) > 13 else None
+                }
+                members.append(member)
+            
+            return members
     
     # ===== SIMPLIFIED OPERATIONS =====
     
@@ -581,9 +655,16 @@ class MigrationDatabase:
             
             # Get baseline storage from migration_status
             baseline_gb = migration.get('google_photos_baseline_gb', 0.0)
-            total_icloud_gb = migration.get('total_icloud_storage_gb', 383.0)
-            total_photos = migration.get('photo_count', 60238)
-            total_videos = migration.get('video_count', 2418)
+            total_icloud_gb = migration.get('total_icloud_storage_gb')
+            total_photos = migration.get('photo_count')
+            total_videos = migration.get('video_count')
+            
+            # These values MUST come from the database
+            if total_icloud_gb is None or total_photos is None or total_videos is None:
+                return {
+                    "status": "error",
+                    "message": "Migration data not found - values must come from actual iCloud check"
+                }
             
             # Calculate actual storage growth
             growth_gb = max(0, current_storage_gb - baseline_gb)
@@ -646,6 +727,7 @@ class MigrationDatabase:
                 "status": "error",
                 "message": f"Failed to calculate progress: {str(e)}"
             }
+    
     
     def _get_day_milestone_message(self, day_number: int, percent_complete: float) -> str:
         """

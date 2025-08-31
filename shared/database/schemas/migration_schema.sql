@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS storage_snapshots;
 DROP TABLE IF EXISTS venmo_setup;
 DROP TABLE IF EXISTS daily_progress;
 DROP TABLE IF EXISTS family_app_adoption;
-DROP TABLE IF EXISTS app_setup;
+DROP TABLE IF EXISTS app_setup;  -- Will be removed in this update
 DROP TABLE IF EXISTS media_transfer;
 DROP TABLE IF EXISTS photo_transfer;
 DROP TABLE IF EXISTS family_members;
@@ -42,6 +42,7 @@ CREATE TABLE migration_status (
     
     -- Migration tracking
     family_size INTEGER,
+    whatsapp_group_name TEXT,  -- Store family group name
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     current_phase TEXT DEFAULT 'initialization',
     overall_progress INTEGER DEFAULT 0,
@@ -158,34 +159,17 @@ CREATE TABLE family_members (
     name TEXT NOT NULL,
     role TEXT,
     age INTEGER,
-    email TEXT NOT NULL,
-    phone TEXT,
+    email TEXT,  -- Optional: contacts are already on the phone
+    phone TEXT,  -- Optional: contacts are already on the phone
     staying_on_ios BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT valid_role CHECK (role IN ('spouse', 'child'))
 );
 
--- 6. App setup tracking (unchanged)
-CREATE SEQUENCE IF NOT EXISTS app_setup_seq;
-CREATE TABLE app_setup (
-    id INTEGER PRIMARY KEY DEFAULT nextval('app_setup_seq'),
-    migration_id TEXT NOT NULL,
-    app_name TEXT NOT NULL,
-    category TEXT,
-    setup_status TEXT DEFAULT 'pending',
-    group_created BOOLEAN DEFAULT false,
-    invitations_sent INTEGER DEFAULT 0,
-    family_members_connected INTEGER DEFAULT 0,
-    started_at TIMESTAMP,
-    completed_at TIMESTAMP,
-    notes TEXT,
-    UNIQUE(migration_id, app_name),
-    CONSTRAINT valid_app CHECK (app_name IN ('WhatsApp', 'Google Maps', 'Venmo')),
-    CONSTRAINT valid_category CHECK (category IN ('messaging', 'location', 'payment')),
-    CONSTRAINT valid_status CHECK (setup_status IN ('pending', 'in_progress', 'completed'))
-);
+-- 6. App setup tracking - REMOVED (redundant with family_app_adoption)
+-- This table has been removed as it duplicates functionality in family_app_adoption
 
--- 7. Family app adoption (unchanged)
+-- 7. Family app adoption (enhanced with granular tracking)
 CREATE SEQUENCE IF NOT EXISTS family_app_adoption_seq;
 CREATE TABLE family_app_adoption (
     id INTEGER PRIMARY KEY DEFAULT nextval('family_app_adoption_seq'),
@@ -196,6 +180,14 @@ CREATE TABLE family_app_adoption (
     invitation_method TEXT DEFAULT 'email',
     installed_at TIMESTAMP,
     configured_at TIMESTAMP,
+    
+    -- New granular tracking columns
+    whatsapp_in_group BOOLEAN DEFAULT false,
+    location_sharing_sent BOOLEAN DEFAULT false,
+    location_sharing_received BOOLEAN DEFAULT false,
+    venmo_card_activated BOOLEAN DEFAULT false,
+    card_last_four TEXT,
+    
     UNIQUE(family_member_id, app_name),
     CONSTRAINT valid_app CHECK (app_name IN ('WhatsApp', 'Google Maps', 'Venmo')),
     CONSTRAINT valid_status CHECK (status IN ('not_started', 'invited', 'installed', 'configured'))
@@ -223,7 +215,7 @@ CREATE INDEX idx_media_transfer_migration ON media_transfer(migration_id);
 CREATE INDEX idx_storage_snapshots_migration ON storage_snapshots(migration_id, day_number);
 CREATE INDEX idx_daily_progress_migration ON daily_progress(migration_id, day_number);
 CREATE INDEX idx_family_members_migration ON family_members(migration_id);
-CREATE INDEX idx_app_setup_migration ON app_setup(migration_id);
+-- idx_app_setup_migration removed as app_setup table was removed
 CREATE INDEX idx_family_adoption_member ON family_app_adoption(family_member_id);
 CREATE INDEX idx_venmo_setup_migration ON venmo_setup(migration_id);
 
@@ -309,7 +301,7 @@ GROUP BY m.id, m.user_name, m.source_device, m.target_device, m.years_on_ios,
          m.photo_count, m.video_count, m.total_icloud_storage_gb,
          m.icloud_photo_storage_gb, m.icloud_video_storage_gb, m.album_count,
          m.google_storage_total_gb, m.google_photos_baseline_gb, m.google_drive_baseline_gb,
-         m.gmail_baseline_gb, m.family_size, m.started_at, m.current_phase,
+         m.gmail_baseline_gb, m.family_size, m.whatsapp_group_name, m.started_at, m.current_phase,
          m.overall_progress, m.completed_at,
          mt.photo_status, mt.video_status, mt.overall_status,
          mt.transferred_photos, mt.transferred_videos, mt.total_photos, 
