@@ -180,6 +180,7 @@ async def test_day_1_flow():
     for member in whatsapp_members:
         try:
             update_data = {
+                "migration_id": migration_id,
                 "member_name": member["name"],
                 "app_name": "WhatsApp",
                 "status": member["status"]
@@ -211,6 +212,7 @@ async def test_day_1_flow():
     for filter_type in filters:
         try:
             response = await call_tool("get_family_members", {
+                "migration_id": migration_id,
                 "filter": filter_type
             })
             
@@ -273,6 +275,7 @@ async def test_days_2_7_flow(migration_id: str):
         # Step 1: Get migration status (uber tool)
         try:
             response = await call_tool("get_migration_status", {
+                "migration_id": migration_id,
                 "day_number": day
             })
             
@@ -322,6 +325,7 @@ async def test_days_2_7_flow(migration_id: str):
     
     try:
         response = await call_tool("generate_migration_report", {
+            "migration_id": migration_id,
             "format": "summary"
         })
         

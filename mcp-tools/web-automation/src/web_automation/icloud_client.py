@@ -681,7 +681,7 @@ class ICloudClientWithSession:
     
     # ==================== NEW PHASE 3 METHODS ====================
     
-    async def start_transfer(self, reuse_session: bool = True, confirm_transfer: bool = False) -> Dict[str, Any]:
+    async def start_transfer(self, migration_id: str, reuse_session: bool = True, confirm_transfer: bool = False) -> Dict[str, Any]:
         """Initiate iCloud to Google Photos transfer workflow with video support.
         
         This is the main entry point for starting a media migration. It performs:
@@ -700,6 +700,7 @@ class ICloudClientWithSession:
             - GOOGLE_PASSWORD: Google account password
         
         Args:
+            migration_id: Migration ID from initialize_migration to link transfer to migration
             reuse_session: Whether to reuse existing browser session to avoid 2FA.
                           Defaults to True. Set to False to force fresh login.
             confirm_transfer: Whether to click the final "Confirm Transfers" button.
@@ -846,6 +847,7 @@ class ICloudClientWithSession:
             
             transfer_data = {
                 'transfer_id': transfer_id,
+                'migration_id': migration_id,  # Use provided migration_id
                 'started_at': datetime.now().isoformat(),
                 'source_photos': icloud_status.get('photos', 0),
                 'source_videos': icloud_status.get('videos', 0),
@@ -1710,14 +1712,10 @@ class ICloudClientWithSession:
         if self.db:
             # Save to database using new schema
             try:
-                # First create a migration if needed
-                migration_id = await self.db.create_migration(
-                    user_name=transfer_data.get('apple_id', 'Unknown User'),
-                    photo_count=transfer_data['source_photos'],
-                    video_count=transfer_data['source_videos'],
-                    storage_gb=transfer_data['source_size_gb'],
-                    google_photos_baseline_gb=transfer_data.get('google_photos_baseline_gb', 0.0)
-                )
+                # Use the provided migration_id (no longer creating a new one)
+                migration_id = transfer_data.get('migration_id')
+                if not migration_id:
+                    raise ValueError("migration_id is required for saving transfer")
                 
                 # Create media transfer record (formerly photo_transfer)
                 transfer_id = await self.db.create_media_transfer(
@@ -1727,8 +1725,7 @@ class ICloudClientWithSession:
                     total_size_gb=transfer_data['source_size_gb']
                 )
                 
-                # Update the transfer_data with the generated IDs
-                transfer_data['migration_id'] = migration_id
+                # Update the transfer_data with the generated transfer_id
                 transfer_data['transfer_id'] = transfer_id
                 
                 logger.info(f"Transfer {transfer_id} saved to database with migration {migration_id}")

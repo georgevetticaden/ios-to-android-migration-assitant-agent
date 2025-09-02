@@ -78,12 +78,16 @@ async def handle_list_tools() -> list[types.Tool]:
             description=(
                 "Initiate Apple's official iCloud to Google Photos transfer service. Establishes "
                 "Google Photos storage baseline, navigates complete privacy.apple.com workflow, "
-                "handles OAuth consent, and optionally confirms transfer. Creates database record "
-                "with transfer ID for progress tracking. Photos visible Day 3-4, complete Day 7."
+                "handles OAuth consent, and optionally confirms transfer. Associates transfer "
+                "with the migration for tracking. Photos visible Day 3-4, complete Day 7."
             ),
             inputSchema={
                 "type": "object", 
                 "properties": {
+                    "migration_id": {
+                        "type": "string",
+                        "description": "Migration ID from initialize_migration (required to link transfer to migration)"
+                    },
                     "reuse_session": {
                         "type": "boolean",
                         "description": "Reuse Apple ID session from check_icloud_status (default: true)",
@@ -95,7 +99,7 @@ async def handle_list_tools() -> list[types.Tool]:
                         "default": False
                     }
                 },
-                "required": []
+                "required": ["migration_id"]
             }
         ),
         
@@ -238,11 +242,20 @@ async def _handle_start_photo_transfer(arguments: Dict[str, Any]) -> list[types.
     try:
         await _ensure_client_initialized(initialize_apis=True)
         
+        # Get required migration_id
+        migration_id = arguments.get("migration_id")
+        if not migration_id:
+            return [types.TextContent(
+                type="text", 
+                text="Error: migration_id is required. Get it from initialize_migration and pass it to start_photo_transfer."
+            )]
+        
         # Execute transfer initiation
         reuse_session = arguments.get("reuse_session", True)
         confirm_transfer = arguments.get("confirm_transfer", False) 
         
         result = await icloud_client.start_transfer(
+            migration_id=migration_id,
             reuse_session=reuse_session, 
             confirm_transfer=confirm_transfer
         )

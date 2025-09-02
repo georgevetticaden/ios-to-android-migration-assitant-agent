@@ -76,8 +76,9 @@ No previous transfer requests found
 
 Initiates Apple's official iCloud to Google Photos transfer service.
 
-**Usage:** Day 1, after `check_icloud_status`  
+**Usage:** Day 1, after `check_icloud_status` and `initialize_migration`  
 **Parameters:**
+- `migration_id` (string, required) - Migration ID from initialize_migration
 - `reuse_session` (boolean, default: true) - Reuse Apple ID session
 - `confirm_transfer` (boolean, default: false) - Actually start the transfer
 

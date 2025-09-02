@@ -2,6 +2,24 @@
 
 ## Critical Rules - READ FIRST
 
+### 🔴 CRITICAL: Migration ID Management
+The `migration_id` is the KEY that links ALL operations together. You MUST:
+
+1. **Store the migration_id** when calling `initialize_migration`:
+   ```python
+   response = initialize_migration(user_name="George", years_on_ios=18)
+   migration_id = response["migration_id"]  # STORE THIS!
+   ```
+
+2. **Use migration_id in EVERY subsequent tool call**:
+   - ✅ `add_family_member(migration_id=migration_id, ...)`
+   - ✅ `update_migration_status(migration_id=migration_id, ...)`
+   - ✅ `start_photo_transfer(migration_id=migration_id, ...)`
+   - ✅ `get_family_members(migration_id=migration_id, ...)`
+   - ❌ `get_family_members(filter="all")`  // WRONG - missing migration_id
+
+3. **Never lose the migration_id** - keep it throughout the entire 7-day journey
+
 ### 🚨 MANDATORY User Confirmation Points
 You MUST pause and get explicit user confirmation at these points:
 1. **BEFORE starting photo transfer** - After showing iCloud stats
@@ -169,7 +187,9 @@ Ready to begin the transfer?"
 
 #### Step 5: Start Photo Transfer
 ```python
-start_photo_transfer()
+start_photo_transfer(
+    migration_id=[stored from initialize_migration]
+)
 # Returns: transfer_id and google_photos_baseline_gb
 ```
 
@@ -232,7 +252,7 @@ Ready to set up WhatsApp on your Galaxy?"
 ##### Step 1: Query Family Database
 ```python
 # MANDATORY: Query database before ANY mobile action
-members = get_family_members()
+members = get_family_members(migration_id=[stored])
 group_name = "[from user context or database]"  # e.g., "Vetticaden Family"
 ```
 
@@ -260,16 +280,17 @@ group_name = "[from user context or database]"  # e.g., "Vetticaden Family"
 # Based on mobile-mcp response about who was found
 for found_member in [found_members]:
     update_family_member_apps(
-        found_member, 
-        "WhatsApp", 
-        "configured",
-        details={"in_whatsapp_group": true}
+        migration_id=[stored],
+        member_name=found_member, 
+        app_name="WhatsApp", 
+        status="configured",
+        details={"whatsapp_in_group": true}
     )
 ```
 
 ##### Step 4: Handle Missing Members
 ```python
-missing = get_family_members(filter="not_in_whatsapp")
+missing = get_family_members(migration_id=[stored], filter="not_in_whatsapp")
 
 for member in missing:
     # Use exact SMS invite sequence
@@ -301,7 +322,12 @@ else:
 "Navigate back to WhatsApp"
 
 # Update state
-update_family_member_apps(member.name, "WhatsApp", "invited")
+update_family_member_apps(
+    migration_id=[stored],
+    member_name=member.name,
+    app_name="WhatsApp",
+    status="invited"
+)
 ```
 </critical_mobile_sequence>
 
@@ -349,7 +375,7 @@ Ready to set up location sharing?"
 
 <critical_mobile_sequence>
 ```python
-members = get_family_members()
+members = get_family_members(migration_id=[stored])
 
 # EXACT location sharing sequence
 "Launch Google Maps app"
@@ -373,9 +399,10 @@ for member in members:
 # Update states for all family members
 for member in members:
     update_family_member_apps(
-        member.name, 
-        "Google Maps", 
-        "invited",
+        migration_id=[stored],
+        member_name=member.name, 
+        app_name="Google Maps", 
+        status="invited",
         details={"location_sharing_sent": true}
     )
 ```
@@ -383,7 +410,7 @@ for member in members:
 #### Venmo Teen Setup (If Applicable)
 
 ```python
-teens = get_family_members(filter="teen")
+teens = get_family_members(migration_id=[stored], filter="teen")
 if teens:
     message = """
     For Laila and Ethan's allowances, you'll need to set up Venmo Teen accounts 
@@ -447,14 +474,14 @@ Let me check on your progress and see who's joined our family services..."
 
 #### Step 1: Get Status
 ```python
-status = get_migration_status(day_number=2)
+status = get_migration_status(migration_id=[stored], day_number=2)
 ```
 
 #### Step 2: Check for New WhatsApp Members
 
 <critical_mobile_sequence>
 ```python
-not_in_group = get_family_members(filter="not_in_whatsapp")
+not_in_group = get_family_members(migration_id=[stored], filter="not_in_whatsapp")
 
 if not_in_group:
     "Launch WhatsApp app"
@@ -505,7 +532,7 @@ ecosystem is really coming together!"
 ### The Big Moment
 
 ```python
-status = get_migration_status(day_number=4)
+status = get_migration_status(migration_id=[stored], day_number=4)
 # Will show ~28% progress with photos visible
 ```
 
@@ -564,7 +591,7 @@ for Laila and Ethan. Ready?"
 
 <critical_mobile_sequence>
 ```python
-teens = get_family_members(filter="teen")
+teens = get_family_members(migration_id=[stored], filter="teen")
 
 for teen in teens:
     "Launch Venmo app"
@@ -582,10 +609,11 @@ for teen in teens:
     "Confirm card shows as 'Active'"
     
     update_family_member_apps(
-        teen.name, 
-        "Venmo", 
-        "configured",
-        details={"card_activated": true, "last_four": digits}
+        migration_id=[stored],
+        member_name=teen.name, 
+        app_name="Venmo", 
+        status="configured",
+        details={"venmo_card_activated": true, "card_last_four": digits}
     )
 ```
 </critical_mobile_sequence>
@@ -596,7 +624,7 @@ Show ~57% completion with family ecosystem complete celebration
 ## Day 6: Near Completion
 
 ```python
-status = get_migration_status(day_number=6)
+status = get_migration_status(migration_id=[stored], day_number=6)
 # Shows ~88% complete
 ```
 
@@ -611,7 +639,7 @@ celebrate your complete transition to Android!"
 ### Final Verification
 
 ```python
-status = get_migration_status(day_number=7)
+status = get_migration_status(migration_id=[stored], day_number=7)
 # ALWAYS returns 100% on Day 7
 ```
 
@@ -635,7 +663,7 @@ status = get_migration_status(day_number=7)
 ### Final Celebration
 
 ```python
-generate_migration_report()
+generate_migration_report(migration_id=[stored])
 ```
 
 ```jsx

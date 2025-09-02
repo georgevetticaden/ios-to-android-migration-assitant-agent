@@ -51,6 +51,7 @@ This server acts as the single source of truth for:
 - **INSERTS**: `family_app_adoption` table (3 records for WhatsApp, Google Maps, Venmo)
 
 **Parameters**:
+- `migration_id` (required): Migration ID from initialize_migration
 - `name` (required): Family member's name from phone contacts
 - `role` (required): Either "spouse" or "child"
 - `age` (optional): If provided and 13-17, automatically creates Venmo teen record
@@ -60,6 +61,7 @@ This server acts as the single source of truth for:
 **Example**:
 ```json
 {
+  "migration_id": "MIG-20250831-123456",
   "name": "Laila",
   "role": "child",
   "age": 17
@@ -105,6 +107,7 @@ This server acts as the single source of truth for:
 - **UPDATES**: `venmo_setup` table (if Venmo app and teen account)
 
 **Parameters**:
+- `migration_id` (required): Migration ID from initialize_migration
 - `member_name` (required): Must match name from add_family_member
 - `app_name` (required): "WhatsApp", "Google Maps", or "Venmo"
 - `status` (required): "not_started", "invited", "installed", or "configured"
@@ -118,6 +121,7 @@ This server acts as the single source of truth for:
 **Example**:
 ```json
 {
+  "migration_id": "MIG-20250831-123456",
   "member_name": "Jaisy",
   "app_name": "WhatsApp",
   "status": "configured",
@@ -140,6 +144,7 @@ This server acts as the single source of truth for:
 - **SELECTS**: `venmo_setup` table (teen account status)
 
 **Parameters**:
+- `migration_id` (required): Migration ID from initialize_migration
 - `day_number` (required): Integer 1-7
 
 **Returns**: Comprehensive status object including:
@@ -166,12 +171,13 @@ This server acts as the single source of truth for:
 - Uses GROUP BY to aggregate app status per member
 
 **Parameters**:
+- `migration_id` (required): Migration ID from initialize_migration
 - `filter` (optional): "all", "not_in_whatsapp", "not_sharing_location", or "teen"
 
 **Example Use Cases**:
-- Find teens needing Venmo setup: `filter: "teen"`
-- Find who hasn't joined WhatsApp: `filter: "not_in_whatsapp"`
-- Get all family members: `filter: "all"` or omit parameter
+- Find teens needing Venmo setup: `{"migration_id": "MIG-20250831-123456", "filter": "teen"}`
+- Find who hasn't joined WhatsApp: `{"migration_id": "MIG-20250831-123456", "filter": "not_in_whatsapp"}`
+- Get all family members: `{"migration_id": "MIG-20250831-123456", "filter": "all"}`
 
 ### 7. `generate_migration_report`
 **When Used**: Day 7 only, after marking migration complete  
@@ -184,6 +190,7 @@ This server acts as the single source of truth for:
 - **SELECTS**: `storage_snapshots` table (final storage metrics)
 
 **Parameters**:
+- `migration_id` (required): Migration ID from initialize_migration
 - `format` (optional): "summary" or "detailed" (defaults to "summary")
 
 **Returns**: Celebration report with:
@@ -313,9 +320,10 @@ Every family member is tracked individually for app adoption, enabling targeted 
 
 ## Troubleshooting
 
-**No active migration found**
-- Ensure `initialize_migration` was called first
-- Check database exists at `~/.ios_android_migration/migration.db`
+**migration_id is required error**
+- Ensure you're passing the migration_id from `initialize_migration` to all subsequent tool calls
+- The migration_id links all operations together and is mandatory
+- Example: `{"migration_id": "MIG-20250831-123456", ...}`
 
 **Family member not found**
 - Name must exactly match what was used in `add_family_member`

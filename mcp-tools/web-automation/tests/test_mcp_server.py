@@ -48,6 +48,10 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any
 
+# Add path to shared database module
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / 'shared' / 'database'))
+from migration_db import get_migration_db
+
 # Simulate MCP client interactions
 class MCPServerTester:
     """Test MCP server with simulated tool calls"""
@@ -55,6 +59,9 @@ class MCPServerTester:
     def __init__(self):
         self.server_module = None
         self.server = None
+        self.db = None
+        self.test_migration_id = None
+        self.test_user_name = "Test User"
         
     async def setup(self):
         """Import and initialize the MCP server"""
@@ -66,6 +73,18 @@ class MCPServerTester:
         # Initialize the server
         await server.initialize_server()
         self.server = server
+        
+        # Initialize database connection
+        self.db = get_migration_db()
+        
+        # Create a test migration record using async method
+        result = await self.db.create_migration(
+            user_name=self.test_user_name,
+            target_device="Galaxy Z Fold 7",
+            years_on_ios=10
+        )
+        self.test_migration_id = result
+        print(f"✅ Created test migration: {self.test_migration_id}")
         
         # Get list of tools
         tools = await server.get_tools()
@@ -140,9 +159,14 @@ class MCPServerTester:
         print("TEST: start_photo_transfer")
         print("="*60)
         
+        # Use the test migration_id created in setup
+        migration_id = self.test_migration_id
+        print(f"Using test migration_id: {migration_id}")
+        
         # Ask if user wants to actually confirm the transfer
         confirm = input("\nActually initiate transfer with Apple? (y/n, default=n): ").strip().lower()
         args = {
+            "migration_id": migration_id,
             "reuse_session": True,
             "confirm_transfer": confirm == 'y'
         }
@@ -172,9 +196,19 @@ class MCPServerTester:
                 # Check if it stopped at confirmation
                 if "Confirmation page reached" in content:
                     print("\n✅ Test correctly stopped at confirmation page")
-                    # Generate a test transfer ID for testing progress
+                    # Generate a test transfer ID and save it to database
                     transfer_id = f"TRF-TEST-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
                     print(f"Using test Transfer ID: {transfer_id}")
+                    
+                    # Save the transfer to database for progress checking
+                    if self.db:
+                        await self.db.start_media_transfer(
+                            migration_id=self.test_migration_id,
+                            transfer_id=transfer_id,
+                            google_photos_baseline_gb=13.88
+                        )
+                        print(f"✅ Saved transfer {transfer_id} to database")
+                    
                     return transfer_id
                 
                 return None
@@ -234,6 +268,15 @@ class MCPServerTester:
         if not transfer_id:
             transfer_id = f"TRF-TEST-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
             print(f"Using test ID: {transfer_id}")
+            
+            # Save the test transfer to database
+            if self.db:
+                await self.db.start_media_transfer(
+                    migration_id=self.test_migration_id,
+                    transfer_id=transfer_id,
+                    google_photos_baseline_gb=13.88
+                )
+                print(f"✅ Created test transfer in database")
         
         print("\nThis test simulates checking progress on different days of the transfer.")
         print("Each day shows expected storage growth and progress percentage.\n")
@@ -423,13 +466,33 @@ class MCPServerTester:
             elif choice == '4':
                 # Test current day progress
                 if not transfer_id:
-                    transfer_id = input("Enter transfer ID: ").strip()
+                    transfer_id = input("Enter transfer ID (or press Enter for test): ").strip()
+                    if not transfer_id:
+                        # Create a test transfer
+                        transfer_id = f"TRF-TEST-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+                        if self.db:
+                            await self.db.start_media_transfer(
+                                migration_id=self.test_migration_id,
+                                transfer_id=transfer_id,
+                                google_photos_baseline_gb=13.88
+                            )
+                            print(f"Created test transfer: {transfer_id}")
                 if transfer_id:
                     await self.test_check_progress(transfer_id)
             elif choice == '5':
                 # Test specific day progress
                 if not transfer_id:
-                    transfer_id = input("Enter transfer ID: ").strip()
+                    transfer_id = input("Enter transfer ID (or press Enter for test): ").strip()
+                    if not transfer_id:
+                        # Create a test transfer
+                        transfer_id = f"TRF-TEST-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+                        if self.db:
+                            await self.db.start_media_transfer(
+                                migration_id=self.test_migration_id,
+                                transfer_id=transfer_id,
+                                google_photos_baseline_gb=13.88
+                            )
+                            print(f"Created test transfer: {transfer_id}")
                 if transfer_id:
                     day = input("Enter day number (1-7): ").strip()
                     if day.isdigit() and 1 <= int(day) <= 7:
@@ -441,7 +504,17 @@ class MCPServerTester:
                 await self.test_storage_timeline()
             elif choice == '7':
                 if not transfer_id:
-                    transfer_id = input("Enter transfer ID: ").strip()
+                    transfer_id = input("Enter transfer ID (or press Enter for test): ").strip()
+                    if not transfer_id:
+                        # Create a test transfer
+                        transfer_id = f"TRF-TEST-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+                        if self.db:
+                            await self.db.start_media_transfer(
+                                migration_id=self.test_migration_id,
+                                transfer_id=transfer_id,
+                                google_photos_baseline_gb=13.88
+                            )
+                            print(f"Created test transfer: {transfer_id}")
                 if transfer_id:
                     await self.test_verify_complete(transfer_id)
             elif choice == '8':
@@ -505,6 +578,7 @@ async def main():
         import traceback
         traceback.print_exc()
     finally:
+        # Database connection cleanup not needed - using singleton
         print("\nTest completed")
 
 if __name__ == "__main__":

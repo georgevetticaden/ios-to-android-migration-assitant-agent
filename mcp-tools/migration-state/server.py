@@ -71,17 +71,18 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="add_family_member",
-            description="[DAY 1] Add each family member. Call 4 times for typical family (spouse + 3 children). Ages 13-17 auto-create Venmo teen records. Names from contacts, no need to ask user. Example: add_family_member(name='Laila', role='child', age=17)",
+            description="[DAY 1] Add each family member. Call 4 times for typical family (spouse + 3 children). Ages 13-17 auto-create Venmo teen records. Names from contacts, no need to ask user. Example: add_family_member(migration_id='MIG-20250831-185510', name='Laila', role='child', age=17)",
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "migration_id": {"type": "string", "description": "Migration ID from initialize_migration"},
                     "name": {"type": "string", "description": "Name from phone contacts"},
                     "role": {"type": "string", "enum": ["spouse", "child"], "description": "'spouse' or 'child' only"},
                     "age": {"type": "integer", "description": "Age if child (triggers Venmo teen if 13-17)"},
                     "email": {"type": "string", "description": "Email (optional)"},
                     "phone": {"type": "string", "description": "Phone (optional)"}
                 },
-                "required": ["name", "role"]
+                "required": ["migration_id", "name", "role"]
             }
         ),
         Tool(
@@ -113,10 +114,11 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="update_family_member_apps",
-            description="[DAYS 1-7] Update app status for family members. Day 1: WhatsApp group setup. Day 3: Location sharing. Day 5: Venmo teen activation. Example: update_family_member_apps(member_name='Jaisy', app_name='WhatsApp', status='configured', details={'whatsapp_in_group': true})",
+            description="[DAYS 1-7] Update app status for family members. Day 1: WhatsApp group setup. Day 3: Location sharing. Day 5: Venmo teen activation. Example: update_family_member_apps(migration_id='MIG-20250831-185510', member_name='Jaisy', app_name='WhatsApp', status='configured', details={'whatsapp_in_group': true})",
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "migration_id": {"type": "string", "description": "Migration ID from initialize_migration"},
                     "member_name": {"type": "string", "description": "Family member name"},
                     "app_name": {"type": "string", "enum": ["WhatsApp", "Google Maps", "Venmo"], "description": "App name"},
                     "status": {"type": "string", "enum": ["not_started", "invited", "installed", "configured"], "description": "Status"},
@@ -132,15 +134,16 @@ async def list_tools() -> list[Tool]:
                         "description": "Optional granular tracking details"
                     }
                 },
-                "required": ["member_name", "app_name", "status"]
+                "required": ["migration_id", "member_name", "app_name", "status"]
             }
         ),
         Tool(
             name="get_migration_status",
-            description="[DAYS 2-7 DAILY] The UBER status tool. Call ONCE per day to get EVERYTHING: migration details, progress, family status. Returns complete picture for dashboard. Always pass day_number. Example: get_migration_status(day_number=4)",
+            description="[DAYS 2-7 DAILY] The UBER status tool. Call ONCE per day to get EVERYTHING: migration details, progress, family status. Returns complete picture for dashboard. Always pass migration_id and day_number. Example: get_migration_status(migration_id='MIG-20250831-185510', day_number=4)",
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "migration_id": {"type": "string", "description": "Migration ID from initialize_migration"},
                     "day_number": {
                         "type": "integer",
                         "minimum": 1,
@@ -148,32 +151,36 @@ async def list_tools() -> list[Tool]:
                         "description": "Day number (1-7)"
                     }
                 },
-                "required": ["day_number"]
+                "required": ["migration_id", "day_number"]
             }
         ),
         Tool(
             name="get_family_members",
-            description="[AS NEEDED] Query family members. Filters: 'all', 'not_in_whatsapp', 'not_sharing_location', 'teen'. Use to check who needs app setup. Example: get_family_members(filter='teen') returns Laila & Ethan",
+            description="[AS NEEDED] Query family members. Filters: 'all', 'not_in_whatsapp', 'not_sharing_location', 'teen'. Use to check who needs app setup. Example: get_family_members(migration_id='MIG-20250831-185510', filter='teen') returns Laila & Ethan",
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "migration_id": {"type": "string", "description": "Migration ID from initialize_migration"},
                     "filter": {
                         "type": "string",
                         "enum": ["all", "not_in_whatsapp", "not_sharing_location", "teen"],
                         "default": "all",
                         "description": "Filter type"
                     }
-                }
+                },
+                "required": ["migration_id"]
             }
         ),
         Tool(
             name="generate_migration_report",
-            description="[DAY 7 ONLY] Generate final celebration report. Shows 100% success with achievements. Call after marking migration complete. Format can be 'summary' or 'detailed'. Example: generate_migration_report(format='summary')",
+            description="[DAY 7 ONLY] Generate final celebration report. Shows 100% success with achievements. Call after marking migration complete. Format can be 'summary' or 'detailed'. Example: generate_migration_report(migration_id='MIG-20250831-185510', format='summary')",
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "migration_id": {"type": "string", "description": "Migration ID from initialize_migration"},
                     "format": {"type": "string", "enum": ["summary", "detailed"], "default": "summary", "description": "Report format"}
-                }
+                },
+                "required": ["migration_id"]
             }
         )
     ]
@@ -204,13 +211,22 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     try:
         result = {}
         
-        # Get active migration ID for most operations
+        # Get migration ID - required for all operations except initialize_migration
         migration_id = arguments.get("migration_id")
+        
+        # Validate migration_id is provided for all tools except initialize_migration
         if not migration_id and name != "initialize_migration":
-            # Try to get active migration
-            active = await db.get_active_migration()
-            if active:
-                migration_id = active["id"]
+            logger.error(f"Tool {name} called without migration_id")
+            result = {
+                "success": False,
+                "error": "migration_id is required",
+                "message": f"The migration_id parameter is required for {name}. Get it from initialize_migration and use it in all subsequent calls.",
+                "hint": "Example: {name}(migration_id='MIG-20250831-185510', ...)"
+            }
+            return [TextContent(
+                type="text",
+                text=json.dumps(result, indent=2)
+            )]
         
         if name == "initialize_migration":
             # Create new migration
@@ -230,7 +246,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "add_family_member":
             # Add family member with automatic teen Venmo detection
             if not migration_id:
-                result = {"status": "error", "message": "No active migration"}
+                result = {
+                    "success": False,
+                    "error": "No migration found",
+                    "message": "No migration found. Ensure you've called initialize_migration first and stored the migration_id.",
+                    "hint": "Pass migration_id parameter or ensure there's an active migration"
+                }
             else:
                 # Determine if this is a teen needing Venmo
                 age = arguments.get("age")
@@ -281,7 +302,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "update_migration_status":
             # Progressive update - only update provided fields
             if not migration_id:
-                result = {"status": "error", "message": "No active migration"}
+                result = {
+                    "success": False,
+                    "error": "No migration found",
+                    "message": "No migration found. Ensure you've called initialize_migration first and stored the migration_id.",
+                    "hint": "Pass migration_id parameter or ensure there's an active migration"
+                }
             else:
                 with db.get_connection() as conn:
                     # Build dynamic update query based on provided fields
@@ -330,7 +356,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "get_migration_status":
             # UBER status tool - returns everything
             if not migration_id:
-                result = {"status": "error", "message": "No active migration"}
+                result = {
+                    "success": False,
+                    "error": "No migration found",
+                    "message": "No migration found. Ensure you've called initialize_migration first and stored the migration_id.",
+                    "hint": "Pass migration_id parameter or ensure there's an active migration"
+                }
             else:
                 day_number = arguments["day_number"]
                 
@@ -355,7 +386,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "get_family_members":
             # Query family members with filters
             if not migration_id:
-                result = {"status": "error", "message": "No active migration"}
+                result = {
+                    "success": False,
+                    "error": "No migration found",
+                    "message": "No migration found. Ensure you've called initialize_migration first and stored the migration_id.",
+                    "hint": "Pass migration_id parameter or ensure there's an active migration",
+                    "members": []  # Return empty array for consistency
+                }
             else:
                 filter_type = arguments.get("filter", "all")
                 
@@ -403,22 +440,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     }
                     
         elif name == "generate_migration_report":
-            # Check for active migration first, then check for recently completed
+            # migration_id is already validated as required above
             if not migration_id:
-                # Look for the most recently completed migration
-                with db.get_connection() as conn:
-                    recent = conn.execute("""
-                        SELECT id FROM migration_status 
-                        WHERE completed_at IS NOT NULL 
-                        ORDER BY completed_at DESC 
-                        LIMIT 1
-                    """).fetchone()
-                    
-                    if recent:
-                        migration_id = recent[0]
-            
-            if not migration_id:
-                result = {"status": "error", "message": "No migration found"}
+                result = {
+                    "success": False,
+                    "error": "migration_id is required",
+                    "message": "The migration_id parameter is required for generate_migration_report."
+                }
             else:
                 format_type = arguments.get("format", "summary")
                 
@@ -482,7 +510,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "update_family_member_apps":
             # Update family member app adoption
             if not migration_id:
-                result = {"status": "error", "message": "No active migration"}
+                result = {
+                    "success": False,
+                    "error": "No migration found",
+                    "message": "No migration found. Ensure you've called initialize_migration first and stored the migration_id.",
+                    "hint": "Pass migration_id parameter or ensure there's an active migration"
+                }
             else:
                 member_name = arguments["member_name"]
                 app_name = arguments["app_name"]
