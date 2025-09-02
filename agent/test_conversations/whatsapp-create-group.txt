@@ -1,0 +1,23 @@
+Connect to Samsung Galaxy Fold 7 device
+The phone is folded open so make sure you get the right screen resolution.
+Perform only the instructions requested
+
+
+1. "Launch WhatsApp app"
+2. "Swipe from the left edge to reveal the chat list panel."
+3. "Look for three dots (⋮) menu at top right of screen"
+4. "Select 'New group' from menu"
+5. "Click the Search field at top"
+6.  "Type: 'Jaisy Vetticaden'"
+7.  "If contact appears AND has whatsapp installed, tap to select (checkmark appears)"
+8.  "Type: 'Laila Vetticaden'. No need to clear first" 
+9.  "If contact appears AND has whatsapp installed, tap to select (checkmark appears)"
+10. "Type: 'Ethan Vetticaden'. . No need to clear first"
+11. "If contact appears AND has whatsapp installed, tap to select (checkmark appears)"
+12. "Type: 'Maya Vetticaden'. No need to clear first"
+13. "If contact appears AND has whatsapp installed, tap to select (checkmark appears)"
+14. "Count selected members shown at top of screen"
+15. "Click green arrow at bottom right"
+16. "Type group name: 'Vetticaden Family'"
+17. "Click green checkmark to create group"
+18. "Return: Found and added: [list]. Not found: [list]"
