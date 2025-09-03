@@ -235,28 +235,29 @@ Ready to create your family WhatsApp group? I'll:
 
 #### Step 3: WhatsApp Group Creation
 
-<critical_mobile_sequence>
-WHATSAPP GROUP CREATION - EXECUTE EXACTLY:
+  <critical_mobile_sequence>
+  WHATSAPP GROUP CREATION - EXECUTE EXACTLY:
 
-1. "Launch WhatsApp app"
-2. "Swipe from the left edge to reveal the chat list panel."
-3. "Look for three dots (⋮) menu at top right of screen"
-4. "Select 'New group' from menu"
-5. "Click the Search field at top"
-6.  "Type: [first family member name from database]"
-7.  "If contact appears, tap to select (checkmark appears)"
-8.  "Type: [second family member name from database]"
-9.  "If contact appears, tap to select (checkmark appears)"
-10. "Type: [third family member name from database]"
-11. "If contact appears, tap to select (checkmark appears)"
-12. "Type: [fourth family member name from database]"
-13. "If contact appears, tap to select (checkmark appears)"
-14. "Count selected members shown at top of screen"
-15. "Click green arrow at bottom right"
-16. "Type group name: [group_name from database]"
-17. "Click green checkmark to create group"
-18. "Return: Found and added: [list]. Not found: [list]"
-</critical_mobile_sequence>
+  1. "Launch WhatsApp app"
+  2. "Swipe from the left edge to reveal the chat list panel"
+  3. "Look for three dots (⋮) menu at top right of screen"
+  4. "Select 'New group' from menu"
+  5. "Click the Search field at top"
+
+  For each family member from get_family_members():
+  6. "Type: [member.name]"
+  7. "If contact appears AND has WhatsApp installed, tap to select (checkmark appears)"
+  8. "No need to clear search field - continue to next member"
+
+  After searching all family members:
+  9. "Count selected members shown at top of screen"
+  10. "Click green arrow at bottom right"
+  11. "Type group name: [group_name from database]"
+  12. "Click green checkmark to create group"
+  13. "Return: Found and added: [list of selected members]. Not found: [list of members 
+  not on WhatsApp]"
+  </critical_mobile_sequence>
+
 
 #### Step 4: Update Database Based on Results
 ```python
@@ -271,34 +272,30 @@ for found_member in [found_members]:
     )
 ```
 
-#### Step 5: Handle Missing Members with WhatsApp SMS Invite
+#### Step 5: Handle Missing Members by Inviting them in WhatsApp
 
 For each family member not found on WhatsApp:
 
-<critical_mobile_sequence>
-WHATSAPP SMS INVITE - EXECUTE EXACTLY FOR EACH MISSING MEMBER:
+  <critical_mobile_sequence>
+  WHATSAPP SMS INVITE - EXECUTE EXACTLY FOR EACH MISSING MEMBER:
 
-1. "Ensure WhatsApp is open"
-2. "Find the 'Ask Meta AI or Search' text box at top"
-3. "Click on it to activate search"
-4. "Type: [family member name from database]"
-5. "Wait 2 seconds for search results"
-6. "Look for contact showing as not on WhatsApp"
-7. "Select the contact to open invite option"
-8. "Wait for Messages app to prepare"
-9. "Google Messages app opens with pre-filled invite"
-10. "Long press on the message text area"
-11. "Click 'Select All' to select default message"
-12. "Delete the selected text"
-13. "Type personalized message based on member role:"
-    - For spouse: "Hi honey! I'm setting up WhatsApp for our [group_name]. Once you install it, I'll add you to our family chat group ❤️"
-    - For teen (13-18): "Hey! Download WhatsApp so we can stay connected. Once you install it, I'll add you to our family group. Dad's on Android now! 🤖"
-    - For child (<13): "Hi sweetie! Can you install WhatsApp? Once you have it, I'll add you to our family chat group! 💬"
-14. "Tap send button"
-15. "Note the phone number shown"
-16. "Return confirmation that SMS was sent"
-17. "Navigate back to WhatsApp"
-</critical_mobile_sequence>
+  1. "Launch WhatsApp app if not already launched"
+  2. "Swipe from the left edge to reveal the chat list panel"
+  3. "Look for 'Ask Meta AI or Search' text box at the top of the left panel and click on it"
+  4. "The search field should be auto-focused. Search for: [member.name]"
+  5. "Select the contact if found to invite to WhatsApp"
+  6. "Google Messages app will now be opened"
+  7. "Swipe from the right edge to reveal the draft message inviting [member.name] to join WhatsApp"
+  8. "Read the draft message"
+  9. "Click on draft message and click on down arrow a few times to get to the end of the message"
+  10. "Add a new sentence based on member role:"
+      - For spouse: "I'll add you to the [group_name] chat group after you install the app ❤️"
+      - For teen (13-18) or child (<13) : "I'll add you to the [group_name] chat group after you install the app! Papa's on Android now 🤖"
+  11. "Click the send button to send the message"
+  12. "Return: SMS invite sent to [member.name]"
+
+  Repeat for each family member not on WhatsApp
+  </critical_mobile_sequence>
 
 ```python
 # Update status for invited member
@@ -319,27 +316,18 @@ update_family_member_apps(
 GOOGLE MAPS LOCATION SHARING - EXECUTE EXACTLY:
 
 1. "Launch Google Maps app"
-2. "Wait 3 seconds for map to fully load"
-3. "Tap your profile picture in top right corner"
-4. "Wait 2 seconds for menu"
-5. "Select 'Location sharing' from menu"
-6. "Wait 2 seconds for location sharing screen"
-7. "Tap 'Share location' or 'New share' button"
-8. "Select duration: 'Until you turn this off'"
-9. "Wait for contact selection screen"
-10. "Search for: [first family member name from database]"
-11. "If found, select the contact"
-12. "Search for: [second family member name from database]"
-13. "If found, select the contact"
-14. "Search for: [third family member name from database]"
-15. "If found, select the contact"
-16. "Search for: [fourth family member name from database]"
-17. "If found, select the contact"
-18. "Review selected recipients"
-19. "Tap 'Share' button to confirm"
-20. "Wait 2 seconds for confirmation"
-21. "Return list of who location was shared with"
-22. "Note any family members not found in contacts"
+2. "Tap your profile picture in top right corner"
+3. "Select 'Location sharing' from menu"
+
+For each family member from get_family_members():
+4. "Swipe up to reveal the list of people you can share with"
+5. "Select: [member.name]"
+6. "Tap the 'Share location' button"
+7. "Select duration: 'Until you turn this off'"
+8. "Tap the 'Share' button"
+
+After sharing with all family members:
+9. "Return: Location shared with [list of members successfully shared with]"
 </critical_mobile_sequence>
 
 #### Step 2: Update Location Status
