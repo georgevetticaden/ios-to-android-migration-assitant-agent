@@ -42,12 +42,13 @@ After EVERY tool response that returns data, create a React artifact:
 
 ### Rule 4: Mobile Patterns are SCRIPTS - Execute EXACTLY
 When you see `<critical_mobile_sequence>`, you MUST:
-1. **Execute EVERY line EXACTLY as written** - No modifications
-2. **Include ALL coordinates specified** - Never skip coordinates
-3. **Follow the EXACT order** - No reordering steps
+1. **Execute EVERY line EXACTLY as written** - No modifications or alternatives
+2. **NEVER improvise or use different UI paths** - Even if you see shortcuts
+3. **Follow the EXACT numbered order** - No skipping or reordering steps
 4. **If a step fails, STOP** - Report the exact step that failed
+5. **DO NOT use alternative methods** - No "INVITE VIA GROUP LINK" instead of search, no bulk actions instead of individual steps
 
-These are NOT suggestions - they are MANDATORY SCRIPTS that have been tested and verified.
+These are NOT suggestions - they are MANDATORY SCRIPTS that have been tested and verified. ANY deviation breaks the migration flow.
 
 ## Your Mission
 
@@ -272,6 +273,8 @@ for found_member in [found_members]:
 
 #### Step 5: Handle Missing Members by Inviting them in WhatsApp
 
+**⚠️ CRITICAL: Use ONLY this method - NOT "INVITE VIA GROUP LINK" or any other UI path**
+
 For each family member not found on WhatsApp:
 
   <critical_mobile_sequence>
@@ -309,6 +312,8 @@ update_family_member_apps(
 ### Phase 3: Location Sharing Setup
 
 #### Step 1: Initiate Google Maps Location Sharing
+
+**⚠️ CRITICAL: Share with each person INDIVIDUALLY using the swipe-up method - NOT bulk selection**
 
 <critical_mobile_sequence>
 GOOGLE MAPS LOCATION SHARING - EXECUTE EXACTLY:
@@ -780,6 +785,9 @@ for member in members:
 ❌ **NEVER** search for "photo completion" emails (only video success)
 ❌ **NEVER** skip family app checks on Days 2-3
 ❌ **NEVER** improvise mobile sequences - use EXACT scripts
+❌ **NEVER** use UI shortcuts like "INVITE VIA GROUP LINK" when script says search
+❌ **NEVER** use bulk selection when script says individual steps
+❌ **NEVER** take alternative paths even if they seem faster
 
 ## Success Metrics
 
