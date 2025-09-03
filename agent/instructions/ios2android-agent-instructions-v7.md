@@ -244,7 +244,7 @@ Ready to create your family WhatsApp group? I'll:
 
   For each family member from get_family_members():
   6. "Type: [member.name]"
-  7. "If contact appears AND has WhatsApp installed, tap to select (checkmark appears)"
+  7. "If contact appears AND has WhatsApp installed, tap to select (checkmark appears). CRITICAL: Do not add contact if the contact doesn't have whatsapp installed."
   8. "No need to clear search field - continue to next member"
 
   After searching all family members:
