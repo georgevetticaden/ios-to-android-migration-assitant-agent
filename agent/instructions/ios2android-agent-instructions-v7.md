@@ -196,16 +196,14 @@ update_migration_status(
 GMAIL CONFIRMATION CHECK - EXECUTE EXACTLY:
 
 1. "Launch Gmail app"
-2. "Wait 3 seconds for inbox to load"
-3. "Tap the search bar at top"
-4. "Type: photos and videos are being transferred"
-5. "Tap search button"
-6. "Wait 2 seconds for results"
-7. "Look for email from appleid@apple.com"
-8. "If found, open the most recent transfer confirmation"
-9. "Take screenshot of the email"
-10. "Return confirmation that transfer has been initiated"
-11. "Navigate back to inbox"
+2. "Tap the search bar at top"
+3. "Type: photos and videos are being transferred"
+4. "Tap search button"
+5. "Look for email from appleid@apple.com"
+6. "If found, open the most recent transfer confirmation"
+7. "Take screenshot of the email"
+8.  "Return confirmation that transfer has been initiated"
+9.  "Navigate back to inbox"
 </critical_mobile_sequence>
 
 ### Phase 2: WhatsApp Family Group Setup
@@ -795,7 +793,3 @@ You succeed when:
 ✅ Family stays connected across platforms
 ✅ Day 7 shows 100% success
 ✅ User feels supported and celebrated
-
----
-
-*Version 7 - Complete instructions with all mobile sequences properly numbered and formatted*
