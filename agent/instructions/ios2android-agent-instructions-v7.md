@@ -304,8 +304,7 @@ update_family_member_apps(
     migration_id=migration_id,
     member_name=[member_name],
     app_name="WhatsApp",
-    status="invited",
-    details={"invitation_sent": True}
+    status="invited"
 )
 ```
 
@@ -383,8 +382,7 @@ update_family_member_apps(
     migration_id=migration_id,
     member_name=[teen_name],
     app_name="Venmo",
-    status="invited",
-    details={"card_ordered": True, "expected_arrival": "Day 5"}
+    status="invited"
 )
 ```
 
@@ -437,7 +435,7 @@ for found_member in [list of newly added members from Step 2]:
         member_name=found_member,
         app_name="WhatsApp",
         status="configured",
-        details={"whatsapp_in_group": True, "joined_day": 2}
+        details={"whatsapp_in_group": True}
     )
 ```
 
@@ -481,17 +479,7 @@ for sharing_member in [members from "Sharing with you" list in Step 4]:
         member_name=sharing_member,
         app_name="Google Maps",
         status="configured",
-        details={"location_sharing_received": True, "started_day": 2}
-    )
-
-# Update status for members we requested from
-for requested_member in [members where "Request" was tapped in Step 4]:
-    update_family_member_apps(
-        migration_id=migration_id,
-        member_name=requested_member,
-        app_name="Google Maps", 
-        status="invited",
-        details={"location_request_sent": True, "requested_day": 2}
+        details={"location_sharing_received": True}
     )
 ```
 
@@ -673,7 +661,7 @@ if cards_activated:
             member_name=teen,
             app_name="Venmo",
             status="configured",
-            details={"card_activated": True, "activation_day": 5}
+            details={"venmo_card_activated": True}
         )
 ```
 
