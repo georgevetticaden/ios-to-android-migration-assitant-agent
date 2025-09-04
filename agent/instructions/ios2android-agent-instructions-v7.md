@@ -406,21 +406,19 @@ If not_in_group list is not empty:
 WHATSAPP DAILY MEMBER CHECK - EXECUTE EXACTLY:
 
 1. "Launch WhatsApp app"
-2. "Swipe from the left edge to reveal the chat list panel"
-3. "Find and tap on: [group_name]"
-4. "Swipe from the right edge to reveal the group detail"
-5. "Tap the 'Add Members' button"
-6. "Tap the search icon"
+2. "Find and tap on: [group_name]"
+3. "Tap the 'Add members' button"
+4. "Tap the search icon"
 
 For each member in not_in_group:
-7. "The search field should be auto-focused. Search for: [member.name]"
-8. "If contact appears AND has WhatsApp installed, tap to select (checkmark appears). CRITICAL: Do not add contact if the contact doesn't have whatsapp installed."
-9. "No need to clear search field - continue to next member"
+5. "The search field should be auto-focused. Search for: [member.name]"
+6. "If contact appears AND has WhatsApp installed, tap to select (checkmark appears). CRITICAL: Do not add contact if the contact doesn't have whatsapp installed."
+7. "No need to clear search field - continue to next member"
 
 After searching all missing members:
-10. "If any members were found, tap checkmark to add them"
-11. "Return to group chat"
-12. "Report: Added [list of newly added]. Still missing: [list of not found]"
+8. "If any members were found, tap checkmark to add them"
+9. "Return to group chat"
+10. "Report: Added [list of newly added]. Still missing: [list of not found]"
 </critical_mobile_sequence>
 
 ### Step 3: Update Newly Found Members
@@ -439,7 +437,30 @@ for found_member in [list of newly added members from Step 2]:
     )
 ```
 
-### Step 4: Check Location Sharing Updates
+### Step 4: Send Group Welcome Message (if all members now connected)
+
+Check if all family members are now in the WhatsApp group:
+
+```python
+all_members = get_family_members(migration_id=migration_id, filter="all")
+whatsapp_members = get_family_members(migration_id=migration_id, filter="in_whatsapp")
+```
+
+If len(whatsapp_members) == len(all_members):
+
+**⚠️ CRITICAL: Execute these steps EXACTLY as written - Send this exact welcome message**
+
+<critical_mobile_sequence>
+WHATSAPP GROUP WELCOME MESSAGE - EXECUTE EXACTLY:
+
+1. "Ensure you are in the [group_name] chat"
+2. "Tap the message input field at the bottom"
+3. "Type: Welcome everyone! Our whole family is now connected on WhatsApp. We will use this group instead of iMessage going forward as I transition to Android."
+4. "Tap the send button"
+5. "Return: Welcome message sent"
+</critical_mobile_sequence>
+
+### Step 5: Check Location Sharing Updates
 
 If not_sharing_location list is not empty:
 
@@ -467,13 +488,13 @@ After checking all family members:
     - "Not sharing with you yet: [names]"
 </critical_mobile_sequence>
 
-### Step 5: Update Location Sharing Status
+### Step 6: Update Location Sharing Status
 
-Based on Step 4 results:
+Based on Step 5 results:
 
 ```python
 # Update status for members now sharing (from "Sharing with you" list)
-for sharing_member in [members from "Sharing with you" list in Step 4]:
+for sharing_member in [members from "Sharing with you" list in Step 5]:
     update_family_member_apps(
         migration_id=migration_id,
         member_name=sharing_member,
@@ -483,7 +504,7 @@ for sharing_member in [members from "Sharing with you" list in Step 4]:
     )
 ```
 
-### Step 6: Create Status Dashboard
+### Step 7: Create Status Dashboard
 ```jsx
 <Day2Dashboard
   photoProgress={0}
@@ -494,7 +515,7 @@ for sharing_member in [members from "Sharing with you" list in Step 4]:
 />
 ```
 
-### Step 7: Communicate Day 2 Progress
+### Step 8: Communicate Day 2 Progress
 
 Query latest status to get accurate counts:
 ```python
