@@ -545,42 +545,136 @@ location_sharing = get_family_members(migration_id=migration_id, filter="sharing
 ```python
 status = get_migration_status(migration_id=migration_id, day_number=3)
 not_sharing = get_family_members(migration_id=migration_id, filter="not_sharing_location")
+group_name = status.get("whatsapp_group_name", "Vetticaden Family")
 ```
 
 ### Step 2: Check Location Sharing Updates
 
-Use the same LOCATION SHARING STATUS CHECK sequence from Day 2.
+**⚠️ CRITICAL: Only execute if not_sharing list is not empty**
 
-### Step 3: Send Reminder Messages if Needed
+If len(not_sharing) > 0:
 
-For family members not yet sharing location:
+**⚠️ CRITICAL: Execute these steps EXACTLY as written**
+
+<critical_mobile_sequence>
+LOCATION SHARING STATUS CHECK - EXECUTE EXACTLY:
+
+1. "Launch Google Maps app"
+2. "Tap your profile picture in top right"
+3. "Select 'Location sharing' from menu"
+4. "Wait 1 second for list to load"
+5. "Swipe up to reveal more family members"
+6. "Check status for each family member in the list"
+7. "Note who shows as sharing location (has address) vs not sharing with you"
+8. "Return complete list:"
+   - "Sharing with you: [names]"
+   - "Not sharing with you yet: [names]"
+9. "Navigate back to main Maps screen"
+</critical_mobile_sequence>
+
+### Step 3: Update Location Sharing Status
+
+For each family member who is now sharing (discovered in Step 2):
+```python
+update_family_member_apps(
+    migration_id=migration_id,
+    member_name="[name]",
+    app_name="Google Maps",
+    status="configured",
+    details={
+        "location_sharing_sent": True,
+        "location_sharing_received": True
+    }
+)
+```
+
+### Step 4: Send Reminder Messages if Needed
+
+**⚠️ CRITICAL: Only execute if there are still members not sharing location after Step 2**
+
+Query updated status first:
+```python
+still_not_sharing = get_family_members(migration_id=migration_id, filter="not_sharing_location")
+```
+
+If len(still_not_sharing) > 0:
+
+**⚠️ CRITICAL: Execute these steps EXACTLY as written**
 
 <critical_mobile_sequence>
 SMS REMINDER FOR LOCATION SHARING - EXECUTE EXACTLY:
 
 1. "Launch Messages app"
 2. "Wait 2 seconds for conversations to load"
-3. "For: [first non-sharing member]"
-4. "Open existing conversation or create new"
-5. "Enter recipient name or phone number"
-6. "Type message: Hi [name]! Just checking - did you get my location sharing invite on Google Maps? [Other names] are already sharing!"
-7. "Send message"
-8. "Note confirmation of delivery"
-9. "Navigate back to conversations list"
-10. "Repeat for each non-sharing member"
-11. "Return: Sent reminders to [names]"
+
+For each member in still_not_sharing:
+3. "Tap search button"
+4. "Type [member_name]"
+5. "Tap on [member_name] from results"
+6. "Type: Hi [name]! Just checking - did you get my location sharing invite on Google Maps? [names of those already sharing] are already sharing. Let me know if you need help setting it up!"
+7. "Tap send button"
+8. "Note message delivered"
+9. "Press back to return to messages list"
+
+10. "Return: Sent reminders to [list of names]"
 </critical_mobile_sequence>
 
-### Step 4: Celebrate Progress
-```markdown
-"Day 3 Update:
-📸 Photos: Still processing - but tomorrow is the big day!
-💬 WhatsApp: [Status - likely complete by now]
-📍 Location: [X] of 4 family members sharing
+### Step 5: Update Migration Progress
+```python
+# Update overall progress based on completion
+all_members = get_family_members(migration_id=migration_id, filter="all")
+location_sharing = get_family_members(migration_id=migration_id, filter="sharing_location")
 
-[If location complete]: 
-🎉 Amazing! All family members are now sharing locations! 
-You have complete family visibility across platforms!"
+if len(location_sharing) == len(all_members):
+    progress = 50
+else:
+    progress = 47
+
+update_migration_status(
+    migration_id=migration_id,
+    overall_progress=progress,
+    notes=f"WhatsApp: complete, Location: {len(location_sharing)}/{len(all_members)}"
+)
+```
+
+### Step 6: Create Day 3 Dashboard
+Create React artifact showing:
+- Migration ID and Day 3 header
+- Overall progress bar (47-50%)
+- Photo transfer status (0% - processing, arrives tomorrow!)
+- Family ecosystem status with member details
+- Key achievements for Day 3
+
+### Step 7: Communicate Day 3 Progress
+
+Query fresh data:
+```python
+final_status = get_migration_status(migration_id=migration_id, day_number=3)
+all_members = get_family_members(migration_id=migration_id, filter="all")
+location_sharing = get_family_members(migration_id=migration_id, filter="sharing_location")
+```
+
+If len(location_sharing) == len(all_members):
+```markdown
+"🎉 AMAZING NEWS! Location sharing is now complete!
+
+All 4 family members are sharing locations bidirectionally:
+✅ [List each family member name]
+
+Your family ecosystem is now 100% connected across platforms!
+Tomorrow is the big day - your photos will finally start appearing!"
+```
+
+If location sharing is still partial:
+```markdown
+"Day 3 Progress Update:
+📍 Location sharing: [len(location_sharing)] of 4 members connected
+   Currently sharing: [names from location_sharing]
+💬 WhatsApp: Complete! All 4 members in group
+📸 Photos: Still processing - arriving tomorrow!
+
+[Names still pending] will complete location setup when they're ready.
+The important thing is the system is working perfectly!"
 ```
 
 ## Day 4: Photos Appear! 🎉
