@@ -1,6 +1,6 @@
 # From iPhone Devotee to Galaxy Fold Convert: How I Built an AI Agent to Orchestrate My 18-Year iOS Exodus
 
-> *"Apple's new iPhone appears to be the most radically new phone since the beginning of cellular communication."*
+> *"The iPhone is a revolutionary and magical product that is literally five years ahead of any other mobile phone." - Steve Jobs, 2007*
 
 I read those words on the NYTimes website while riding the Amtrak from St. Louis to Chicago on June 29, 2007. David Pogue's review called it "*a beautiful, breakthrough handheld computer*" though "*not perfect.*" When the train pulled into Union Station just after 10 PM, my girlfriend (now wife) was waiting with a box she'd secured after hours in line at the Michigan Avenue Apple Store. 
 

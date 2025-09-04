@@ -346,10 +346,48 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         query = f"UPDATE migration_status SET {', '.join(update_fields)} WHERE id = ?"
                         values.append(migration_id)
                         conn.execute(query, values)
-                        conn.commit()
                         
-                        # Note: storage_snapshots and daily_progress are now populated by
-                        # check_photo_transfer_progress in web-automation MCP tool
+                        # Also update daily_progress if overall_progress is being updated
+                        if "overall_progress" in arguments:
+                            # Get current day number
+                            migration_start = conn.execute(
+                                "SELECT started_at FROM migration_status WHERE id = ?", 
+                                (migration_id,)
+                            ).fetchone()
+                            
+                            if migration_start:
+                                from datetime import datetime
+                                start_date = datetime.fromisoformat(migration_start[0].replace('Z', '+00:00'))
+                                current_date = datetime.now()
+                                day_number = (current_date - start_date).days + 1
+                                
+                                # Get current family adoption counts
+                                family_stats = conn.execute("""
+                                    SELECT 
+                                        COUNT(DISTINCT CASE WHEN faa.app_name = 'WhatsApp' AND faa.whatsapp_in_group = TRUE THEN fm.id END) as whatsapp_connected,
+                                        COUNT(DISTINCT CASE WHEN faa.app_name = 'Google Maps' AND faa.location_sharing_received = TRUE THEN fm.id END) as maps_sharing,
+                                        COUNT(DISTINCT CASE WHEN faa.app_name = 'Venmo' AND faa.status = 'configured' THEN fm.id END) as venmo_active
+                                    FROM family_members fm
+                                    LEFT JOIN family_app_adoption faa ON fm.id = faa.family_member_id
+                                    WHERE fm.migration_id = ?
+                                """, (migration_id,)).fetchone()
+                                
+                                # Update daily_progress record
+                                existing = conn.execute(
+                                    "SELECT id FROM daily_progress WHERE migration_id = ? AND day_number = ?",
+                                    (migration_id, day_number)
+                                ).fetchone()
+                                
+                                if existing:
+                                    conn.execute("""
+                                        UPDATE daily_progress 
+                                        SET whatsapp_members_connected = ?,
+                                            maps_members_sharing = ?,
+                                            venmo_members_active = ?
+                                        WHERE migration_id = ? AND day_number = ?
+                                    """, (family_stats[0], family_stats[1], family_stats[2], migration_id, day_number))
+                        
+                        conn.commit()
                         
                         result = {
                             "success": True,
@@ -469,14 +507,25 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         WHERE fm.migration_id = ?
                     """
                     
-                    if filter_type == "not_in_whatsapp":
-                        base_query += " AND (faa.whatsapp_in_group IS FALSE OR faa.whatsapp_in_group IS NULL)"
-                    elif filter_type == "not_sharing_location":
-                        base_query += " AND (faa.location_sharing_received IS FALSE OR faa.location_sharing_received IS NULL)"
-                    elif filter_type == "teen":
-                        base_query += " AND fm.age BETWEEN 13 AND 17"
-                    
+                    # Add GROUP BY first, then use HAVING for aggregate conditions
                     base_query += " GROUP BY fm.id, fm.migration_id, fm.name, fm.role, fm.age, fm.email, fm.phone, fm.staying_on_ios, fm.created_at"
+                    
+                    if filter_type == "not_in_whatsapp":
+                        base_query += " HAVING (whatsapp_in_group IS FALSE OR whatsapp_in_group IS NULL)"
+                    elif filter_type == "not_sharing_location":
+                        base_query += " HAVING (location_sharing_received IS FALSE OR location_sharing_received IS NULL)"
+                    elif filter_type == "teen":
+                        # Teen filter is on the base table, not aggregate, so use WHERE
+                        base_query = """
+                            SELECT fm.id, fm.migration_id, fm.name, fm.role, fm.age, fm.email, fm.phone, fm.staying_on_ios,
+                                   fm.created_at,
+                                   MAX(CASE WHEN faa.app_name = 'WhatsApp' THEN faa.whatsapp_in_group END) as whatsapp_in_group,
+                                   MAX(CASE WHEN faa.app_name = 'Google Maps' THEN faa.location_sharing_received END) as location_sharing_received
+                            FROM family_members fm
+                            LEFT JOIN family_app_adoption faa ON fm.id = faa.family_member_id
+                            WHERE fm.migration_id = ? AND fm.age BETWEEN 13 AND 17
+                            GROUP BY fm.id, fm.migration_id, fm.name, fm.role, fm.age, fm.email, fm.phone, fm.staying_on_ios, fm.created_at
+                        """
                     
                     cursor = conn.execute(base_query, (migration_id,))
                     results = cursor.fetchall()
