@@ -394,42 +394,43 @@ update_family_member_apps(
 ```python
 status = get_migration_status(migration_id=migration_id, day_number=2)
 not_in_group = get_family_members(migration_id=migration_id, filter="not_in_whatsapp")
+group_info = get_migration_status(migration_id=migration_id)
+group_name = group_info.get("whatsapp_group_name", "Vetticaden Family")
 ```
 
 ### Step 2: Check for New WhatsApp Members
 
 If members are missing from WhatsApp:
 
+**⚠️ CRITICAL: Execute these steps EXACTLY as written - NO deviations or shortcuts**
+
 <critical_mobile_sequence>
 WHATSAPP DAILY MEMBER CHECK - EXECUTE EXACTLY:
 
 1. "Launch WhatsApp app"
-2. "Wait 3 seconds for chat list to load"
+2. "Swipe from the left edge to reveal the chat list panel"
 3. "Find and tap on: [group_name from database]"
-4. "Wait 2 seconds for group to open"
-5. "Tap the group name at top to open info"
-6. "Wait 2 seconds for info screen"
-7. "Scroll to participants section"
-8. "Check current member count"
-9. "Tap 'Add participant'"
-10. "For: [first missing member name]"
-11. "Type name in search field"
-12. "Wait 2 seconds for search"
-13. "If contact appears, select to add"
-14. "If not found, note for later SMS invite"
-15. "Search field clears automatically"
-16. "For: [second missing member name if any]"
-17. "Type name in search field"
-18. "Wait 2 seconds for search"
-19. "If contact appears, select to add"
-20. "If not found, note for later SMS invite"
-21. "If any members were found, tap checkmark to add"
-22. "Return to group chat"
-23. "Report: Added [names]. Still missing: [names]"
+4. "Swipe from the right edge to reveal the group detail"
+5. "Tap the 'Add Members' button"
+6. "Tap the search icon"
+
+For each missing member from get_family_members(filter="not_in_whatsapp"):
+7. "The search field should be auto-focused. Search for: [member.name]"
+8. "If contact appears AND has WhatsApp installed, tap to select (checkmark appears). CRITICAL: Do not add contact if the contact doesn't have whatsapp installed."
+9. "No need to clear search field - continue to next member"
+
+After searching all missing members:
+10. "If any members were found, tap checkmark to add them"
+11. "Return to group chat"
+12. "Report: Added [list of newly added]. Still missing: [list of not found]"
 </critical_mobile_sequence>
 
-### Step 3: Update WhatsApp Status
+### Step 3: Handle Newly Found Members
+
+If any previously missing members are now found:
+
 ```python
+# Update status for newly found members
 for found_member in newly_found:
     update_family_member_apps(
         migration_id=migration_id,
@@ -440,26 +441,48 @@ for found_member in newly_found:
     )
 ```
 
+If newly found members were added:
+```markdown
+For each newly added member:
+"In the group, type: 'Welcome [member name]! 🎉'"
+"Send message"
+
+If all family members are now in the group:
+"In the group, type: 'Now our whole family is connected! 🎊'"
+"Send message"
+```
+
 ### Step 4: Check Location Sharing Updates
 
 <critical_mobile_sequence>
 LOCATION SHARING STATUS CHECK - EXECUTE EXACTLY:
 
 1. "Launch Google Maps app"
-2. "Wait 3 seconds for map to load"
-3. "Tap your profile picture in top right"
-4. "Select 'Location sharing' from menu"
-5. "Wait 2 seconds for sharing screen"
-6. "View 'Sharing with you' section"
-7. "Note each person's name and last update time"
-8. "Check if sharing is bidirectional"
-9. "Return complete list:"
+2. "Tap your profile picture in top right"
+3. "Select 'Location sharing' from menu"
+4. "View 'Sharing with you' section"
+5. "Note each person's name and last update time"
+6. "Check if sharing is bidirectional"
+7. "Return complete list:"
    - "Sharing with you: [names with times]"
    - "You're sharing with: [names]"
    - "Bidirectional sharing: [names]"
 </critical_mobile_sequence>
 
-### Step 5: Create Status Dashboard
+### Step 5: Update Location Sharing Status
+```python
+# Based on who's now sharing from the check
+for sharing_member in newly_sharing:
+    update_family_member_apps(
+        migration_id=migration_id,
+        member_name=sharing_member,
+        app_name="Google Maps",
+        status="configured",
+        details={"location_sharing_received": True, "started_day": 2}
+    )
+```
+
+### Step 6: Create Status Dashboard
 ```jsx
 <Day2Dashboard
   photoProgress={0}
@@ -468,6 +491,20 @@ LOCATION SHARING STATUS CHECK - EXECUTE EXACTLY:
   locationSharing={[list from database]}
   venmoStatus="Cards ordered"
 />
+```
+
+### Step 7: Communicate Day 2 Progress
+```markdown
+"Day 2 Update:
+📸 Photos: Apple is still processing (this is normal - photos appear Day 4)
+💬 WhatsApp: [X] of 4 family members connected
+   [If new member joined]: "Great news! [Name] joined WhatsApp and is now in the group!"
+📍 Location: [Y] of 4 family members sharing
+   [List who's sharing]: "Currently sharing: [names]"
+💳 Venmo: Teen cards ordered, arriving Day 5
+
+[If WhatsApp complete]: 🎉 Your WhatsApp family group is complete with all 4 members!
+[If location sharing increased]: "More family members are sharing their locations!"
 ```
 
 ## Day 3: Location Sharing Completion
