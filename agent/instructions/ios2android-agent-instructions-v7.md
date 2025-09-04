@@ -682,7 +682,7 @@ The important thing is the system is working perfectly!"
 ### Step 1: Get Day 4 Status
 ```python
 status = get_migration_status(migration_id=migration_id, day_number=4)
-# Will show ~28% progress with photos visible
+# Photos should be visible with progress showing
 ```
 
 ### Step 2: Verify Photos in Google Photos
@@ -704,9 +704,9 @@ GOOGLE PHOTOS VERIFICATION - EXECUTE EXACTLY:
 ```markdown
 "🎉 FANTASTIC NEWS! Your photos are starting to appear in Google Photos!
 
-Current progress: 28% complete
-• Photos appearing: ~17,000 of 60,238
-• Storage transferred: ~107 GB of 383 GB
+Current progress: [status.photo_progress.percent_complete]% complete
+• Photos appearing: ~[status.photo_progress.photos_transferred] of [status.migration.photo_count]
+• Storage transferred: ~[status.photo_progress.storage_growth_gb] GB of [status.migration.total_icloud_storage_gb] GB
 • Transfer rate: Accelerating!
 
 Let me show you the progress..."
@@ -716,9 +716,9 @@ Let me show you the progress..."
 ```jsx
 <TransferProgressDashboard
   day={4}
-  photosTransferred={17000}
-  totalPhotos={60238}
-  percentComplete={28}
+  photosTransferred={status.photo_progress.photos_transferred}
+  totalPhotos={status.migration.photo_count}
+  percentComplete={status.photo_progress.percent_complete}
   milestone="Photos are visible!"
   celebrationType="major"
 />
@@ -735,7 +735,7 @@ teens = get_family_members(migration_id=migration_id, filter="teen")
 ### Step 2: Check if Cards Arrived
 ```markdown
 "Day 5 Update:
-📸 Photos: 57% complete (~34,000 photos transferred!)
+📸 Photos: [status.photo_progress.percent_complete]% complete (~[status.photo_progress.photos_transferred] photos transferred!)
 💳 Venmo: Have the teen cards arrived?
 
 [If yes]: Let's activate them now..."
@@ -785,7 +785,7 @@ if cards_activated:
 ### Step 1: Get Day 6 Status
 ```python
 status = get_migration_status(migration_id=migration_id, day_number=6)
-# Shows ~88% complete
+# Near completion status
 ```
 
 ### Step 2: Comprehensive Family Services Check
@@ -822,8 +822,8 @@ Part 4 - Summary:
 ### Step 3: Create Near-Complete Dashboard
 ```jsx
 <Day6Dashboard
-  photoProgress={88}
-  photosTransferred={53000}
+  photoProgress={status.photo_progress.percent_complete}
+  photosTransferred={status.photo_progress.photos_transferred}
   familyAppsComplete={["WhatsApp", "Google Maps", "Venmo"]}
   tomorrowMessage="Final verification tomorrow!"
 />
@@ -866,10 +866,10 @@ Use the COMPLETE FAMILY SERVICE STATUS CHECK sequence from Day 6.
 ### Step 5: Create Final Success Dashboard
 ```jsx
 <MigrationSuccessDashboard
-  totalPhotos={60238}
-  totalVideos={2418}
-  totalStorage={383}
-  familyMembers={4}
+  totalPhotos={status.migration.photo_count}
+  totalVideos={status.migration.video_count}
+  totalStorage={status.migration.total_icloud_storage_gb}
+  familyMembers={status.migration.family_size}
   appsConfigured={["WhatsApp", "Google Maps", "Venmo"]}
   daysElapsed={7}
   successRate={100}
@@ -881,17 +881,17 @@ Use the COMPLETE FAMILY SERVICE STATUS CHECK sequence from Day 6.
 "🎊 CONGRATULATIONS! YOUR MIGRATION IS COMPLETE! 🎊
 
 After 7 days, you've successfully:
-✅ Transferred 60,238 photos spanning 18 years
-✅ Moved 2,418 precious videos
-✅ Migrated 383 GB of irreplaceable memories
-✅ Connected 4 family members across platforms
+✅ Transferred [status.migration.photo_count] photos spanning [status.migration.years_on_ios] years
+✅ Moved [status.migration.video_count] precious videos
+✅ Migrated [status.migration.total_icloud_storage_gb] GB of irreplaceable memories
+✅ Connected [status.migration.family_size] family members across platforms
 ✅ Configured WhatsApp, Google Maps, and Venmo
 ✅ Achieved 100% family ecosystem preservation
 
 You've done it! You've successfully moved from iPhone to Android 
 while keeping your entire digital life and family connections intact.
 
-Welcome to your new Galaxy Z Fold 7! 🎉"
+Welcome to your new [status.migration.target_device]! 🎉"
 ```
 
 ## Critical Success Patterns
