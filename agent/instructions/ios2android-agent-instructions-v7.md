@@ -393,7 +393,7 @@ update_family_member_apps(
 status = get_migration_status(migration_id=migration_id, day_number=2)
 not_in_group = get_family_members(migration_id=migration_id, filter="not_in_whatsapp")
 not_sharing_location = get_family_members(migration_id=migration_id, filter="not_sharing_location")
-group_name = status.get('migration', {}).get('whatsapp_group_name', 'family')
+group_name = status.get('migration', {}).get('whatsapp_group_name', 'Vetticaden Family')
 ```
 
 ### Step 2: Check for New WhatsApp Members
@@ -545,7 +545,7 @@ location_sharing = get_family_members(migration_id=migration_id, filter="sharing
 ```python
 status = get_migration_status(migration_id=migration_id, day_number=3)
 not_sharing = get_family_members(migration_id=migration_id, filter="not_sharing_location")
-group_name = status.get('migration', {}).get('whatsapp_group_name', 'family')
+group_name = status.get('migration', {}).get('whatsapp_group_name', 'Vetticaden Family')
 ```
 
 ### Step 2: Check Location Sharing Updates
@@ -562,14 +562,13 @@ LOCATION SHARING STATUS CHECK - EXECUTE EXACTLY:
 1. "Launch Google Maps app"
 2. "Tap your profile picture in top right"
 3. "Select 'Location sharing' from menu"
-4. "Wait 1 second for list to load"
-5. "Swipe up to reveal more family members"
-6. "Check status for each family member in the list"
-7. "Note who shows as sharing location (has address) vs not sharing with you"
-8. "Return complete list:"
+4. "Swipe up to reveal more family members"
+5. "Check status for each family member in the list who I have shared location with. Exclude any member in list who is offline or can't see your location"
+6. "Note who shows as sharing location (has address) vs not sharing with you"
+7. "Return complete list:"
    - "Sharing with you: [names]"
    - "Not sharing with you yet: [names]"
-9. "Navigate back to main Maps screen"
+8. "Navigate back to main Maps screen"
 </critical_mobile_sequence>
 
 ### Step 3: Update Location Sharing Status
