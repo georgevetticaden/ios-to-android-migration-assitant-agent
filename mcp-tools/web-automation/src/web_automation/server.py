@@ -104,32 +104,6 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         
         types.Tool(
-            name="check_photo_transfer_progress",
-            description=(
-                "Monitor ongoing photo transfer using Google One storage growth metrics. Compares "
-                "current Google Photos storage against baseline to calculate completion percentage, "
-                "transfer rate, and estimates. Supports day simulation (day_number parameter). "
-                "Progress shows 0% until Day 3-4 when photos become visible in Google Photos."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "transfer_id": {
-                        "type": "string",
-                        "description": "Transfer ID from start_photo_transfer (format: TRF-YYYYMMDD-HHMMSS)"
-                    },
-                    "day_number": {
-                        "type": "integer",
-                        "description": "Optional day simulation (1-7) for demo timeline",
-                        "minimum": 1,
-                        "maximum": 7
-                    }
-                },
-                "required": ["transfer_id"]
-            }
-        ),
-        
-        types.Tool(
             name="verify_photo_transfer_complete", 
             description=(
                 "Comprehensive transfer completion verification with certificate generation. "
@@ -176,8 +150,6 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> list[types.T
         return await _handle_check_icloud_status(arguments)
     elif name == "start_photo_transfer":
         return await _handle_start_photo_transfer(arguments)
-    elif name == "check_photo_transfer_progress":
-        return await _handle_check_progress(arguments)
     elif name == "verify_photo_transfer_complete":
         return await _handle_verify_complete(arguments)
     else:
@@ -294,63 +266,6 @@ Started: {result['started_at']}
         logger.error(f"Transfer initiation failed: {e}")
         return [types.TextContent(type="text", text=f"Error: {str(e)}")]
 
-async def _handle_check_progress(arguments: Dict[str, Any]) -> list[types.TextContent]:
-    """Monitor transfer progress via Google One storage metrics."""
-    try:
-        await _ensure_client_initialized(initialize_apis=True)
-        
-        # Validate required parameters
-        transfer_id = arguments.get("transfer_id")
-        if not transfer_id:
-            return [types.TextContent(type="text", text="Error: transfer_id is required")]
-        
-        # Execute progress check
-        day_number = arguments.get("day_number")
-        result = await icloud_client.check_transfer_progress(transfer_id, day_number)
-        
-        if result.get('status') != 'error':
-            # Generate progress visualization
-            progress_bar_length = 20
-            percent = result.get('progress', {}).get('percent_complete', 0)
-            filled = int(progress_bar_length * percent / 100)
-            bar = '█' * filled + '░' * (progress_bar_length - filled)
-            
-            day_num = result.get('day_number', 1)
-            
-            response = f"""📊 Transfer Progress Report - Day {day_num}
-
-Transfer ID: {result['transfer_id']}
-Status: {result['status'].upper()}
-
-Progress: [{bar}] {percent}%
-
-📦 Storage Metrics:
-• Baseline: {result.get('storage', {}).get('baseline_gb', 0)} GB
-• Current: {result.get('storage', {}).get('current_gb', 0)} GB
-• Growth: {result.get('storage', {}).get('growth_gb', 0)} GB
-• Remaining: {result.get('storage', {}).get('remaining_gb', 0)} GB
-
-📈 Estimated Transfer:
-• Photos: {result.get('estimates', {}).get('photos_transferred', 0):,}
-• Videos: {result.get('estimates', {}).get('videos_transferred', 0):,}
-• Total items: {result.get('estimates', {}).get('total_items', 0):,}
-
-⏱️ Transfer Rate:
-• Speed: {result.get('progress', {}).get('transfer_rate_gb_per_day', 0)} GB/day
-• Days remaining: {result.get('progress', {}).get('days_remaining', 0)}
-
-💬 {result.get('message', 'Transfer in progress')}"""
-            
-            if result.get('snapshot_saved'):
-                response += "\n\n✅ Progress snapshot saved to database"
-        else:
-            response = f"❌ Progress check failed: {result.get('error')}"
-        
-        return [types.TextContent(type="text", text=response)]
-        
-    except Exception as e:
-        logger.error(f"Progress check failed: {e}")
-        return [types.TextContent(type="text", text=f"Error: {str(e)}")]
 
 async def _handle_verify_complete(arguments: Dict[str, Any]) -> list[types.TextContent]:
     """Verify transfer completion with certificate generation."""

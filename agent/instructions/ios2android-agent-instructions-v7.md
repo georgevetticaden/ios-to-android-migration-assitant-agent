@@ -393,7 +393,7 @@ update_family_member_apps(
 status = get_migration_status(migration_id=migration_id, day_number=2)
 not_in_group = get_family_members(migration_id=migration_id, filter="not_in_whatsapp")
 not_sharing_location = get_family_members(migration_id=migration_id, filter="not_sharing_location")
-group_name = status.get("whatsapp_group_name", "Vetticaden Family")
+group_name = status.get('migration', {}).get('whatsapp_group_name', 'family')
 ```
 
 ### Step 2: Check for New WhatsApp Members
@@ -545,7 +545,7 @@ location_sharing = get_family_members(migration_id=migration_id, filter="sharing
 ```python
 status = get_migration_status(migration_id=migration_id, day_number=3)
 not_sharing = get_family_members(migration_id=migration_id, filter="not_sharing_location")
-group_name = status.get("whatsapp_group_name", "Vetticaden Family")
+group_name = status.get('migration', {}).get('whatsapp_group_name', 'family')
 ```
 
 ### Step 2: Check Location Sharing Updates

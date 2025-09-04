@@ -134,7 +134,11 @@ This server acts as the single source of truth for:
 ### 5. `get_migration_status`
 **When Used**: Once per day on Days 2-7 (the "UBER" status tool)  
 **Purpose**: Returns EVERYTHING - complete migration details, progress, family status in one call  
+**New Feature**: Automatically queries real Google storage and updates database (Days 2-7)  
 **Database Operations**:
+- **QUERIES**: Google Photos storage via integrated ICloudClient (Days 2-7)
+- **UPDATES**: `storage_snapshots` table (automatic storage recording)
+- **UPDATES**: `daily_progress` table (automatic progress tracking)
 - **SELECTS**: `migration_status` table (current migration details)
 - **SELECTS**: `media_transfer` table (photo/video transfer status)
 - **SELECTS**: `storage_snapshots` table (latest storage metrics)

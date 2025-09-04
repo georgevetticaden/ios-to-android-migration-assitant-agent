@@ -4,13 +4,13 @@ Browser automation tools for iOS to Android migration, handling the complete iCl
 
 ## Overview
 
-Provides 4 MCP tools that orchestrate photo/video migration from iCloud to Google Photos using Playwright browser automation. Designed specifically for the iOS2Android Agent to manage session persistence, progress tracking, and completion verification across the 7-day migration timeline.
+Provides 3 MCP tools that orchestrate photo/video migration from iCloud to Google Photos using Playwright browser automation. Designed specifically for the iOS2Android Agent to manage session persistence and transfer verification across the 7-day migration timeline.
 
 **Core Capabilities:**
 - iCloud photo library status retrieval with session reuse
 - Apple-to-Google photo transfer initiation via privacy.apple.com
-- Storage-based progress monitoring through Google One metrics
 - Transfer completion verification with certificate generation
+- Note: Progress monitoring is now handled internally by migration-state server
 
 ## Architecture
 
@@ -116,59 +116,7 @@ Started: 2025-08-31T08:06:07.633918
 4. Creates database record with transfer ID and baseline metrics
 5. Optionally confirms transfer to begin Apple's processing
 
-### 3. check_photo_transfer_progress
-
-Monitors transfer progress using Google One storage growth metrics.
-
-**Usage:** Days 3-7, daily monitoring  
-**Parameters:**
-- `transfer_id` (string, required) - Transfer ID from start_photo_transfer
-- `day_number` (integer, optional) - Day simulation for demo (1-7)
-
-**Response:**
-```
-📊 Transfer Progress Report - Day 4
-
-Transfer ID: TRF-20250831-080607
-Status: IN_PROGRESS
-
-Progress: [█████░░░░░░░░░░░░░░░] 28%
-
-📦 Storage Metrics:
-• Baseline: 1.48 GB
-• Current: 120.88 GB
-• Growth: 119.4 GB
-• Remaining: 263.6 GB
-
-📈 Estimated Transfer:
-• Photos: 26,000
-• Videos: 500
-• Total items: 26,500
-
-⏱️ Transfer Rate:
-• Speed: 29.9 GB/day
-• Days remaining: 3
-
-💬 Photos appearing! 🎉
-
-✅ Progress snapshot saved to database
-```
-
-**Process:**
-1. Gets current Google One storage metrics via headless browser
-2. Calculates progress using shared `calculate_storage_progress()` method
-3. Compares current storage against baseline to determine completion percentage
-4. Estimates photos/videos transferred based on growth and average file sizes
-5. Saves progress snapshot to database for historical tracking
-
-**Timeline Behavior:**
-- Day 1-3: 0% (Apple processing, not visible yet)
-- Day 4: 28% (Photos start appearing in Google Photos)
-- Day 5: 57% (Transfer accelerating)
-- Day 6: 85% (Nearly complete)
-- Day 7: 100% (Success guarantee - always returns complete)
-
-### 4. verify_photo_transfer_complete
+### 3. verify_photo_transfer_complete
 
 Comprehensive transfer completion verification with certificate generation.
 

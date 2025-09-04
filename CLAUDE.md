@@ -16,14 +16,13 @@ The system uses an AI agent (Claude) that follows natural language instructions 
 
 ### Three MCP Servers
 
-#### 1. web-automation (4 tools)
+#### 1. web-automation (3 tools)
 **Purpose**: Browser automation for iCloud and Google One interactions  
 **Location**: `mcp-tools/web-automation/`  
 **Documentation**: [`mcp-tools/web-automation/README.md`](mcp-tools/web-automation/README.md)  
 **Tools**:
 - `check_icloud_status` - Get photo/video counts from iCloud
 - `start_photo_transfer` - Initiate Apple's transfer service
-- `check_photo_transfer_progress` - Monitor via Google One storage
 - `verify_photo_transfer_complete` - Final verification
 
 #### 2. migration-state (7 tools)  
@@ -111,18 +110,16 @@ Complete 7-day demo script showing:
 ## Key Technical Details
 
 ### Tool Count
-- **Total**: 11 MCP tools (4 web + 7 state)
-- **Removed**: 8 redundant tools for efficiency
+- **Total**: 10 MCP tools (3 web + 7 state)
+- **Removed**: 9 redundant tools for efficiency
 - **Philosophy**: Each tool has one specific purpose
 
-### Parallel Tool Calls
-Daily status checks use 4 parallel tools:
+### Single Status Call
+Daily status checks now use a single comprehensive tool:
 ```javascript
-[PARALLEL]:
-1. get_daily_summary(day_number)
-2. get_migration_overview()
-3. get_migration_statistics(include_history=true)
-4. check_photo_transfer_progress(transfer_id, day_number)
+get_migration_status(migration_id, day_number)
+// Returns: migration overview, photo progress, family status, daily summary
+// Automatically checks real Google storage and updates database
 ```
 
 ### Gmail Strategy

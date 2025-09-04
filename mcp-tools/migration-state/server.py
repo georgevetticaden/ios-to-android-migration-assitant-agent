@@ -25,11 +25,18 @@ from datetime import datetime, timedelta, date
 # Add parent directories to path to import shared modules
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+# Add web_automation to path for imports
+web_automation_path = Path(__file__).parent.parent / 'web-automation' / 'src'
+sys.path.insert(0, str(web_automation_path))
+
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 from shared.database.migration_db import MigrationDatabase
 from logging_config import setup_logging
+
+# Import ICloudClient for storage checking
+from web_automation.icloud_client import ICloudClientWithSession
 
 # Set up logging
 logger = setup_logging("migration_state.server")
@@ -37,6 +44,7 @@ logger = setup_logging("migration_state.server")
 # Initialize server and database
 server = Server("migration-state")
 db = MigrationDatabase()
+icloud_client = None  # Will be initialized when needed
 
 # ============================================================================
 # MCP INTERFACE FUNCTIONS
@@ -340,6 +348,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         conn.execute(query, values)
                         conn.commit()
                         
+                        # Note: storage_snapshots and daily_progress are now populated by
+                        # check_photo_transfer_progress in web-automation MCP tool
+                        
                         result = {
                             "success": True,
                             "status": "updated",
@@ -354,7 +365,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         }
                         
         elif name == "get_migration_status":
-            # UBER status tool - returns everything
+            # UBER status tool - returns everything with fresh storage data
             if not migration_id:
                 result = {
                     "success": False,
@@ -365,17 +376,68 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             else:
                 day_number = arguments["day_number"]
                 
-                # Get all status information
-                daily = await internal_get_daily_summary(migration_id, day_number)
+                # Get transfer_id from overview
                 overview = await internal_get_migration_overview(migration_id)
                 transfer_id = overview.get("transfer_id") if overview else None
-                photo_progress = await internal_check_photo_transfer_progress(transfer_id, day_number, migration_id) if transfer_id else {}
+                
+                # For Day 2+ with valid transfer_id, check actual storage
+                if transfer_id and day_number >= 2:
+                    try:
+                        # Initialize iCloud client if needed (singleton pattern)
+                        global icloud_client
+                        if not icloud_client:
+                            icloud_client = ICloudClientWithSession()
+                            await icloud_client.initialize_apis()
+                        
+                        # Check real storage progress - this updates storage_snapshots & daily_progress
+                        logger.info(f"Checking real storage progress for day {day_number}")
+                        progress_result = await icloud_client.check_transfer_progress(
+                            transfer_id=transfer_id,
+                            day_number=day_number
+                        )
+                        logger.info(f"Storage check complete: {progress_result.get('progress', {}).get('percent_complete', 0)}%")
+                    except Exception as e:
+                        logger.warning(f"Could not check real storage: {e}")
+                        # Continue with data from DB
+                
+                # Get all status information (now includes fresh storage data)
+                daily = await internal_get_daily_summary(migration_id, day_number)
+                overview = await internal_get_migration_overview(migration_id)
                 family = await internal_get_family_service_summary(migration_id)
+                
+                # Get photo progress from latest storage snapshot
+                photo_progress = {}
+                with db.get_connection() as conn:
+                    # Get most recent storage snapshot
+                    snapshot = conn.execute("""
+                        SELECT google_photos_gb, storage_growth_gb, percent_complete,
+                               estimated_photos_transferred, estimated_videos_transferred
+                        FROM storage_snapshots 
+                        WHERE migration_id = ? 
+                        ORDER BY snapshot_time DESC
+                        LIMIT 1
+                    """, (migration_id,)).fetchone()
+                    
+                    if snapshot:
+                        # Use actual storage data from snapshot
+                        photo_progress = {
+                            "percent_complete": snapshot[2] or 0,
+                            "current_storage_gb": snapshot[0],
+                            "storage_growth_gb": snapshot[1],
+                            "photos_transferred": snapshot[3] or 0,
+                            "videos_transferred": snapshot[4] or 0,
+                            "transfer_id": transfer_id,
+                            "day_number": day_number,
+                            "status": "in_progress" if day_number < 7 else "completed"
+                        }
+                    else:
+                        # Fallback for Day 1 or if no snapshots yet
+                        photo_progress = await internal_check_photo_transfer_progress(transfer_id, day_number, migration_id) if transfer_id else {}
                 
                 result = {
                     "success": True,
                     "day_number": day_number,
-                    "migration": overview,  # The test expects "migration" field
+                    "migration": overview,
                     "day_summary": daily,
                     "migration_overview": overview,
                     "photo_progress": photo_progress,
@@ -859,38 +921,9 @@ async def internal_get_family_service_summary(migration_id: str) -> Dict:
             }
         return {"total_members": 0}
 
-async def internal_record_storage_snapshot(migration_id: str, google_photos_gb: float, day_number: int, is_baseline: bool = False) -> Dict:
-    """
-    Internal storage snapshot function - not exposed as MCP tool.
-    Records Google Photos storage for progress calculation.
-    
-    Progress = (current_storage - baseline) / expected_total * 100
-    
-    Args:
-        migration_id: Migration identifier
-        google_photos_gb: Current Google Photos storage in GB
-        day_number: Day in migration (1-7)
-        is_baseline: Whether this is the initial baseline reading
-        
-    Returns:
-        Dict with status confirmation
-    """
-    with db.get_connection() as conn:
-        if is_baseline:
-            conn.execute("""
-                UPDATE migration_status
-                SET google_photos_baseline_gb = ?
-                WHERE id = ?
-            """, (google_photos_gb, migration_id))
-        
-        conn.execute("""
-            INSERT INTO storage_snapshots (
-                migration_id, day_number, google_photos_gb,
-                total_used_gb, is_baseline
-            ) VALUES (?, ?, ?, ?, ?)
-        """, (migration_id, day_number, google_photos_gb, google_photos_gb, is_baseline))
-        
-        return {"status": "snapshot_recorded"}
+# Note: internal_record_storage_snapshot was removed.
+# Storage snapshots are now recorded by check_photo_transfer_progress in web-automation MCP tool
+# which queries actual Google storage and populates both storage_snapshots and daily_progress tables
 
 if __name__ == "__main__":
     asyncio.run(main())
