@@ -394,13 +394,13 @@ update_family_member_apps(
 ```python
 status = get_migration_status(migration_id=migration_id, day_number=2)
 not_in_group = get_family_members(migration_id=migration_id, filter="not_in_whatsapp")
-group_info = get_migration_status(migration_id=migration_id)
-group_name = group_info.get("whatsapp_group_name", "Vetticaden Family")
+not_sharing_location = get_family_members(migration_id=migration_id, filter="not_sharing_location")
+group_name = status.get("whatsapp_group_name", "Vetticaden Family")
 ```
 
 ### Step 2: Check for New WhatsApp Members
 
-If members are missing from WhatsApp:
+If not_in_group list is not empty:
 
 **⚠️ CRITICAL: Execute these steps EXACTLY as written - NO deviations or shortcuts**
 
@@ -409,12 +409,12 @@ WHATSAPP DAILY MEMBER CHECK - EXECUTE EXACTLY:
 
 1. "Launch WhatsApp app"
 2. "Swipe from the left edge to reveal the chat list panel"
-3. "Find and tap on: [group_name from database]"
+3. "Find and tap on: [group_name]"
 4. "Swipe from the right edge to reveal the group detail"
 5. "Tap the 'Add Members' button"
 6. "Tap the search icon"
 
-For each missing member from get_family_members(filter="not_in_whatsapp"):
+For each member in not_in_group:
 7. "The search field should be auto-focused. Search for: [member.name]"
 8. "If contact appears AND has WhatsApp installed, tap to select (checkmark appears). CRITICAL: Do not add contact if the contact doesn't have whatsapp installed."
 9. "No need to clear search field - continue to next member"
@@ -425,13 +425,13 @@ After searching all missing members:
 12. "Report: Added [list of newly added]. Still missing: [list of not found]"
 </critical_mobile_sequence>
 
-### Step 3: Handle Newly Found Members
+### Step 3: Update Newly Found Members
 
-If any previously missing members are now found:
+Based on Step 2 results, if any members from not_in_group were successfully added:
 
 ```python
-# Update status for newly found members
-for found_member in newly_found:
+# Update status for newly found and added members
+for found_member in [list of newly added members from Step 2]:
     update_family_member_apps(
         migration_id=migration_id,
         member_name=found_member,
@@ -441,18 +441,11 @@ for found_member in newly_found:
     )
 ```
 
-If newly found members were added:
-```markdown
-For each newly added member:
-"In the group, type: 'Welcome [member name]! 🎉'"
-"Send message"
-
-If all family members are now in the group:
-"In the group, type: 'Now our whole family is connected! 🎊'"
-"Send message"
-```
-
 ### Step 4: Check Location Sharing Updates
+
+If not_sharing_location list is not empty:
+
+**⚠️ CRITICAL: Execute these steps EXACTLY as written - Check and request from each person individually**
 
 <critical_mobile_sequence>
 LOCATION SHARING STATUS CHECK - EXECUTE EXACTLY:
@@ -460,25 +453,45 @@ LOCATION SHARING STATUS CHECK - EXECUTE EXACTLY:
 1. "Launch Google Maps app"
 2. "Tap your profile picture in top right"
 3. "Select 'Location sharing' from menu"
-4. "View 'Sharing with you' section"
-5. "Note each person's name and last update time"
-6. "Check if sharing is bidirectional"
-7. "Return complete list:"
-   - "Sharing with you: [names with times]"
-   - "You're sharing with: [names]"
-   - "Bidirectional sharing: [names]"
+
+For each member in not_sharing_location:
+4. "Swipe up from bottom to reveal the list of people you are sharing with"
+5. "Find and tap on: [member.name]"
+6. "Determine if user is sharing their location"
+7. "If not sharing their location, tap on 'Request' link if available"
+8. "Click the back arrow"
+
+After checking all family members:
+9. "Swipe up from bottom to reveal the list of people you are sharing with"
+10. "Click the back arrow to see the map with people that are sharing their location with you"
+11. "Return complete list:"
+    - "Sharing with you: [names]"
+    - "Not sharing with you yet: [names]"
 </critical_mobile_sequence>
 
 ### Step 5: Update Location Sharing Status
+
+Based on Step 4 results:
+
 ```python
-# Based on who's now sharing from the check
-for sharing_member in newly_sharing:
+# Update status for members now sharing (from "Sharing with you" list)
+for sharing_member in [members from "Sharing with you" list in Step 4]:
     update_family_member_apps(
         migration_id=migration_id,
         member_name=sharing_member,
         app_name="Google Maps",
         status="configured",
         details={"location_sharing_received": True, "started_day": 2}
+    )
+
+# Update status for members we requested from
+for requested_member in [members where "Request" was tapped in Step 4]:
+    update_family_member_apps(
+        migration_id=migration_id,
+        member_name=requested_member,
+        app_name="Google Maps", 
+        status="invited",
+        details={"location_request_sent": True, "requested_day": 2}
     )
 ```
 
@@ -494,17 +507,27 @@ for sharing_member in newly_sharing:
 ```
 
 ### Step 7: Communicate Day 2 Progress
+
+Query latest status to get accurate counts:
+```python
+all_members = get_family_members(migration_id=migration_id, filter="all")
+whatsapp_members = get_family_members(migration_id=migration_id, filter="in_whatsapp")
+location_sharing = get_family_members(migration_id=migration_id, filter="sharing_location")
+```
+
 ```markdown
 "Day 2 Update:
 📸 Photos: Apple is still processing (this is normal - photos appear Day 4)
-💬 WhatsApp: [X] of 4 family members connected
-   [If new member joined]: "Great news! [Name] joined WhatsApp and is now in the group!"
-📍 Location: [Y] of 4 family members sharing
-   [List who's sharing]: "Currently sharing: [names]"
+💬 WhatsApp: [len(whatsapp_members)] of [len(all_members)] family members connected
+   [If members were added today]: "Great news! [newly added names] joined WhatsApp and are now in the group!"
+📍 Location: [len(location_sharing)] of [len(all_members)] family members sharing
+   [If sharing]: "Currently sharing: [names from location_sharing]"
 💳 Venmo: Teen cards ordered, arriving Day 5
 
-[If WhatsApp complete]: 🎉 Your WhatsApp family group is complete with all 4 members!
-[If location sharing increased]: "More family members are sharing their locations!"
+[If len(whatsapp_members) == len(all_members)]: 
+   "🎉 Your WhatsApp family group is complete with all [len(all_members)] members!"
+[If location sharing increased from Day 1]: 
+   "More family members are sharing their locations!"
 ```
 
 ## Day 3: Location Sharing Completion
