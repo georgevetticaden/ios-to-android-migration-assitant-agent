@@ -1065,20 +1065,37 @@ class ICloudClientWithSession:
                             progress_info.get('percent_complete', 0)
                         ))
                         
-                        # Insert daily progress (allows multiple updates per day)
+                        # Get current family adoption counts before inserting daily progress
+                        family_stats = conn.execute("""
+                            SELECT 
+                                COUNT(DISTINCT CASE WHEN faa.app_name = 'WhatsApp' AND faa.whatsapp_in_group = TRUE THEN fm.id END) as whatsapp_connected,
+                                COUNT(DISTINCT CASE WHEN faa.app_name = 'Google Maps' AND faa.location_sharing_received = TRUE THEN fm.id END) as maps_sharing,
+                                COUNT(DISTINCT CASE WHEN faa.app_name = 'Venmo' AND faa.status = 'configured' THEN fm.id END) as venmo_active
+                            FROM family_members fm
+                            LEFT JOIN family_app_adoption faa ON fm.id = faa.family_member_id
+                            WHERE fm.migration_id = ?
+                        """, (migration_id,)).fetchone()
+                        
+                        whatsapp_count = family_stats[0] if family_stats else 0
+                        maps_count = family_stats[1] if family_stats else 0
+                        venmo_count = family_stats[2] if family_stats else 0
+                        
+                        # Insert daily progress with family counts (allows multiple updates per day)
                         conn.execute("""
                             INSERT INTO daily_progress (
                                 migration_id, day_number, date,
                                 photos_transferred, videos_transferred,
                                 size_transferred_gb, storage_percent_complete,
-                                key_milestone
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                whatsapp_members_connected, maps_members_sharing,
+                                venmo_members_active, key_milestone
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
                             migration_id, day_number, datetime.now().date(),
                             estimates.get('photos_transferred', 0),
                             estimates.get('videos_transferred', 0),
                             storage_info.get('growth_gb', 0),
                             progress_info.get('percent_complete', 0),
+                            whatsapp_count, maps_count, venmo_count,
                             progress_result.get('message', '')
                         ))
                         
