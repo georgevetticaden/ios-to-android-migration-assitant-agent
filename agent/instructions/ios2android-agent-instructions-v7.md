@@ -681,10 +681,34 @@ The important thing is the system is working perfectly!"
 ### Step 1: Get Day 4 Status
 ```python
 status = get_migration_status(migration_id=migration_id, day_number=4)
-# Photos should be visible with progress showing
+# Returns photo_progress with actual metrics:
+# - percent_complete: 28%
+# - photos_transferred: estimated count based on storage
+# - storage_growth_gb: actual GB transferred
 ```
 
-### Step 2: Verify Photos in Google Photos
+### Step 2: Create Day 4 Progress Dashboard
+```jsx
+// Create consistent dashboard showing progress increase from Day 3
+<Day4ProgressDashboard
+  migrationId={migration_id}
+  dayNumber={4}
+  overallProgress={status.migration.overall_progress}  // Should be higher than Day 3's 50%
+  photoTransferProgress={status.photo_progress.percent_complete}  // 28%
+  photosTransferred={status.photo_progress.photos_transferred}
+  totalPhotos={status.migration.photo_count}
+  storageTransferred={status.photo_progress.storage_growth_gb}
+  totalStorage={status.migration.total_icloud_storage_gb}
+  familyStatus={{
+    whatsapp: {connected: 4, total: 4, status: "complete"},
+    maps: {sharing: 4, total: 4, status: "complete"},
+    venmo: {active: 0, total: 2, status: "pending"}
+  }}
+  milestone="Photos are now visible in Google Photos!"
+/>
+```
+
+### Step 3: Verify Photos in Google Photos
 
 <critical_mobile_sequence>
 GOOGLE PHOTOS VERIFICATION - EXECUTE EXACTLY:
@@ -692,35 +716,41 @@ GOOGLE PHOTOS VERIFICATION - EXECUTE EXACTLY:
 1. "Launch Google Photos app"
 2. "Wait 5 seconds for library to load"
 3. "Check if photos are appearing"
-4. "Scroll through library"
-5. "Note approximate number of photos visible"
-6. "Check date ranges of photos"
-7. "Take screenshot of library view"
-8. "Return: Approximately [X] photos visible from [date range]"
+4. "Scroll down slowly through the library for 5 seconds"
+5. "Note the oldest year visible at the bottom"
+6. "Scroll back to top"
+7. "Note the newest year visible at the top"
+8. "Count approximately how many year groups are visible"
+9.  "Return: Photos visible from [oldest_year] to [newest_year], covering [X] years of memories"
 </critical_mobile_sequence>
 
-### Step 3: MAJOR CELEBRATION
+### Step 4: MAJOR CELEBRATION
 ```markdown
 "🎉 FANTASTIC NEWS! Your photos are starting to appear in Google Photos!
 
-Current progress: [status.photo_progress.percent_complete]% complete
-• Photos appearing: ~[status.photo_progress.photos_transferred] of [status.migration.photo_count]
-• Storage transferred: ~[status.photo_progress.storage_growth_gb] GB of [status.migration.total_icloud_storage_gb] GB
-• Transfer rate: Accelerating!
+Based on the verification:
+• Photos visible from [oldest_year] to [newest_year] - [X] years of memories!
+• Transfer progress: {status.photo_progress.percent_complete}% complete (28% on Day 4)
+• Estimated photos transferred: ~{status.photo_progress.photos_transferred} of {status.migration.photo_count}
+• Storage transferred: {status.photo_progress.storage_growth_gb} GB of {status.migration.total_icloud_storage_gb} GB
+• Transfer rate: Accelerating! More photos arriving every hour!
 
-Let me show you the progress..."
+Your family ecosystem remains 100% connected:
+✅ WhatsApp: All 4 members active
+✅ Location Sharing: All 4 members sharing
+⏳ Venmo: Teen cards arriving tomorrow (Day 5)
+
+Tomorrow we'll see even more photos as the transfer accelerates to 57% complete!"
 ```
 
-### Step 4: Create Celebration Dashboard
-```jsx
-<TransferProgressDashboard
-  day={4}
-  photosTransferred={status.photo_progress.photos_transferred}
-  totalPhotos={status.migration.photo_count}
-  percentComplete={status.photo_progress.percent_complete}
-  milestone="Photos are visible!"
-  celebrationType="major"
-/>
+### Step 5: Update Migration Progress
+```python
+# Update overall progress for Day 4
+update_migration_status(
+    migration_id=migration_id,
+    overall_progress=65,  # Increased from Day 3's 50%
+    notes=f"Day 4: Photos visible! {status.photo_progress.percent_complete}% photo transfer complete"
+)
 ```
 
 ## Day 5: Venmo Teen Setup
