@@ -745,7 +745,7 @@ Your family ecosystem remains 100% connected:
 ✅ Location Sharing: All 4 members sharing
 ⏳ Venmo: Teen cards arriving tomorrow (Day 5)
 
-Tomorrow we'll see even more photos as the transfer accelerates to 57% complete!"
+Tomorrow we'll see even more photos as the transfer continues to accelerate!"
 ```
 
 ### Step 5: Update Migration Progress
