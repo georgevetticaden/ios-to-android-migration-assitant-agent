@@ -817,22 +817,29 @@ async def internal_get_daily_summary(migration_id: str, day_number: int) -> Dict
         if stats_result:
             transferred_photos, total_photos, photo_status, transferred_videos, total_videos, video_status, transferred_gb, total_gb, whatsapp_configured, total_family = stats_result
             
-            # Day-aware photo progress
-            photo_progress_by_day = {
-                1: 0, 2: 0, 3: 0,
-                4: 28, 5: 57, 6: 88, 7: 100
-            }
-            
-            photo_progress = photo_progress_by_day.get(day_number, 0)
-            
-            if day_number < 4:
-                photo_message = "Processing by Apple (not visible yet)"
-            elif day_number == 4:
-                photo_message = "Photos appearing! 🎉"
-            elif day_number == 7:
+            # Get actual photo progress from storage_snapshots (except Day 7)
+            if day_number == 7:
+                # ONLY Day 7 is hardcoded for demo success
+                photo_progress = 100
                 photo_message = "100% complete!"
             else:
-                photo_message = f"{photo_progress}% complete"
+                # For all other days, use actual data from storage_snapshots
+                snapshot = conn.execute("""
+                    SELECT percent_complete 
+                    FROM storage_snapshots 
+                    WHERE migration_id = ? 
+                    ORDER BY snapshot_time DESC 
+                    LIMIT 1
+                """, (migration_id,)).fetchone()
+                
+                photo_progress = snapshot[0] if snapshot else 0
+                
+                if day_number < 4:
+                    photo_message = "Processing by Apple (not visible yet)"
+                elif day_number == 4:
+                    photo_message = "Photos appearing! 🎉"
+                else:
+                    photo_message = f"{photo_progress}% complete"
             
             return {
                 "day": day_number,

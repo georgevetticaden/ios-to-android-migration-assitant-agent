@@ -681,10 +681,12 @@ The important thing is the system is working perfectly!"
 ### Step 1: Get Day 4 Status
 ```python
 status = get_migration_status(migration_id=migration_id, day_number=4)
-# Returns photo_progress with actual metrics:
-# - percent_complete: 28%
-# - photos_transferred: estimated count based on storage
-# - storage_growth_gb: actual GB transferred
+# Automatically checks real Google Photos storage and calculates progress
+# Returns photo_progress with dynamically calculated metrics:
+# - percent_complete: Based on (storage_growth / total_icloud_gb) * 100
+# - photos_transferred: Estimated from storage (65% photos @ 5.5MB each)
+# - videos_transferred: Estimated from storage (35% videos @ 150MB each)
+# - storage_growth_gb: Actual GB growth from baseline
 ```
 
 ### Step 2: Create Day 4 Progress Dashboard
@@ -694,9 +696,11 @@ status = get_migration_status(migration_id=migration_id, day_number=4)
   migrationId={migration_id}
   dayNumber={4}
   overallProgress={status.migration.overall_progress}  // Should be higher than Day 3's 50%
-  photoTransferProgress={status.photo_progress.percent_complete}  // 28%
+  photoTransferProgress={status.photo_progress.percent_complete}  // Dynamically calculated
   photosTransferred={status.photo_progress.photos_transferred}
+  videosTransferred={status.photo_progress.videos_transferred}
   totalPhotos={status.migration.photo_count}
+  totalVideos={status.migration.video_count}
   storageTransferred={status.photo_progress.storage_growth_gb}
   totalStorage={status.migration.total_icloud_storage_gb}
   familyStatus={{
@@ -730,8 +734,9 @@ GOOGLE PHOTOS VERIFICATION - EXECUTE EXACTLY:
 
 Based on the verification:
 • Photos visible from [oldest_year] to [newest_year] - [X] years of memories!
-• Transfer progress: {status.photo_progress.percent_complete}% complete (28% on Day 4)
+• Transfer progress: {status.photo_progress.percent_complete}% complete
 • Estimated photos transferred: ~{status.photo_progress.photos_transferred} of {status.migration.photo_count}
+• Estimated videos transferred: ~{status.photo_progress.videos_transferred} of {status.migration.video_count}
 • Storage transferred: {status.photo_progress.storage_growth_gb} GB of {status.migration.total_icloud_storage_gb} GB
 • Transfer rate: Accelerating! More photos arriving every hour!
 
