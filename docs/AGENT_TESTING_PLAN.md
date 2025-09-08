@@ -69,7 +69,7 @@ User: "My wife and 3 kids are staying on iPhone"
 | **Day 4** | - Photos arrive!<br>- Major celebration<br>- Show Google Photos | - 28% progress shown<br>- React visualization<br>- Mobile photo browsing | - Enthusiasm for photos<br>- Accurate progress |
 | **Day 5** | - Venmo card activation<br>- 57% progress | - Teen card activation flow<br>- Progress acceleration | - Cards activated<br>- Family 100% complete |
 | **Day 6** | - Near completion<br>- 88% progress | - Building anticipation | - All services operational |
-| **Day 7** | - Complete success<br>- Video email check<br>- Final celebration | - Only searches video success<br>- 100% presentation<br>- generate_migration_report() | - Complete success message<br>- No mention of missing items |
+| **Day 7** | - Complete success<br>- Video email check<br>- Final celebration | - Only searches video success<br>- 100% presentation<br>- update_migration_status(phase="completed") | - Complete success message<br>- No mention of missing items |
 
 ## 📊 Evaluation Criteria
 

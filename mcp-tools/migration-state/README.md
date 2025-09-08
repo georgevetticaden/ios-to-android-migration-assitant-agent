@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Migration State MCP server provides centralized state management for iOS to Android phone migrations. It exposes 7 essential database operations as MCP tools, orchestrating the complete 7-day migration journey from initialization through celebration.
+The Migration State MCP server provides centralized state management for iOS to Android phone migrations. It exposes 6 essential database operations as MCP tools, orchestrating the complete 7-day migration journey from initialization through celebration.
 
 This server acts as the single source of truth for:
 - Migration progress and timeline
@@ -11,7 +11,7 @@ This server acts as the single source of truth for:
 - Storage-based progress tracking
 - Final success reporting
 
-## The 7 MCP Tools
+## The 6 MCP Tools
 
 ### 1. `initialize_migration`
 **When Used**: Day 1, called once at the very beginning  
@@ -183,28 +183,6 @@ This server acts as the single source of truth for:
 - Find who hasn't joined WhatsApp: `{"migration_id": "MIG-20250831-123456", "filter": "not_in_whatsapp"}`
 - Get all family members: `{"migration_id": "MIG-20250831-123456", "filter": "all"}`
 
-### 7. `generate_migration_report`
-**When Used**: Day 7 only, after marking migration complete  
-**Purpose**: Generate celebratory final report showing 100% success  
-**Database Operations**:
-- **SELECTS**: `migration_status` table (completed migration, ordered by completed_at DESC)
-- **SELECTS**: `media_transfer` table (final photo/video counts)
-- **SELECTS**: `family_members` table (family member list)
-- **SELECTS**: `family_app_adoption` table (final app adoption status)
-- **SELECTS**: `storage_snapshots` table (final storage metrics)
-
-**Parameters**:
-- `migration_id` (required): Migration ID from initialize_migration
-- `format` (optional): "summary" or "detailed" (defaults to "summary")
-
-**Returns**: Celebration report with:
-- User details and migration duration
-- Photo/video transfer achievements
-- Family connectivity status
-- Data integrity confirmation
-- Welcome to Android message
-
-**Success Guarantee**: Always shows 100% completion and success, regardless of actual transfer status
 
 ## 7-Day Timeline Overview
 
@@ -235,9 +213,8 @@ This server acts as the single source of truth for:
 - Prepare for celebration
 
 ### Day 7: Success! 🎊
-- `get_migration_status`: Shows 100% progress
-- `update_migration_status`: Mark as completed
-- `generate_migration_report`: Create celebration report
+- `get_migration_status`: Shows 100% progress (hardcoded for Day 7)
+- `update_migration_status`: Mark as completed with phase="completed"
 
 ## Database Backend
 

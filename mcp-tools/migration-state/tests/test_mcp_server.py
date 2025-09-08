@@ -318,34 +318,29 @@ async def test_days_2_7_flow(migration_id: str):
             logger.error(f"❌ FAIL: update_migration_status (Day {day}) - {str(e)}")
             test_results.append((f"update_migration_status_day_{day}", False))
     
-    # Day 7: Generate final report
+    # Day 7: Mark migration as completed
     logger.info("\n" + "-"*60)
-    logger.info("Day 7: Generate Migration Report")
+    logger.info("Day 7: Mark Migration as Completed")
     logger.info("-"*60)
     
     try:
-        response = await call_tool("generate_migration_report", {
+        response = await call_tool("update_migration_status", {
             "migration_id": migration_id,
-            "format": "summary"
+            "overall_progress": 100,
+            "current_phase": "completed",
+            "notes": "Day 7: Migration completed successfully!"
         })
         
-        if response.get("success") and "report" in response:
-            logger.info("✅ PASS: generate_migration_report - Final celebration report generated")
-            test_results.append(("generate_migration_report", True))
-            
-            # Print report summary
-            report = response["report"]
-            if "summary" in report:
-                logger.info("\nReport Summary:")
-                logger.info(f"  User: {report['summary'].get('user', 'Unknown')}")
-                logger.info(f"  Duration: {report['summary'].get('duration', 'Unknown')}")
+        if response.get("success"):
+            logger.info("✅ PASS: Migration marked as completed (100%)")
+            test_results.append(("day7_completion", True))
         else:
-            logger.error("❌ FAIL: generate_migration_report")
-            logger.debug(f"Response keys: {list(response.keys())}")
-            test_results.append(("generate_migration_report", False))
+            logger.error("❌ FAIL: Could not mark migration as completed")
+            logger.debug(f"Response: {response}")
+            test_results.append(("day7_completion", False))
     except Exception as e:
-        logger.error(f"❌ FAIL: generate_migration_report - {str(e)}")
-        test_results.append(("generate_migration_report", False))
+        logger.error(f"❌ FAIL: day7_completion - {str(e)}")
+        test_results.append(("day7_completion", False))
     
     return test_results
 
@@ -399,9 +394,8 @@ async def main():
         if "get_migration_status" in name: tools_tested.add("get_migration_status")
         if "get_family_members" in name: tools_tested.add("get_family_members")
         if "update_family_member_apps" in name: tools_tested.add("update_family_member_apps")
-        if "generate_migration_report" in name: tools_tested.add("generate_migration_report")
     
-    logger.info(f"\nTools Tested: {len(tools_tested)}/7")
+    logger.info(f"\nTools Tested: {len(tools_tested)}/6")
     for tool in sorted(tools_tested):
         logger.info(f"  ✓ {tool}")
     

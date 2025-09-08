@@ -13,10 +13,9 @@ Tools Tested (7 MCP tools):
 4. update_family_member_apps - Days 1-7: App adoption updates
 5. get_migration_status - Days 2-7: UBER status tool
 6. get_family_members - As needed: Query with filters
-7. generate_migration_report - Day 7: Final report
 
 Author: iOS2Android Migration Team
-Version: 3.0 (Aligned with 7-tool architecture)
+Version: 3.0 (Aligned with 6-tool architecture)
 """
 
 import sys
@@ -471,44 +470,26 @@ async def test_day_7_completion(db: MigrationDatabase, migration_id: str) -> Dic
         print_test("update_migration_status #9", False, str(e))
         test_results.append(("update_migration_status_9", False))
     
-    # Test 7.3: Generate migration report
-    print("\n📊 Test 7.3: Generate migration report...")
+    # Test 7.3: Verify migration is complete
+    print("\n📊 Test 7.3: Verify migration is complete...")
     try:
-        # In real server, this would call generate_migration_report
-        report = {
-            "🎉": "MIGRATION COMPLETE!",
-            "summary": {
-                "user": "George Vetticaden",
-                "duration": "7 days",
-                "freed_from": "18 years of iOS"
-            },
-            "achievements": {
-                "photos": "✅ 60,238 photos transferred",
-                "videos": "✅ 2,418 videos transferred",
-                "storage": "✅ 383GB migrated to Google Photos",
-                "family": "✅ 4/4 family members connected"
-            },
-            "apps_configured": {
-                "WhatsApp": "✅ Family group with 4 members",
-                "Google Maps": "✅ Location sharing with 4 members",
-                "Venmo": "✅ Teen cards activated"
-            },
-            "data_integrity": {
-                "photos_matched": True,
-                "videos_matched": True,
-                "zero_data_loss": True,
-                "apple_confirmation": "received"
-            },
-            "celebration_message": "Welcome to Android! Your family stays connected across platforms."
-        }
-        
-        print_test("generate_migration_report", True)
-        print(f"\n{Colors.GREEN}{Colors.BOLD}📊 Final Report:{Colors.ENDC}")
-        print(json.dumps(report, indent=2))
-        test_results.append(("generate_migration_report", True))
+        with db.get_connection() as conn:
+            result = conn.execute("""
+                SELECT overall_progress, current_phase 
+                FROM migration_status 
+                WHERE id = ?
+            """, (migration_id,)).fetchone()
+            
+            if result and result[0] == 100 and result[1] == "completed":
+                print_test("migration_complete_verification", True)
+                print(f"\n{Colors.GREEN}{Colors.BOLD}✅ Migration Complete: 100% in 'completed' phase{Colors.ENDC}")
+                test_results.append(("migration_complete_verification", True))
+            else:
+                print_test("migration_complete_verification", False, f"Progress: {result[0]}%, Phase: {result[1]}")
+                test_results.append(("migration_complete_verification", False))
     except Exception as e:
-        print_test("generate_migration_report", False, str(e))
-        test_results.append(("generate_migration_report", False))
+        print_test("migration_complete_verification", False, str(e))
+        test_results.append(("migration_complete_verification", False))
     
     return {"day_7": test_results}
 
@@ -644,7 +625,6 @@ async def main():
     print("✅ update_migration_status: 9 calls (3 on Day 1, 1 each Days 2-7)")
     print("✅ get_migration_status: 6 calls (Days 2-7)")
     print("✅ get_family_members: 2+ calls (Day 1 and Day 5)")
-    print("✅ generate_migration_report: 1 call (Day 7)")
     print("✅ update_family_member_apps: Multiple calls throughout")
     
     success_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0

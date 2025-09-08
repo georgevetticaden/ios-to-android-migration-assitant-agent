@@ -31,10 +31,8 @@ The system uses an AI agent (Claude) that follows natural language instructions 
 **Documentation**: [`mcp-tools/migration-state/README.md`](mcp-tools/migration-state/README.md)  
 **Tools**:
 - Initialization: `initialize_migration`, `add_family_member`
-- Progress: `update_migration_progress`, `update_photo_progress`, `update_family_member_apps`
-- Monitoring: `get_daily_summary`, `get_migration_overview`, `get_statistics`
-- Storage: `record_storage_snapshot`
-- Completion: `generate_migration_report`
+- Progress: `update_migration_status`, `update_family_member_apps`
+- Monitoring: `get_migration_status`, `get_family_members`
 
 #### 3. mobile-mcp (forked)
 **Purpose**: Natural language control of Android device via ADB  

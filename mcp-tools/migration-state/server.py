@@ -9,7 +9,6 @@ operations as MCP tools optimized for the iOS2Android Agent orchestration patter
 Tools by Day:
 - Day 1: initialize_migration, add_family_member, update_migration_status (3x), update_family_member_apps
 - Days 2-7: get_migration_status (daily), update_migration_status (progress)
-- Day 7: generate_migration_report
 - As needed: get_family_members (query with filters)
 
 Database: DuckDB at ~/.ios_android_migration/migration.db
@@ -59,7 +58,6 @@ async def list_tools() -> list[Tool]:
     - Day 1 Setup: initialize_migration, add_family_member, update_migration_status
     - Daily Operations: get_migration_status, update_migration_status, update_family_member_apps
     - Query Tools: get_family_members
-    - Completion: generate_migration_report
     
     Returns:
         List of Tool objects with descriptions optimized for agent understanding
@@ -175,18 +173,6 @@ async def list_tools() -> list[Tool]:
                         "default": "all",
                         "description": "Filter type"
                     }
-                },
-                "required": ["migration_id"]
-            }
-        ),
-        Tool(
-            name="generate_migration_report",
-            description="[DAY 7 ONLY] Generate final celebration report. Shows 100% success with achievements. Call after marking migration complete. Format can be 'summary' or 'detailed'. Example: generate_migration_report(migration_id='MIG-20250831-185510', format='summary')",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "migration_id": {"type": "string", "description": "Migration ID from initialize_migration"},
-                    "format": {"type": "string", "enum": ["summary", "detailed"], "default": "summary", "description": "Report format"}
                 },
                 "required": ["migration_id"]
             }
@@ -585,74 +571,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         "members": members
                     }
                     
-        elif name == "generate_migration_report":
-            # migration_id is already validated as required above
-            if not migration_id:
-                result = {
-                    "success": False,
-                    "error": "migration_id is required",
-                    "message": "The migration_id parameter is required for generate_migration_report."
-                }
-            else:
-                format_type = arguments.get("format", "summary")
-                
-                # Get migration details
-                with db.get_connection() as conn:
-                    migration = conn.execute("""
-                        SELECT * FROM migration_status WHERE id = ?
-                    """, (migration_id,)).fetchone()
-                    
-                    if migration:
-                        columns = [desc[0] for desc in conn.description]
-                        migration_dict = dict(zip(columns, migration))
-                        
-                        # Get family stats
-                        family_stats = conn.execute("""
-                            SELECT 
-                                COUNT(*) as total_members,
-                                SUM(CASE WHEN faa.app_name = 'WhatsApp' AND faa.status = 'configured' THEN 1 ELSE 0 END) as whatsapp_configured,
-                                SUM(CASE WHEN faa.app_name = 'Google Maps' AND faa.status = 'configured' THEN 1 ELSE 0 END) as maps_configured,
-                                SUM(CASE WHEN faa.app_name = 'Venmo' AND faa.status = 'configured' THEN 1 ELSE 0 END) as venmo_configured
-                            FROM family_members fm
-                            LEFT JOIN family_app_adoption faa ON fm.id = faa.family_member_id
-                            WHERE fm.migration_id = ?
-                        """, (migration_id,)).fetchone()
-                        
-                        # Generate celebratory report
-                        report = {
-                            "🎉": "MIGRATION COMPLETE!",
-                            "summary": {
-                                "user": migration_dict["user_name"],
-                                "duration": "7 days",
-                                "freed_from": f"{migration_dict.get('years_on_ios', 'many')} years of iOS"
-                            },
-                            "achievements": {
-                                "photos": f"✅ {migration_dict.get('photo_count', 0):,} photos transferred",
-                                "videos": f"✅ {migration_dict.get('video_count', 0):,} videos transferred",
-                                "storage": f"✅ {migration_dict.get('total_icloud_storage_gb', 0)}GB migrated to Google Photos",
-                                "family": f"✅ {family_stats[0]}/{family_stats[0]} family members connected"
-                            },
-                            "apps_configured": {
-                                "WhatsApp": f"✅ Family group with {family_stats[1]} members",
-                                "Google Maps": f"✅ Location sharing with {family_stats[2]} members",
-                                "Venmo": f"✅ {family_stats[3]} teen accounts" if family_stats[3] > 0 else "N/A"
-                            },
-                            "data_integrity": {
-                                "photos_matched": True,
-                                "videos_matched": True,
-                                "zero_data_loss": True,
-                                "apple_confirmation": "received"
-                            },
-                            "celebration_message": "Welcome to Android! Your family stays connected across platforms."
-                        }
-                        
-                        result = {
-                            "success": True,
-                            "report": report
-                        }
-                    else:
-                        result = {"status": "error", "message": "Migration not found"}
-                        
         elif name == "update_family_member_apps":
             # Update family member app adoption
             if not migration_id:
@@ -761,7 +679,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 "available_tools": [
                     "initialize_migration", "add_family_member", "update_migration_status",
                     "update_family_member_apps", "get_migration_status", 
-                    "get_family_members", "generate_migration_report"
+                    "get_family_members"
                 ]
             }
         

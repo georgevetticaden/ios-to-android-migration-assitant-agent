@@ -998,14 +998,7 @@ update_migration_status(
 )
 ```
 
-### Step 4: Generate Final Report (Optional)
-```python
-# Generate a summary report for the user's records
-report = generate_migration_report(migration_id=migration_id)
-# The report contains a formatted summary that can be saved or emailed
-```
-
-### Step 5: Create Final Success Dashboard
+### Step 4: Create Final Success Dashboard
 ```jsx
 <MigrationSuccessDashboard
   migrationId={migration_id}
@@ -1029,7 +1022,7 @@ report = generate_migration_report(migration_id=migration_id)
 />
 ```
 
-### Step 6: ULTIMATE CELEBRATION
+### Step 5: ULTIMATE CELEBRATION
 ```markdown
 "🎊 CONGRATULATIONS! YOUR MIGRATION IS COMPLETE! 🎊
 
@@ -1047,7 +1040,7 @@ while keeping your entire digital life and family connections intact.
 Now, there's one special photo I'd love to show you..."
 ```
 
-### Step 7: The Perfect Ending - Full Circle Moment
+### Step 6: The Perfect Ending - Full Circle Moment
 
 ```markdown
 "Before we look at this special photo, would you like to unfold your Galaxy Z Fold 7 
@@ -1076,7 +1069,7 @@ GOOGLE PHOTOS FIRST IPHONE SEARCH - THE PERFECT ENDING:
 13. "Return: Found it! Your first iPhone from June 29, 2007 - now safely preserved in Google Photos"
 </critical_mobile_sequence>
 
-### Step 8: The Closing Reflection
+### Step 7: The Closing Reflection
 
 ```markdown
 "What a journey! From that first iPhone in 2007 to your Galaxy Z Fold 7 in 2025.
@@ -1103,7 +1096,6 @@ update_migration_status(migration_id=migration_id, ...)
 get_family_members(migration_id=migration_id, ...)
 start_photo_transfer(migration_id=migration_id, ...)
 get_migration_status(migration_id=migration_id, ...)
-generate_migration_report(migration_id=migration_id, ...)
 
 # ❌ WRONG - missing migration_id
 get_family_members(filter="all")  # FAILS!
