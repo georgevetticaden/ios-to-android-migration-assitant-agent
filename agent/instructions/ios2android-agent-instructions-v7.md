@@ -678,25 +678,38 @@ The important thing is the system is working perfectly!"
 
 ## Day 4: Photos Appear! 🎉
 
-### Step 1: Get Day 4 Status
+### Step 1: Get Day 4 Status (with Real Storage Check)
 ```python
+# Get status - this automatically checks real Google Photos storage
 status = get_migration_status(migration_id=migration_id, day_number=4)
-# Automatically checks real Google Photos storage and calculates progress
 # Returns photo_progress with dynamically calculated metrics:
 # - percent_complete: Based on (storage_growth / total_icloud_gb) * 100
 # - photos_transferred: Estimated from storage (65% photos @ 5.5MB each)
 # - videos_transferred: Estimated from storage (35% videos @ 150MB each)
 # - storage_growth_gb: Actual GB growth from baseline
+
+# Check if photos have actually arrived
+if status.photo_progress.percent_complete > 0:
+    # Photos are visible! Update overall progress to reflect this milestone
+    update_migration_status(
+        migration_id=migration_id,
+        overall_progress=65,  # Day 4 milestone
+        notes=f"Day 4: Photos visible! {status.photo_progress.percent_complete:.1f}% transferred"
+    )
+    overall_progress = 65
+else:
+    # Photos haven't arrived yet (might still be processing)
+    overall_progress = 50  # Keep Day 3 progress
 ```
 
 ### Step 2: Create Day 4 Progress Dashboard
 ```jsx
-// Create consistent dashboard showing progress increase from Day 3
+// Show dashboard reflecting actual progress found
 <Day4ProgressDashboard
   migrationId={migration_id}
   dayNumber={4}
-  overallProgress={status.migration.overall_progress}  // Should be higher than Day 3's 50%
-  photoTransferProgress={status.photo_progress.percent_complete}  // Dynamically calculated
+  overallProgress={overall_progress}  // 65% if photos arrived, 50% if still waiting
+  photoTransferProgress={status.photo_progress.percent_complete}  // Dynamically calculated (e.g., 64.7%)
   photosTransferred={status.photo_progress.photos_transferred}
   videosTransferred={status.photo_progress.videos_transferred}
   totalPhotos={status.migration.photo_count}
@@ -704,15 +717,15 @@ status = get_migration_status(migration_id=migration_id, day_number=4)
   storageTransferred={status.photo_progress.storage_growth_gb}
   totalStorage={status.migration.total_icloud_storage_gb}
   familyStatus={{
-    whatsapp: {connected: 4, total: 4, status: "complete"},
-    maps: {sharing: 4, total: 4, status: "complete"},
-    venmo: {active: 0, total: 2, status: "pending"}
+    whatsapp: {connected: status.family_services.whatsapp_connected, total: 4, status: "complete"},
+    maps: {sharing: status.family_services.maps_sharing, total: 4, status: "complete"},
+    venmo: {active: status.family_services.venmo_active, total: 2, status: "pending"}
   }}
-  milestone="Photos are now visible in Google Photos!"
+  milestone={status.day_summary.key_milestone}
 />
 ```
 
-### Step 3: Verify Photos in Google Photos
+### Step 3: Verify Photos in Google Photos (Mobile)
 
 <critical_mobile_sequence>
 GOOGLE PHOTOS VERIFICATION - SEARCH METHOD:
@@ -748,37 +761,30 @@ GOOGLE PHOTOS VERIFICATION - SEARCH METHOD:
    - "Press Enter/Search"
    - "Confirm 2025 photos are present"
    
-7. "Return: Photos successfully transferred from [oldest_year_found] to 2025, covering [X] years"
+7. "Return: Photos appearing from [oldest_year_found] to 2025, spanning [X] years of memories (transfer in progress)"
 </critical_mobile_sequence>
 
 ### Step 4: MAJOR CELEBRATION
 ```markdown
+# Display this in the chat panel while React dashboard shows on right panel
+# and Galaxy Fold 7 displays actual Google Photos on the right side of screen
 "🎉 FANTASTIC NEWS! Your photos are starting to appear in Google Photos!
 
 Based on the verification:
-• Photos visible from [oldest_year] to [newest_year] - [X] years of memories!
-• Transfer progress: {status.photo_progress.percent_complete}% complete
-• Estimated photos transferred: ~{status.photo_progress.photos_transferred} of {status.migration.photo_count}
-• Estimated videos transferred: ~{status.photo_progress.videos_transferred} of {status.migration.video_count}
-• Storage transferred: {status.photo_progress.storage_growth_gb} GB of {status.migration.total_icloud_storage_gb} GB
+• Photos appearing from various years between {oldest_year_from_mobile} and 2025
+• Transfer progress: {status.photo_progress.percent_complete:.1f}% complete
+• Estimated photos transferred: ~{status.photo_progress.photos_transferred:,} of {status.migration.photo_count:,}
+• Estimated videos transferred: ~{status.photo_progress.videos_transferred:,} of {status.migration.video_count:,}
+• Storage transferred: {status.photo_progress.storage_growth_gb:.1f} GB of {status.migration.total_icloud_storage_gb:.0f} GB
 • Transfer rate: Accelerating! More photos arriving every hour!
 
 Your family ecosystem remains 100% connected:
-✅ WhatsApp: All 4 members active
-✅ Location Sharing: All 4 members sharing
+✅ WhatsApp: All {status.family_services.whatsapp_connected} members active
+✅ Location Sharing: All {status.family_services.maps_sharing} members sharing
 ⏳ Venmo: Teen cards arriving tomorrow (Day 5)
 
-Tomorrow we'll see even more photos as the transfer continues to accelerate!"
-```
-
-### Step 5: Update Migration Progress
-```python
-# Update overall progress for Day 4
-update_migration_status(
-    migration_id=migration_id,
-    overall_progress=65,  # Increased from Day 3's 50%
-    notes=f"Day 4: Photos visible! {status.photo_progress.percent_complete}% photo transfer complete"
-)
+Note: Photos are transferring from multiple years simultaneously. You'll see more photos 
+from each year appearing as the transfer continues. Tomorrow we'll see even more!"
 ```
 
 ## Day 5: Venmo Teen Setup
