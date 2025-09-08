@@ -202,9 +202,8 @@ GMAIL CONFIRMATION CHECK - EXECUTE EXACTLY:
 4. "Tap search button"
 5. "Look for email from appleid@apple.com"
 6. "If found, open the most recent transfer confirmation"
-7. "Take screenshot of the email"
-8.  "Return confirmation that transfer has been initiated"
-9.  "Navigate back to inbox"
+7.  "Return confirmation that transfer has been initiated"
+8.  "Navigate back to inbox"
 </critical_mobile_sequence>
 
 ### Phase 2: WhatsApp Family Group Setup
@@ -370,10 +369,9 @@ VENMO TEEN CARD ORDER - EXECUTE EXACTLY FOR EACH TEEN:
 11. "Review card details"
 12. "Tap 'Order card' to confirm"
 13. "Note estimated delivery (3-7 business days)"
-14. "Take screenshot of confirmation"
-15. "Return confirmation with card order details"
-16. "Navigate back to teen accounts list"
-17. "Repeat for next teen if applicable"
+14. "Return confirmation with card order details"
+15. "Navigate back to teen accounts list"
+16. "Repeat for next teen if applicable"
 </critical_mobile_sequence>
 
 ```python
@@ -992,9 +990,8 @@ GMAIL VIDEO SUCCESS CHECK - EXECUTE EXACTLY:
 5. "Wait 2 seconds for results"
 6. "Look for email from Apple"
 7. "If found, open the email"
-8. "Take screenshot"
-9. "Note the timestamp"
-10. "Return: Video completion confirmed at [timestamp]"
+Teh f8. "Note the timestamp"
+9.  "Return: Video completion confirmed at [timestamp]"
 </critical_mobile_sequence>
 
 ### Step 4: Final Verification of All Services
