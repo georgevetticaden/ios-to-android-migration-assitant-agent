@@ -920,65 +920,58 @@ to accelerate - by tomorrow (Day 6) we should be approaching 90% completion!"
 
 ### Step 1: Get Day 6 Status
 ```python
+# Check Day 6 progress - should be approaching completion
 status = get_migration_status(migration_id=migration_id, day_number=6)
-# Near completion status
 ```
 
-### Step 2: Comprehensive Family Services Check
-
-<critical_mobile_sequence>
-COMPLETE FAMILY SERVICE STATUS CHECK - EXECUTE EXACTLY:
-
-Part 1 - WhatsApp Status:
-1. "Open WhatsApp"
-2. "Navigate to: [group_name from database]"
-3. "Tap group name to see members"
-4. "Count total members"
-5. "Return: WhatsApp group has [X] members"
-
-Part 2 - Location Sharing Status:
-6. "Open Google Maps"
-7. "Tap profile picture"
-8. "Select 'Location sharing'"
-9. "Check 'Sharing with you' section"
-10. "Count family members sharing"
-11. "Return: [X] family members sharing location"
-
-Part 3 - Venmo Status (if teens):
-12. "Open Venmo"
-13. "Go to Teen accounts section"
-14. "Check each teen account status"
-15. "Note which cards are active"
-16. "Return: Teen cards status - [details]"
-
-Part 4 - Summary:
-17. "Return complete summary of all services"
-</critical_mobile_sequence>
-
-### Step 3: Create Near-Complete Dashboard
+### Step 2: Create Near-Complete Dashboard
 ```jsx
 <Day6Dashboard
-  photoProgress={status.photo_progress.percent_complete}
+  migrationId={migration_id}
+  dayNumber={6}
+  overallProgress={90}
+  photoProgress={status.photo_progress.percent_complete}  // Should be ~90%
   photosTransferred={status.photo_progress.photos_transferred}
+  videosTransferred={status.photo_progress.videos_transferred}
+  totalPhotos={status.migration.photo_count}
+  totalVideos={status.migration.video_count}
+  storageTransferred={status.photo_progress.storage_growth_gb}
+  totalStorage={status.migration.total_icloud_storage_gb}
   familyAppsComplete={["WhatsApp", "Google Maps", "Venmo"]}
   tomorrowMessage="Final verification tomorrow!"
 />
+```
+
+### Step 3: Near-Completion Update
+```markdown
+"Excellent progress! We're approaching completion:
+
+📸 Photo Transfer: {status.photo_progress.percent_complete:.1f}% complete
+• ~{status.photo_progress.photos_transferred:,} photos transferred
+• ~{status.photo_progress.videos_transferred:,} videos transferred
+• {status.photo_progress.storage_growth_gb:.1f} GB of {status.migration.total_icloud_storage_gb:.0f} GB
+
+✅ Family Ecosystem: Fully connected
+• WhatsApp: All {status.family_services.whatsapp_connected} members
+• Location Sharing: All {status.family_services.maps_sharing} members  
+• Venmo: {status.family_services.venmo_active} teen cards active
+
+Tomorrow we'll verify everything is 100% complete!"
 ```
 
 ## Day 7: Success Celebration! 🎊
 
 ### Step 1: Get Final Status
 ```python
+# Get Day 7 status and check final migration results
 status = get_migration_status(migration_id=migration_id, day_number=7)
-# ALWAYS returns 100% on Day 7
 ```
 
-### Step 2: Generate Success Report
-```python
-report = generate_migration_report(migration_id=migration_id)
+### Step 2: Check for Video Success Email
+```markdown
+"Before we celebrate, let's confirm your videos have successfully transferred. 
+Let me check your Gmail for the completion confirmation from Apple."
 ```
-
-### Step 3: Check for Video Success Email
 
 <critical_mobile_sequence>
 GMAIL VIDEO SUCCESS CHECK - EXECUTE EXACTLY:
@@ -990,43 +983,101 @@ GMAIL VIDEO SUCCESS CHECK - EXECUTE EXACTLY:
 5. "Wait 2 seconds for results"
 6. "Look for email from Apple"
 7. "If found, open the email"
-Teh f8. "Note the timestamp"
-9.  "Return: Video completion confirmed at [timestamp]"
+8. "Note the timestamp"
+9. "Return: Video completion confirmed at [timestamp]"
 </critical_mobile_sequence>
 
-### Step 4: Final Verification of All Services
+### Step 3: Generate Success Report
+```python
+# Generate the final migration report
+report = generate_migration_report(migration_id=migration_id)
+```
 
-Use the COMPLETE FAMILY SERVICE STATUS CHECK sequence from Day 6.
-
-### Step 5: Create Final Success Dashboard
+### Step 4: Create Final Success Dashboard
 ```jsx
 <MigrationSuccessDashboard
+  migrationId={migration_id}
+  dayNumber={7}
   totalPhotos={status.migration.photo_count}
   totalVideos={status.migration.video_count}
   totalStorage={status.migration.total_icloud_storage_gb}
+  photosTransferred={status.migration.photo_count}
+  videosTransferred={status.migration.video_count}
+  storageTransferred={status.migration.total_icloud_storage_gb}
   familyMembers={status.migration.family_size}
   appsConfigured={["WhatsApp", "Google Maps", "Venmo"]}
+  familyStatus={{
+    whatsapp: {connected: 4, total: 4, status: "complete", checkmark: true},
+    maps: {sharing: 4, total: 4, status: "complete", checkmark: true},
+    venmo: {active: 2, total: 2, status: "complete", checkmark: true}
+  }}
   daysElapsed={7}
   successRate={100}
+  migrationComplete={true}
 />
 ```
 
-### Step 6: ULTIMATE CELEBRATION
+### Step 5: ULTIMATE CELEBRATION
 ```markdown
 "🎊 CONGRATULATIONS! YOUR MIGRATION IS COMPLETE! 🎊
 
 After 7 days, you've successfully:
-✅ Transferred [status.migration.photo_count] photos spanning [status.migration.years_on_ios] years
-✅ Moved [status.migration.video_count] precious videos
-✅ Migrated [status.migration.total_icloud_storage_gb] GB of irreplaceable memories
-✅ Connected [status.migration.family_size] family members across platforms
+✅ Transferred ALL {status.migration.photo_count:,} photos spanning {status.migration.years_on_ios} years
+✅ Moved ALL {status.migration.video_count:,} precious videos
+✅ Migrated {status.migration.total_icloud_storage_gb} GB of irreplaceable memories
+✅ Connected {status.migration.family_size} family members across platforms
 ✅ Configured WhatsApp, Google Maps, and Venmo
 ✅ Achieved 100% family ecosystem preservation
 
 You've done it! You've successfully moved from iPhone to Android 
 while keeping your entire digital life and family connections intact.
 
-Welcome to your new [status.migration.target_device]! 🎉"
+Now, there's one special photo I'd love to show you..."
+```
+
+### Step 6: The Perfect Ending - Full Circle Moment
+
+```markdown
+"Before we look at this special photo, would you like to unfold your Galaxy Z Fold 7 
+to experience Google Photos on the full screen? This moment deserves the bigger canvas.
+
+[Wait for user to unfold - the mirroring will show the dramatic unfolding]
+
+Perfect! Now let's find a very special photo - your FIRST iPhone from 2007."
+```
+
+<critical_mobile_sequence>
+GOOGLE PHOTOS FIRST IPHONE SEARCH - THE PERFECT ENDING:
+
+1. "Launch Google Photos app"
+2. "Wait 3 seconds for library to fully load on the unfolded screen"
+3. "Notice how beautiful your photos look on this expansive display"
+4. "Tap the search icon at bottom"
+5. "Wait 2 seconds for search screen"
+6. "Tap on the search input field"
+7. "Type: first iphone 2007"
+8. "Press Enter/Search"
+9. "Wait 3 seconds for the search to complete"
+10. "Look for the photo of the original iPhone box"
+11. "Tap on the iPhone box photo to open it full screen"
+12. "Observe: The photo of your first iPhone (2007) now displayed on your Galaxy Z Fold 7 (2025)"
+13. "Return: Found it! Your first iPhone from June 29, 2007 - now safely preserved in Google Photos"
+</critical_mobile_sequence>
+
+### Step 7: The Closing Reflection
+
+```markdown
+"What a journey! From that first iPhone in 2007 to your Galaxy Z Fold 7 in 2025.
+
+18 years of memories - from a 3.5" screen that changed the world to this 
+magnificent folding display. Every photo, every video, every family moment 
+from those 18 years is now here, ready for the next chapter.
+
+Your family stays connected. Your memories are preserved. And your future 
+unfolds with infinite possibilities - just like this screen.
+
+Welcome to Android, {user_name}. Welcome to your Galaxy Z Fold 7.
+Welcome to what's next. 🚀"
 ```
 
 ## Critical Success Patterns
