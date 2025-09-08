@@ -715,17 +715,40 @@ status = get_migration_status(migration_id=migration_id, day_number=4)
 ### Step 3: Verify Photos in Google Photos
 
 <critical_mobile_sequence>
-GOOGLE PHOTOS VERIFICATION - EXECUTE EXACTLY:
+GOOGLE PHOTOS VERIFICATION - SEARCH METHOD:
 
 1. "Launch Google Photos app"
-2. "Wait 5 seconds for library to load"
-3. "Check if photos are appearing"
-4. "Scroll down slowly through the library for 5 seconds"
-5. "Note the oldest year visible at the bottom"
-6. "Scroll back to top"
-7. "Note the newest year visible at the top"
-8. "Count approximately how many year groups are visible"
-9.  "Return: Photos visible from [oldest_year] to [newest_year], covering [X] years of memories"
+2. "Wait 3 seconds for library to load"
+3. "Verify photos are appearing on screen (should see recent 2025 photos)"
+4. "Tap the search icon at bottom of screen"
+5. "Wait 2 seconds for search screen to load"
+6. "Look for year chips or date filters on the search screen"
+   
+   IF YEAR CHIPS VISIBLE:
+   - "Note the earliest and latest years displayed"
+   - "Return: Photos visible from [earliest_year] to [latest_year]"
+   
+   IF NO YEAR CHIPS:
+   - "Tap on the search input field at top"
+   - "Type: 2007" (to check for oldest possible photos)
+   - "Press Enter/Search"
+   - "Wait 2 seconds for results"
+   - "Check if any photos appear from 2007"
+     - If yes: "Note that 2007 photos are present"
+     - If no results: 
+       - "Tap the X or clear button in search field to clear '2007'"
+       - "Type: 2008"
+       - "Press Enter/Search"
+       - "Wait 2 seconds for results"
+       - "Check if any photos appear from 2008"
+       - "Continue incrementing year (2009, 2010, etc.) until photos found"
+       - "Each time: Tap X to clear, type new year, press Enter"
+   - "Once oldest year identified, tap X to clear the search field"
+   - "Type: 2025" (to confirm newest photos)
+   - "Press Enter/Search"
+   - "Confirm 2025 photos are present"
+   
+7. "Return: Photos successfully transferred from [oldest_year_found] to 2025, covering [X] years"
 </critical_mobile_sequence>
 
 ### Step 4: MAJOR CELEBRATION
