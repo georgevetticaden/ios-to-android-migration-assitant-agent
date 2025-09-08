@@ -355,9 +355,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                                 (migration_id,)
                             ).fetchone()
                             
-                            if migration_start:
+                            if migration_start and migration_start[0]:
                                 from datetime import datetime
-                                start_date = datetime.fromisoformat(migration_start[0].replace('Z', '+00:00'))
+                                # migration_start[0] is the started_at value from the database
+                                start_date_value = migration_start[0]
+                                
+                                # Handle both string and datetime types
+                                if isinstance(start_date_value, str):
+                                    start_date = datetime.fromisoformat(start_date_value.replace('Z', '+00:00'))
+                                else:
+                                    # Already a datetime object
+                                    start_date = start_date_value
+                                    
                                 current_date = datetime.now()
                                 day_number = (current_date - start_date).days + 1
                                 
@@ -418,8 +427,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 overview = await internal_get_migration_overview(migration_id)
                 transfer_id = overview.get("transfer_id") if overview else None
                 
-                # For Day 2+ with valid transfer_id, check actual storage
-                if transfer_id and day_number >= 2:
+                # For Day 2+ with valid transfer_id, check actual storage (except Day 7)
+                # Day 7 is always 100% for demo, skip storage check
+                if transfer_id and day_number >= 2 and day_number != 7:
                     try:
                         # Initialize iCloud client if needed (singleton pattern)
                         global icloud_client
@@ -437,40 +447,65 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     except Exception as e:
                         logger.warning(f"Could not check real storage: {e}")
                         # Continue with data from DB
+                elif day_number == 7:
+                    logger.info("Day 7: Skipping storage check, will return 100% completion")
                 
                 # Get all status information (now includes fresh storage data)
                 daily = await internal_get_daily_summary(migration_id, day_number)
                 overview = await internal_get_migration_overview(migration_id)
                 family = await internal_get_family_service_summary(migration_id)
                 
-                # Get photo progress from latest storage snapshot
+                # Get photo progress from latest storage snapshot (except Day 7)
                 photo_progress = {}
-                with db.get_connection() as conn:
-                    # Get most recent storage snapshot
-                    snapshot = conn.execute("""
-                        SELECT google_photos_gb, storage_growth_gb, percent_complete,
-                               estimated_photos_transferred, estimated_videos_transferred
-                        FROM storage_snapshots 
-                        WHERE migration_id = ? 
-                        ORDER BY snapshot_time DESC
-                        LIMIT 1
-                    """, (migration_id,)).fetchone()
-                    
-                    if snapshot:
-                        # Use actual storage data from snapshot
-                        photo_progress = {
-                            "percent_complete": snapshot[2] or 0,
-                            "current_storage_gb": snapshot[0],
-                            "storage_growth_gb": snapshot[1],
-                            "photos_transferred": snapshot[3] or 0,
-                            "videos_transferred": snapshot[4] or 0,
-                            "transfer_id": transfer_id,
-                            "day_number": day_number,
-                            "status": "in_progress" if day_number < 7 else "completed"
-                        }
-                    else:
-                        # Fallback for Day 1 or if no snapshots yet
-                        photo_progress = await internal_check_photo_transfer_progress(transfer_id, day_number, migration_id) if transfer_id else {}
+                
+                # Day 7 is always 100% for demo
+                if day_number == 7:
+                    with db.get_connection() as conn:
+                        # Get expected counts from migration_status
+                        migration_data = conn.execute("""
+                            SELECT photo_count, video_count, total_icloud_storage_gb
+                            FROM migration_status 
+                            WHERE id = ?
+                        """, (migration_id,)).fetchone()
+                        
+                        if migration_data:
+                            photo_progress = {
+                                "percent_complete": 100,
+                                "current_storage_gb": migration_data[2],
+                                "storage_growth_gb": migration_data[2],
+                                "photos_transferred": migration_data[0],
+                                "videos_transferred": migration_data[1],
+                                "transfer_id": transfer_id,
+                                "day_number": 7,
+                                "status": "completed"
+                            }
+                else:
+                    with db.get_connection() as conn:
+                        # Get most recent storage snapshot
+                        snapshot = conn.execute("""
+                            SELECT google_photos_gb, storage_growth_gb, percent_complete,
+                                   estimated_photos_transferred, estimated_videos_transferred
+                            FROM storage_snapshots 
+                            WHERE migration_id = ? 
+                            ORDER BY snapshot_time DESC
+                            LIMIT 1
+                        """, (migration_id,)).fetchone()
+                        
+                        if snapshot:
+                            # Use actual storage data from snapshot
+                            photo_progress = {
+                                "percent_complete": snapshot[2] or 0,
+                                "current_storage_gb": snapshot[0],
+                                "storage_growth_gb": snapshot[1],
+                                "photos_transferred": snapshot[3] or 0,
+                                "videos_transferred": snapshot[4] or 0,
+                                "transfer_id": transfer_id,
+                                "day_number": day_number,
+                                "status": "in_progress" if day_number < 7 else "completed"
+                            }
+                        else:
+                            # Fallback for Day 1 or if no snapshots yet
+                            photo_progress = await internal_check_photo_transfer_progress(transfer_id, day_number, migration_id) if transfer_id else {}
                 
                 result = {
                     "success": True,
