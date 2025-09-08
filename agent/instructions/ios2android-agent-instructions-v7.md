@@ -793,7 +793,7 @@ from each year appearing as the transfer continues. Tomorrow we'll see even more
 ```python
 # Get teen family members for activation
 teens = get_family_members(migration_id=migration_id, filter="teen")
-teen_names = [teen.name for teen in teens]  # Extract names from response
+teen_names = [teen['name'] for teen in teens]  # Extract names from response (dict access)
 ```
 
 ```markdown
@@ -814,10 +814,10 @@ FOR EACH teen IN teens:
   CARD ACTIVATION:
   2. "Tap the 'Me' Tab on the lower right"
   3. "Select the down arrow next to my name in left hand corner"
-  4. "Select the teen account for: {teen.name}"
+  4. "Select the teen account for: {teen['name']}"
   5. "Tap 'Overview' to see the linked Teen Account details"
   6. "Look for 'Activate debit card' button. If you don't see it, the card is already activated - tap the back button and continue with next teen starting at step 2"
-  7. "Ask user to provide {teen.name.split()[0]}'s debit card expiration date in format (MM/YY) and new four digit PIN"
+  7. "Ask user to provide {teen['name'].split()[0]}'s debit card expiration date in format (MM/YY) and new four digit PIN"
      [User provides expiration date and four digit PIN]
   8. "Enter user provided expiration date without the '/' as the app will automatically enter the '/'"
   9. "Tap 'Continue'"
@@ -829,14 +829,14 @@ FOR EACH teen IN teens:
   ACCOUNT SETUP:
   14. "Tap 'Overview' to see the linked Teen Account details"
   15. "Tap 'Complete setup'"
-  16. "You will be asked for teen's telephone number. To find it: Launch the 'Contacts' app, tap the search icon, search for '{teen.name}', click on {teen.name.split()[0]}, long press the mobile number and tap copy from the context menu"
+  16. "You will be asked for teen's telephone number. To find it: Launch the 'Contacts' app, tap the search icon, search for '{teen['name']}', click on {teen['name'].split()[0]}, long press the mobile number and tap copy from the context menu"
   17. "Switch back to the Venmo app and paste the copied telephone number"
   18. "Tap 'Done'"
   19. "Tap 'Next'"
   20. "Keep Payment privacy to 'Private'"
   21. "Tap 'Next'"
   22. "Tap 'Send Invite'"
-  23. "This should take you to the Messages app with draft message with Venmo link created for {teen.name.split()[0]}. Tap the send icon to send the message"
+  23. "This should take you to the Messages app with draft message with Venmo link created for {teen['name'].split()[0]}. Tap the send icon to send the message"
   24. "Switch back to the Venmo app"
 END FOR
 
@@ -845,14 +845,15 @@ END FOR
 
 ### Step 3: Update Venmo Status in Database
 ```python
-# Update each teen's Venmo status to configured
+# Update ALL teens' Venmo status to configured (including any already activated)
+# This ensures database reflects current state even if cards were manually activated
 for teen in teens:
     update_family_member_apps(
         migration_id=migration_id,
-        member_name=teen.name,
+        member_name=teen['name'],  # Use dict access since get_family_members returns dicts
         app_name="Venmo",
         status="configured",
-        details={"venmo_card_activated": True, "card_last_four": f"[{teen.name.split()[0]}'s last 4]"}
+        details={"venmo_card_activated": True, "activation_date": "Day 5"}
     )
 ```
 
@@ -890,9 +891,9 @@ update_migration_status(
   }}
   venmoDetails={teens.reduce((acc, teen) => ({
     ...acc,
-    [teen.name.split()[0].toLowerCase()]: {
+    [teen['name'].split()[0].toLowerCase()]: {
       status: "active", 
-      lastFour: `[${teen.name.split()[0]}'s last 4]`
+      cardActivated: true
     }
   }), {})}
   milestone="ALL FAMILY SERVICES COMPLETE! 🎉"
