@@ -1052,8 +1052,8 @@ your 18-year evolution in mobile technology."
 GOOGLE PHOTOS FIRST IPHONE SEARCH - EXECUTE EXACTLY:
 
 1. "Launch Google Photos app"
-2. "Wait 3 seconds for library to fully load on the unfolded screen"
-3. "Notice how beautiful your photos look on this expansive display"
+2. "Wait 3 seconds for library to fully load"
+3. "Notice your photos loading in the library"
 4. "Tap the search icon at bottom"
 5. "Wait 2 seconds for search screen"
 6. "Tap on the search input field"
