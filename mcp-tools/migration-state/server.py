@@ -682,6 +682,30 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                         values.extend([member_id, app_name])
                         
                         conn.execute(query, values)
+                        
+                        # If updating Venmo to configured, also update venmo_setup table
+                        if app_name == "Venmo" and status == "configured":
+                            # Check if venmo_setup record exists for this member
+                            venmo_record = conn.execute("""
+                                SELECT id FROM venmo_setup 
+                                WHERE family_member_id = ?
+                            """, (member_id,)).fetchone()
+                            
+                            if venmo_record:
+                                # Update venmo_setup with card activation details
+                                conn.execute("""
+                                    UPDATE venmo_setup 
+                                    SET card_arrived_at = CASE 
+                                            WHEN card_arrived_at IS NULL THEN CURRENT_TIMESTAMP 
+                                            ELSE card_arrived_at 
+                                        END,
+                                        card_activated_at = CURRENT_TIMESTAMP,
+                                        setup_complete = ?
+                                    WHERE family_member_id = ?
+                                """, (details.get("venmo_card_activated", False), member_id))
+                                
+                                details_updated.append("venmo_setup_updated")
+                        
                         conn.commit()
                         
                         result = {
