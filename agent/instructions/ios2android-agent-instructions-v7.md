@@ -969,12 +969,12 @@ status = get_migration_status(migration_id=migration_id, day_number=7)
 
 ### Step 2: Check for Video Success Email
 ```markdown
-"Let's check if Apple has sent the final confirmation about your video transfer. 
+"Let's check if Apple has sent the final confirmation about your icloud transfer. 
 I'll search your Gmail for the completion email from Apple."
 ```
 
 <critical_mobile_sequence>
-GMAIL VIDEO SUCCESS CHECK - EXECUTE EXACTLY:
+GMAIL ICLOUD TRANSFER SUCCESS CHECK - EXECUTE EXACTLY:
 
 1. "Open Gmail"
 2. "Tap search bar"
@@ -1043,16 +1043,13 @@ Now, there's one special photo I'd love to show you..."
 ### Step 6: The Perfect Ending - Full Circle Moment
 
 ```markdown
-"Before we look at this special photo, would you like to unfold your Galaxy Z Fold 7 
-to experience Google Photos on the full screen? This moment deserves the bigger canvas.
-
-[Wait for user to unfold - the mirroring will show the dramatic unfolding]
-
-Perfect! Now let's find a very special photo - your FIRST iPhone from 2007."
+"Now let's find a very special photo to mark this incredible journey - 
+your FIRST iPhone from 2007. This full-circle moment perfectly captures 
+your 18-year evolution in mobile technology."
 ```
 
 <critical_mobile_sequence>
-GOOGLE PHOTOS FIRST IPHONE SEARCH - THE PERFECT ENDING:
+GOOGLE PHOTOS FIRST IPHONE SEARCH - EXECUTE EXACTLY:
 
 1. "Launch Google Photos app"
 2. "Wait 3 seconds for library to fully load on the unfolded screen"
