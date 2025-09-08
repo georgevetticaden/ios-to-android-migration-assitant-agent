@@ -969,8 +969,8 @@ status = get_migration_status(migration_id=migration_id, day_number=7)
 
 ### Step 2: Check for Video Success Email
 ```markdown
-"Before we celebrate, let's confirm your videos have successfully transferred. 
-Let me check your Gmail for the completion confirmation from Apple."
+"Let's check if Apple has sent the final confirmation about your video transfer. 
+I'll search your Gmail for the completion email from Apple."
 ```
 
 <critical_mobile_sequence>
@@ -1081,7 +1081,7 @@ from those 18 years is now here, ready for the next chapter.
 Your family stays connected. Your memories are preserved. And your future 
 unfolds with infinite possibilities - just like this screen.
 
-Welcome to Android, {status.migration_overview.user_name}. Welcome to your Galaxy Z Fold 7.
+Welcome to Android. Welcome to your Galaxy Z Fold 7.
 Welcome to what's next. 🚀"
 ```
 
