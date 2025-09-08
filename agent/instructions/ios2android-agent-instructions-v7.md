@@ -787,60 +787,122 @@ Note: Photos are transferring from multiple years simultaneously. You'll see mor
 from each year appearing as the transfer continues. Tomorrow we'll see even more!"
 ```
 
-## Day 5: Venmo Teen Setup
+## Day 5: Venmo Activation & Continued Progress
 
-### Step 1: Get Day 5 Status
+### Step 1: Acknowledge Cards Arrival & Get Teen Info
 ```python
-status = get_migration_status(migration_id=migration_id, day_number=5)
+# Get teen family members for activation
 teens = get_family_members(migration_id=migration_id, filter="teen")
+teen_names = [teen.name for teen in teens]  # Extract names from response
 ```
 
-### Step 2: Check if Cards Arrived
 ```markdown
-"Day 5 Update:
-📸 Photos: [status.photo_progress.percent_complete]% complete (~[status.photo_progress.photos_transferred] photos transferred!)
-💳 Venmo: Have the teen cards arrived?
+"🎉 Perfect timing! The Venmo Teen cards have arrived! Let's get {' and '.join(teen_names)} set up right away.
 
-[If yes]: Let's activate them now..."
+This is the final piece of your family's cross-platform ecosystem. Once we activate these cards, 
+all three services will be 100% complete!"
 ```
 
-### Step 3: Activate Teen Cards (if arrived)
+### Step 2: Activate Teen Cards (Mobile)
 
 <critical_mobile_sequence>
-VENMO TEEN CARD ACTIVATION - EXECUTE EXACTLY FOR EACH TEEN:
+VENMO TEEN CARD ACTIVATION - EXECUTE FOR EACH TEEN:
 
 1. "Launch Venmo app"
-2. "Wait 3 seconds for home screen"
-3. "Tap menu icon (☰)"
-4. "Select 'Teen accounts'"
-5. "Tap on: [teen name from database]"
-6. "Find 'Venmo Teen Debit Card' section"
+2. "Tap menu icon (☰) at top left"
+3. "Select 'Teen accounts' from menu"
+
+FOR EACH teen IN teens:
+5. "Tap on: {teen.name}"
+6. "Scroll to 'Venmo Teen Debit Card' section"
 7. "Tap 'Activate card'"
-8. "When prompted, ask user for last 4 digits of card"
-9. "User provides: [4 digits]"
-10. "Enter the 4 digits in the field"
-11. "Tap continue"
-12. "Create a 4-digit PIN"
-13. "Confirm the PIN"
-14. "Complete activation"
+8. "Ask user: Please provide the last 4 digits of {teen.name.split()[0]}'s card"
+   [User provides 4 digits]
+9. "Enter: [4 digits provided]"
+10. "Tap 'Continue'"
+11. "Enter PIN: [let user choose or suggest 1234]"
+12. "Confirm PIN: [same PIN]"
+13. "Tap 'Activate'"
+14. "Wait for confirmation screen"
 15. "Verify card shows as 'Active'"
-16. "Return confirmation of activation"
-17. "Note card last 4 digits: [digits]"
-18. "Navigate back to teen accounts"
-19. "Repeat for next teen if applicable"
+16. "Navigate back to Teen accounts list"
+END FOR
+
+1.  "Return: Successfully activated {len(teens)} teen cards!"
 </critical_mobile_sequence>
 
-### Step 4: Update Venmo Status
+### Step 3: Update Venmo Status in Database
 ```python
-if cards_activated:
-    for teen in teens:
-        update_family_member_apps(
-            migration_id=migration_id,
-            member_name=teen,
-            app_name="Venmo",
-            status="configured",
-            details={"venmo_card_activated": True}
-        )
+# Update each teen's Venmo status to configured
+for teen in teens:
+    update_family_member_apps(
+        migration_id=migration_id,
+        member_name=teen.name,
+        app_name="Venmo",
+        status="configured",
+        details={"venmo_card_activated": True, "card_last_four": f"[{teen.name.split()[0]}'s last 4]"}
+    )
+```
+
+### Step 4: Get Migration Status & Check Photo Progress
+```python
+# Now check overall migration status including photo progress
+status = get_migration_status(migration_id=migration_id, day_number=5)
+
+# Update overall progress to reflect Day 5 milestone
+update_migration_status(
+    migration_id=migration_id,
+    overall_progress=75,  # Day 5: Venmo complete, photos accelerating
+    notes=f"Day 5: All family services complete! Photos {status.photo_progress.percent_complete:.1f}% transferred"
+)
+```
+
+### Step 5: Create Comprehensive Day 5 Dashboard
+```jsx
+// Show complete family ecosystem + accelerating photo transfer
+<Day5CompleteDashboard
+  migrationId={migration_id}
+  dayNumber={5}
+  overallProgress={75}  // Day 5 progress
+  photoTransferProgress={status.photo_progress.percent_complete}  // Should be ~80%
+  photosTransferred={status.photo_progress.photos_transferred}
+  videosTransferred={status.photo_progress.videos_transferred}
+  totalPhotos={status.migration.photo_count}
+  totalVideos={status.migration.video_count}
+  storageTransferred={status.photo_progress.storage_growth_gb}
+  totalStorage={status.migration.total_icloud_storage_gb}
+  familyStatus={{
+    whatsapp: {connected: 4, total: 4, status: "complete", checkmark: true},
+    maps: {sharing: 4, total: 4, status: "complete", checkmark: true},
+    venmo: {active: 2, total: 2, status: "complete", checkmark: true}  // NOW COMPLETE!
+  }}
+  venmoDetails={teens.reduce((acc, teen) => ({
+    ...acc,
+    [teen.name.split()[0].toLowerCase()]: {
+      status: "active", 
+      lastFour: `[${teen.name.split()[0]}'s last 4]`
+    }
+  }), {})}
+  milestone="ALL FAMILY SERVICES COMPLETE! 🎉"
+/>
+```
+
+### Step 6: Major Celebration
+```markdown
+"🎊 INCREDIBLE MILESTONE ACHIEVED!
+
+✅ FAMILY ECOSYSTEM: 100% COMPLETE!
+• WhatsApp: All 4 members connected ✓
+• Location Sharing: All 4 members sharing ✓  
+• Venmo Teen: Both cards activated ✓
+
+📸 PHOTO TRANSFER: {status.photo_progress.percent_complete:.1f}% Complete!
+• Photos transferred: ~{status.photo_progress.photos_transferred:,} of {status.migration.photo_count:,}
+• Videos transferred: ~{status.photo_progress.videos_transferred:,} of {status.migration.video_count:,}
+• Storage transferred: {status.photo_progress.storage_growth_gb:.1f} GB of {status.migration.total_icloud_storage_gb:.0f} GB
+
+Your family is now fully connected across all platforms! The photo transfer continues 
+to accelerate - by tomorrow (Day 6) we should be approaching 90% completion!"
 ```
 
 ## Day 6: Near Completion
