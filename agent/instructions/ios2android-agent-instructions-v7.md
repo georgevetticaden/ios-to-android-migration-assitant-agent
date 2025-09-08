@@ -806,29 +806,41 @@ all three services will be 100% complete!"
 ### Step 2: Activate Teen Cards (Mobile)
 
 <critical_mobile_sequence>
-VENMO TEEN CARD ACTIVATION - EXECUTE FOR EACH TEEN:
+VENMO TEEN CARD ACTIVATION & SETUP - EXECUTE FOR EACH TEEN:
 
 1. "Launch Venmo app"
-2. "Tap menu icon (☰) at top left"
-3. "Select 'Teen accounts' from menu"
 
 FOR EACH teen IN teens:
-5. "Tap on: {teen.name}"
-6. "Scroll to 'Venmo Teen Debit Card' section"
-7. "Tap 'Activate card'"
-8. "Ask user: Please provide the last 4 digits of {teen.name.split()[0]}'s card"
-   [User provides 4 digits]
-9. "Enter: [4 digits provided]"
-10. "Tap 'Continue'"
-11. "Enter PIN: [let user choose or suggest 1234]"
-12. "Confirm PIN: [same PIN]"
-13. "Tap 'Activate'"
-14. "Wait for confirmation screen"
-15. "Verify card shows as 'Active'"
-16. "Navigate back to Teen accounts list"
+  CARD ACTIVATION:
+  2. "Tap the 'Me' Tab on the lower right"
+  3. "Select the down arrow next to my name in left hand corner"
+  4. "Select the teen account for: {teen.name}"
+  5. "Tap 'Overview' to see the linked Teen Account details"
+  6. "Look for 'Activate debit card' button. If you don't see it, the card is already activated - tap the back button and continue with next teen starting at step 2"
+  7. "Ask user to provide {teen.name.split()[0]}'s debit card expiration date in format (MM/YY) and new four digit PIN"
+     [User provides expiration date and four digit PIN]
+  8. "Enter user provided expiration date without the '/' as the app will automatically enter the '/'"
+  9. "Tap 'Continue'"
+  10. "Enter user provided 4-digit PIN"
+  11. "Confirm PIN: [same PIN]"
+  12. "Tap 'Activate' to complete the process"
+  13. "Verify card has been activated"
+  
+  ACCOUNT SETUP:
+  14. "Tap 'Overview' to see the linked Teen Account details"
+  15. "Tap 'Complete setup'"
+  16. "You will be asked for teen's telephone number. To find it: Launch the 'Contacts' app, tap the search icon, search for '{teen.name}', click on {teen.name.split()[0]}, long press the mobile number and tap copy from the context menu"
+  17. "Switch back to the Venmo app and paste the copied telephone number"
+  18. "Tap 'Done'"
+  19. "Tap 'Next'"
+  20. "Keep Payment privacy to 'Private'"
+  21. "Tap 'Next'"
+  22. "Tap 'Send Invite'"
+  23. "This should take you to the Messages app with draft message with Venmo link created for {teen.name.split()[0]}. Tap the send icon to send the message"
+  24. "Switch back to the Venmo app"
 END FOR
 
-1.  "Return: Successfully activated {len(teens)} teen cards!"
+25. "Return: Successfully activated and set up {len(teens)} teen accounts!"
 </critical_mobile_sequence>
 
 ### Step 3: Update Venmo Status in Database
