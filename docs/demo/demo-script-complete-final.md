@@ -54,24 +54,22 @@ This table summarizes the enhanced migration demo with meaningful progress each 
 - **Action**: Pick up the iPhone, set it down. Pick up the Galaxy, slowly unfold it
 - **Caption**: "My former phone" (left), "My new phone" (right)
 
-### Narration
-**Me (voiceover)**: "[Holding iPhone] This is my iPhone 16 Pro Max. When the iPhone 17 came out last month, I didn't upgrade. For the first time in 18 years.
+### Shot 1: Side by Side (0:00-0:05)
+**Voiceover**: "On the left, my iPhone 16 Pro Max. On the right, Samsung Galaxy Z Fold 7. For 18 years, there was no choice. Until now."
 
-[Setting down iPhone, picking up Galaxy]
+### Shot 2: Pick up iPhone (0:05-0:10)
+**Voiceover**: "Every September, another iPhone. Another thousand dollars. The same experience in a slightly different box."
 
-In 2007, my girlfriend—now my wife—waited in line at a Chicago Apple Store while I took the Amtrak from St. Louis. When I arrived at Union Station past 10 PM and she handed me that iconic white box, I felt something I hadn't experienced with technology before—pure awe. The design, the interface, holding the future in my hands.
+### Shot 3: Pick up Galaxy, show front/back (0:10-0:15)
+**Voiceover**: "Three weeks ago, at a Verizon store with my daughter, I picked this up..."
 
-For 18 years, I upgraded almost every other generation, hoping to recapture that moment. The last five years? Incremental updates. Bigger screens. Same experience. Another thousand dollars.
+### Shot 4: The Unfold (0:15-0:22)
+**Voiceover**: "And then... [UNFOLD HAPPENS] ...there it was. That feeling I hadn't felt since holding the original iPhone on launch day in 2007. The future, unfolding in my hands."
 
-Three weeks ago, at a Verizon store with my daughter, I picked up this..."
-
-[UNFOLDS the Galaxy Z Fold 7]
-
-"...and there it was again. That same feeling from 2007. Innovation you can literally unfold.
-
-But here's the problem: 18 years in the Apple ecosystem. 383 gigabytes of family photos. A wife and three kids who refuse to leave their iPhones. And me, wanting to switch but needing to stay connected to my Apple-locked family.
-
-So I did what any AI engineer would do—I built an agent to orchestrate the entire migration."
+### Shot 5: Fold it, remove iPhone, center Galaxy (0:22-0:30)
+**Voiceover**: "[As you fold it back] But eighteen years builds a lot of chains. Half a terabyte in iCloud. Family photos, videos, memories. My wife and three kids on iMessage, Find My, Apple Pay. 
+[As iPhone moves out of frame] So I did what any AI engineer would do...
+[As Galaxy centers] I built an agent to orchestrate the entire escape."
 
 ---
 
