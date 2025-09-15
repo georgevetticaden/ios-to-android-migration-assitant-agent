@@ -1,5 +1,7 @@
 # Mobile Next - MCP server for Mobile Development and Automation | iOS, Android, Simulator, Emulator, and Real Devices
 
+> **Note**: This is a fork of [mobile-next/mobile-mcp](https://github.com/mobile-next/mobile-mcp) integrated into the iOS2Android Migration Assistant. It provides natural language control of Android devices via ADB for orchestrating family app setups (WhatsApp, Google Maps, Venmo) during iOS to Android migrations.
+
 This is a [Model Context Protocol (MCP) server](https://github.com/modelcontextprotocol) that enables scalable mobile automation, development through a platform-agnostic interface, eliminating the need for distinct iOS or Android knowledge. You can run it on emulators, simulators, and real devices (iOS and Android).
 This server allows Agents and LLMs to interact with native iOS/Android applications and devices through structured accessibility snapshots or coordinate-based taps based on screenshots.
 

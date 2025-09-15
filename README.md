@@ -4,12 +4,16 @@
 
 After 18 years on iPhone, switching to Android isn't just changing phones—it's migrating an entire digital life. This AI agent automates the 40-60 hour manual process into a guided 7-day journey, handling everything from 380GB of photos to family WhatsApp groups.
 
+## 📱 The Migration Challenge
+
+![iOS to Android Migration Challenge](docs/images/migration-challenge-viz-larger.png)
+
 ## 🎯 What This Is
 
 This is **not just MCP tools**—this is the complete **iOS2Android Migration Agent** package:
 
 - **🤖 AI Agent**: Natural language orchestrator with 1,194 lines of behavioral instructions
-- **🛠️ MCP Tool Suite**: 11+ specialized tools across 3 servers for device automation
+- **🛠️ MCP Tool Suite**: 9+ specialized tools across 3 servers for device automation
 - **🗄️ State Management**: Persistent migration tracking across the 7-day timeline
 - **📱 Cross-Platform Control**: Simultaneous Mac and Android device automation
 - **👨‍👩‍👧‍👦 Family Ecosystem**: Maintains connectivity across platform boundaries
@@ -18,47 +22,13 @@ This is **not just MCP tools**—this is the complete **iOS2Android Migration Ag
 
 ## 🎬 Watch It Work
 
+[![iOS to Android Migration Demo](https://img.youtube.com/vi/cbWhk69Rgak/maxresdefault.jpg)](https://www.youtube.com/watch?v=cbWhk69Rgak)
+
 Split-screen demonstration: Claude Desktop orchestrating on the left, Galaxy Z Fold 7 responding on the right. Real devices, real data, zero manual intervention after initial setup.
 
 ## 🏗️ The Architecture: AI Orchestrating Across Devices
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                  iOS2Android Migration Agent                     │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│                     Claude Desktop (Mac)                          │
-│                  ┌─────────────────────────┐                     │
-│                  │   iOS2Android Agent     │                     │
-│                  │  "Natural Language AI"  │                     │
-│                  │   + Instructions +      │                     │
-│                  │   React Dashboards      │                     │
-│                  └──────┬──────┬──────┬───┘                     │
-│                         │      │      │                          │
-│                    MCP Protocol (Anthropic)                      │
-│                         │      │      │                          │
-│   ┌─────────────────────▼──────▼──────▼─────────────────────┐   │
-│   │                                                          │   │
-│   │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │   │
-│   │  │Web-Automation│  │ Mobile-MCP   │  │Migration-State│ │   │
-│   │  │(Playwright)  │  │ (ADB Control)│  │ (DuckDB Mgmt)│ │   │
-│   │  │   4 tools    │  │Natural Lang  │  │   7 tools    │ │   │
-│   │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │   │
-│   │         │                  │                  │         │   │
-│   └─────────┼──────────────────┼──────────────────┼─────────┘   │
-│             │                  │                  │             │
-│     ┌───────▼───────┐  ┌───────▼───────┐  ┌─────▼──────┐      │
-│     │  Mac Browser  │  │Galaxy Fold 7  │  │Migration DB│      │
-│     │ (iCloud.com)  │  │(Android Apps) │  │ (~/.ios)   │      │
-│     └───────────────┘  └───────────────┘  └────────────┘      │
-│                                                                 │
-│     380GB Photos  ────────────────────────▶  Google Photos    │
-│     iMessage Family  ─────────────────────▶  WhatsApp Group   │
-│     Find My Location ─────────────────────▶  Google Maps      │
-│     Apple Cash Teens ─────────────────────▶  Venmo Cards      │
-│                                                                 │
-└──────────────────────────────────────────────────────────────────┘
-```
+![iOS2Android Architecture](docs/images/ios2android-architecture-final.png)
 
 **Key Innovation**: The AI agent doesn't just run tools—it orchestrates a complex multi-device, multi-day migration with memory, emotional intelligence, and family coordination.
 
@@ -74,7 +44,7 @@ Split-screen demonstration: Claude Desktop orchestrating on the left, Galaxy Z F
 ├──────────────┬────────────────┬─────────────────────────┤
 │ migration-   │ web-automation │    mobile-mcp           │
 │ state        │                │    (Android control)    │
-│ (7 tools)    │ (4 tools)      │    (natural language)   │
+│ (6 tools)    │ (3 tools)      │    (natural language)   │
 ├──────────────┴────────────────┴─────────────────────────┤
 │              Shared Database (DuckDB)                    │
 │         ~/.ios_android_migration/migration.db            │
@@ -84,7 +54,7 @@ Split-screen demonstration: Claude Desktop orchestrating on the left, Galaxy Z F
 **Layer Breakdown**:
 - **Claude Desktop (Agent)**: Natural language interface with 1,194 lines of behavioral instructions
 - **MCP Protocol**: Anthropic's Model Context Protocol for tool orchestration  
-- **Three MCP Servers**: migration-state (7 tools), web-automation (4 tools), mobile-mcp (Android control)
+- **Three MCP Servers**: migration-state (6 tools), web-automation (3 tools), mobile-mcp (Android control)
 - **Shared Database**: DuckDB persistence layer with 8 tables for migration tracking
 
 ## 🚀 Core Capabilities
@@ -133,16 +103,15 @@ Comprehensive behavioral programming for:
 - Success narrative maintenance
 - Error recovery procedures
 
-### 2. Three MCP Servers (14 Total Tools)
+### 2. Three MCP Servers (9+ Total Tools)
 
-#### Web-Automation Server (4 tools)
+#### Web-Automation Server (3 tools)
 **Purpose**: Browser automation for iCloud and Google services
 - `check_icloud_status` - Retrieve photo/video counts from privacy.apple.com
 - `start_photo_transfer` - Initiate Apple's transfer service with baseline capture
-- `check_photo_transfer_progress` - Monitor via Google One storage metrics
 - `verify_photo_transfer_complete` - Final verification with certificate
 
-#### Migration-State Server (7 tools)
+#### Migration-State Server (6 tools)
 **Purpose**: Central database and state management
 - Migration lifecycle: initialize → update → track → complete
 - Family member management with email coordination
@@ -164,6 +133,29 @@ Comprehensive behavioral programming for:
 - `media_transfer` - Separate photo/video status
 - `storage_snapshots` - Google One metrics over time
 - `family_members` - Cross-platform coordination
+
+## 🚀 Quick Start
+
+Ready to migrate? Here's how to get started in under 10 minutes:
+
+1. **Clone the repository**
+   ```bash
+   git clone [repository-url]
+   cd ios-to-android-migration-assistant-agent
+   ```
+
+2. **Run the setup script**
+   ```bash
+   ./scripts/setup.sh  # Installs dependencies, configures Claude Desktop
+   ```
+
+3. **Start your migration in Claude Desktop**
+   ```
+   "I need to migrate from iPhone to Android. I have 380GB of photos
+   and my family needs to stay connected."
+   ```
+
+That's it! The agent will guide you through the rest.
 
 ## 🔧 Installation & Setup
 

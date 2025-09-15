@@ -25,7 +25,7 @@ The system uses an AI agent (Claude) that follows natural language instructions 
 - `start_photo_transfer` - Initiate Apple's transfer service
 - `verify_photo_transfer_complete` - Final verification
 
-#### 2. migration-state (7 tools)  
+#### 2. migration-state (6 tools)
 **Purpose**: Central state management and database operations  
 **Location**: `mcp-tools/migration-state/`  
 **Documentation**: [`mcp-tools/migration-state/README.md`](mcp-tools/migration-state/README.md)  
@@ -108,7 +108,7 @@ Complete 7-day demo script showing:
 ## Key Technical Details
 
 ### Tool Count
-- **Total**: 10 MCP tools (3 web + 7 state)
+- **Total**: 9 MCP tools (3 web + 6 state)
 - **Removed**: 9 redundant tools for efficiency
 - **Philosophy**: Each tool has one specific purpose
 
